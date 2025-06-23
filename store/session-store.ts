@@ -4,6 +4,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SessionLog, SessionType } from '@/types/session';
 import { StorageError, ValidationError } from '@/hooks/useErrorHandler';
 import * as Notifications from 'expo-notifications';
+import { firebaseSessions } from '@/services/firebase-sessions';
+import { firebaseAuth } from '@/services/firebase-auth';
 
 interface SessionState {
   logs: SessionLog[];
@@ -61,6 +63,10 @@ interface SessionState {
   // Notification helpers
   sendSessionCompletionNotification: (session: SessionLog) => Promise<void>;
   sendStreakNotification: (streak: number) => Promise<void>;
+  
+  // Firebase sync
+  deleteSession: (sessionId: string) => Promise<void>;
+  syncWithFirebase: () => Promise<void>;
 }
 
 export const useSessionStore = create<SessionState>()(
@@ -146,6 +152,15 @@ export const useSessionStore = create<SessionState>()(
             
             // Send celebration notification
             get().sendSessionCompletionNotification(currentSession);
+            
+            // Sync with Firebase if user is authenticated
+            const user = firebaseAuth.getCurrentUser();
+            if (user) {
+              firebaseSessions.createSession(currentSession).catch(error => {
+                console.error('Failed to sync session to Firebase:', error);
+                // Don't throw - allow offline functionality
+              });
+            }
           }
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Failed to complete session';
@@ -212,6 +227,15 @@ export const useSessionStore = create<SessionState>()(
               log.id === sessionId ? { ...log, ...data } : log
             )
           }));
+          
+          // Sync with Firebase if user is authenticated
+          const user = firebaseAuth.getCurrentUser();
+          if (user) {
+            firebaseSessions.updateSession(sessionId, data).catch(error => {
+              console.error('Failed to sync session update to Firebase:', error);
+              // Don't throw - allow offline functionality
+            });
+          }
         } finally {
           set({ isEditingSession: false });
         }
@@ -642,6 +666,64 @@ export const useSessionStore = create<SessionState>()(
         } catch (error) {
           console.log('Failed to send streak notification:', error);
           // Don't throw error for notification failures
+        }
+      },
+      
+      // Delete session
+      deleteSession: async (sessionId: string) => {
+        set({ isEditingSession: true, error: null });
+        
+        try {
+          // Remove from local state
+          set((state) => ({
+            logs: state.logs.filter(log => log.id !== sessionId)
+          }));
+          
+          // Sync with Firebase if user is authenticated
+          const user = firebaseAuth.getCurrentUser();
+          if (user) {
+            await firebaseSessions.deleteSession(sessionId).catch(error => {
+              console.error('Failed to delete session from Firebase:', error);
+              // Don't throw - allow offline functionality
+            });
+          }
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Failed to delete session';
+          set({ error: errorMessage });
+          throw error;
+        } finally {
+          set({ isEditingSession: false });
+        }
+      },
+      
+      // Sync with Firebase
+      syncWithFirebase: async () => {
+        const user = firebaseAuth.getCurrentUser();
+        if (!user) return;
+        
+        try {
+          // Set up real-time listener for Firebase changes
+          firebaseSessions.onSessionsChange((firebaseLogs) => {
+            // Merge Firebase data with local data
+            set((state) => {
+              const localIds = new Set(state.logs.map(log => log.id));
+              const firebaseIds = new Set(firebaseLogs.map(log => log.id));
+              
+              // Add new sessions from Firebase that aren't local
+              const newSessions = firebaseLogs.filter(log => !localIds.has(log.id));
+              
+              // Keep local sessions that aren't in Firebase (offline created)
+              const offlineSessions = state.logs.filter(log => !firebaseIds.has(log.id));
+              
+              // Merge and sort by creation date
+              const mergedLogs = [...firebaseLogs, ...offlineSessions]
+                .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+              
+              return { logs: mergedLogs };
+            });
+          });
+        } catch (error) {
+          console.error('Failed to set up Firebase sync:', error);
         }
       }
     }),

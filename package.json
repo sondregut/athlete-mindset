@@ -5,16 +5,16 @@
   "scripts": {
     "start": "bunx rork start -p z54qzr5766157j0974fjw --tunnel",
     "start-web": "bunx rork start -p z54qzr5766157j0974fjw --web --tunnel",
-    "start-web-dev": "DEBUG=expo* bunx rork start -p z54qzr5766157j0974fjw --web --tunnel"
+    "start-web-dev": "DEBUG=expo* bunx rork start -p z54qzr5766157j0974fjw --web --tunnel",
+    "deploy:rules": "firebase deploy --only firestore:rules,storage:rules",
+    "deploy:firestore": "firebase deploy --only firestore:rules",
+    "deploy:storage": "firebase deploy --only storage:rules"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
     "@react-native-async-storage/async-storage": "2.1.2",
     "@react-native-community/datetimepicker": "8.3.0",
     "@react-native-community/slider": "4.5.6",
-    "@react-native-firebase/app": "^22.2.1",
-    "@react-native-firebase/auth": "^22.2.1",
-    "@react-native-firebase/firestore": "^22.2.1",
     "@react-navigation/native": "^7.1.6",
     "date-fns": "^4.1.0",
     "expo": "53.0.12",
@@ -34,6 +34,7 @@
     "expo-symbols": "~0.4.5",
     "expo-system-ui": "~5.0.9",
     "expo-web-browser": "~14.2.0",
+    "firebase": "^11.9.1",
     "lucide-react-native": "^0.496.0",
     "nativewind": "^4.1.23",
     "react": "19.0.0",

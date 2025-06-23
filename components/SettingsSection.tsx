@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, Share, ActivityIndicator } from 'react-native';
-import { Download, Settings, Bell, HelpCircle, Trash2, ExternalLink } from 'lucide-react-native';
+import { Download, Settings, Bell, HelpCircle, Trash2, ExternalLink, User, Mail, LogOut, Shield } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { colors } from '@/constants/colors';
 import { useSessionStore } from '@/store/session-store';
 import { useUserStore } from '@/store/user-store';
 import { useOnboardingStore } from '@/store/onboarding-store';
+import { useAuthStore } from '@/store/auth-store';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 import Card from './Card';
+import AuthModal from './AuthModal';
 
 interface SettingsItemProps {
   icon: React.ReactNode;
@@ -59,7 +61,10 @@ function SettingsItem({ icon, title, subtitle, onPress, destructive = false, loa
 export default function SettingsSection() {
   const { logs, clearAllSessions, exportSessionData, isClearingData, isExportingData, error: sessionError } = useSessionStore();
   const { resetProfile, isResettingProfile, error: userError } = useUserStore();
+  const { user, signOut, isLoading: isAuthLoading } = useAuthStore();
   const { executeWithErrorHandling } = useErrorHandler();
+  const [authModalVisible, setAuthModalVisible] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup' | 'link'>('signin');
 
   const handleExportData = async () => {
     await executeWithErrorHandling(async () => {
@@ -120,10 +125,91 @@ export default function SettingsSection() {
     router.push('/notification-settings');
   };
 
+  const handleAccountAction = () => {
+    if (user?.isAnonymous) {
+      setAuthModalMode('link');
+      setAuthModalVisible(true);
+    } else if (!user) {
+      setAuthModalMode('signin');
+      setAuthModalVisible(true);
+    }
+  };
+
+  const handleSignOut = async () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out? Your data will remain on this device.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            await executeWithErrorHandling(async () => {
+              await signOut();
+            }, {
+              fallbackMessage: 'Failed to sign out. Please try again.'
+            });
+          }
+        }
+      ]
+    );
+  };
+
   return (
     <View style={styles.container}>
-      <Text style={styles.sectionTitle}>Settings & Data</Text>
+      {/* Account Section */}
+      <Text style={styles.sectionTitle}>Account</Text>
+      <Card style={[styles.settingsCard, styles.accountCard]}>
+        <View style={styles.accountInfo}>
+          <View style={styles.accountIcon}>
+            <User size={28} color={colors.primary} />
+          </View>
+          <View style={styles.accountDetails}>
+            <Text style={styles.accountStatus}>
+              {user?.isAnonymous ? 'Guest Account' : user?.email || 'Not Signed In'}
+            </Text>
+            <Text style={styles.accountSubtext}>
+              {user?.isAnonymous 
+                ? 'Create an account to sync across devices' 
+                : user?.email 
+                  ? 'Your data syncs automatically' 
+                  : 'Sign in to access your data'}
+            </Text>
+          </View>
+        </View>
+        
+        {user?.isAnonymous && (
+          <TouchableOpacity style={styles.accountButton} onPress={handleAccountAction}>
+            <Shield size={20} color={colors.background} />
+            <Text style={styles.accountButtonText}>Secure Your Data</Text>
+          </TouchableOpacity>
+        )}
+        
+        {!user && (
+          <TouchableOpacity style={styles.accountButton} onPress={handleAccountAction}>
+            <Mail size={20} color={colors.background} />
+            <Text style={styles.accountButtonText}>Sign In</Text>
+          </TouchableOpacity>
+        )}
+        
+        {user && !user.isAnonymous && (
+          <TouchableOpacity 
+            style={[styles.accountButton, styles.signOutButton]} 
+            onPress={handleSignOut}
+            disabled={isAuthLoading}
+          >
+            <LogOut size={20} color={colors.error} />
+            <Text style={[styles.accountButtonText, styles.signOutText]}>Sign Out</Text>
+          </TouchableOpacity>
+        )}
+      </Card>
       
+      {/* Settings Section */}
+      <Text style={styles.sectionTitle}>Settings & Data</Text>
       <Card style={styles.settingsCard}>
         <SettingsItem
           icon={<Download size={20} color={colors.primary} />}
@@ -156,6 +242,13 @@ export default function SettingsSection() {
           loading={isClearingData || isResettingProfile}
         />
       </Card>
+      
+      {/* Auth Modal */}
+      <AuthModal
+        visible={authModalVisible}
+        onClose={() => setAuthModalVisible(false)}
+        mode={authModalMode}
+      />
     </View>
   );
 }
@@ -211,5 +304,57 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     opacity: 0.7,
+  },
+  accountCard: {
+    padding: 20,
+  },
+  accountInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  accountIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: `${colors.primary}15`,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  accountDetails: {
+    flex: 1,
+  },
+  accountStatus: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 4,
+  },
+  accountSubtext: {
+    fontSize: 14,
+    color: colors.darkGray,
+    lineHeight: 18,
+  },
+  accountButton: {
+    backgroundColor: colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    gap: 8,
+  },
+  accountButtonText: {
+    color: colors.background,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  signOutButton: {
+    backgroundColor: `${colors.error}15`,
+  },
+  signOutText: {
+    color: colors.error,
   },
 });

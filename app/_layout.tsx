@@ -7,6 +7,9 @@ import { StatusBar } from "expo-status-bar";
 import { colors } from "@/constants/colors";
 import AppWrapper from "@/components/AppWrapper";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import AuthProvider from "@/components/AuthProvider";
+import { useAuthStore } from "@/store/auth-store";
+// Firebase will be initialized when first used
 
 export const unstable_settings = {
   initialRouteName: "(tabs)",
@@ -19,6 +22,7 @@ export default function RootLayout() {
   const [loaded, error] = useFonts({
     ...FontAwesome.font,
   });
+  const { initialize: initializeAuth } = useAuthStore();
 
   console.log('📱 RootLayout render:', { loaded, error });
 
@@ -36,6 +40,15 @@ export default function RootLayout() {
     }
   }, [loaded]);
 
+  useEffect(() => {
+    // Initialize Firebase auth state listener
+    console.log('🔥 Initializing Firebase auth...');
+    const unsubscribe = initializeAuth();
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
+
   if (!loaded) {
     console.log('⏳ Fonts not loaded yet, showing null');
     return null;
@@ -50,9 +63,10 @@ function RootLayoutNav() {
   
   return (
     <ErrorBoundary>
-      <AppWrapper>
-        <StatusBar style="dark" />
-        <Stack
+      <AuthProvider>
+        <AppWrapper>
+          <StatusBar style="dark" />
+          <Stack
           screenOptions={{
             headerStyle: {
               backgroundColor: colors.background,
@@ -103,8 +117,16 @@ function RootLayoutNav() {
               animation: "slide_from_right",
             }} 
           />
+          <Stack.Screen 
+            name="mindset-history" 
+            options={{ 
+              title: "History",
+              animation: "slide_from_right",
+            }} 
+          />
         </Stack>
-      </AppWrapper>
+        </AppWrapper>
+      </AuthProvider>
     </ErrorBoundary>
   );
 }

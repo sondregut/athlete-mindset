@@ -13,7 +13,9 @@
       "Bash(curl:*)",
       "Bash(killall:*)",
       "Bash(npm install:*)",
-      "Bash(npm audit:*)"
+      "Bash(npm audit:*)",
+      "Bash(grep:*)",
+      "Bash(bunx tsc:*)"
     ],
     "deny": []
   }

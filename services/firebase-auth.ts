@@ -1,4 +1,17 @@
-import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
+import { 
+  signInAnonymously, 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword,
+  linkWithCredential,
+  EmailAuthProvider,
+  signOut,
+  deleteUser,
+  sendPasswordResetEmail,
+  onAuthStateChanged,
+  updateProfile,
+  User
+} from 'firebase/auth';
+import { getFirebaseAuth } from '@/config/firebase';
 
 export interface AuthUser {
   uid: string;
@@ -14,7 +27,7 @@ class FirebaseAuthService {
    */
   async signInAnonymously(): Promise<AuthUser> {
     try {
-      const result = await auth().signInAnonymously();
+      const result = await signInAnonymously(getFirebaseAuth());
       return this.mapFirebaseUser(result.user);
     } catch (error) {
       console.error('Anonymous sign in failed:', error);
@@ -27,11 +40,11 @@ class FirebaseAuthService {
    */
   async createAccount(email: string, password: string, displayName?: string): Promise<AuthUser> {
     try {
-      const result = await auth().createUserWithEmailAndPassword(email, password);
+      const result = await createUserWithEmailAndPassword(getFirebaseAuth(), email, password);
       
       // Update display name if provided
       if (displayName && result.user) {
-        await result.user.updateProfile({ displayName });
+        await updateProfile(result.user, { displayName });
       }
 
       return this.mapFirebaseUser(result.user);
@@ -46,7 +59,7 @@ class FirebaseAuthService {
    */
   async signIn(email: string, password: string): Promise<AuthUser> {
     try {
-      const result = await auth().signInWithEmailAndPassword(email, password);
+      const result = await signInWithEmailAndPassword(getFirebaseAuth(), email, password);
       return this.mapFirebaseUser(result.user);
     } catch (error: any) {
       console.error('Sign in failed:', error);
@@ -59,17 +72,17 @@ class FirebaseAuthService {
    */
   async linkWithEmailAndPassword(email: string, password: string, displayName?: string): Promise<AuthUser> {
     try {
-      const user = auth().currentUser;
+      const user = getFirebaseAuth().currentUser;
       if (!user || !user.isAnonymous) {
         throw new Error('No anonymous user to link');
       }
 
-      const credential = auth.EmailAuthProvider.credential(email, password);
-      const result = await user.linkWithCredential(credential);
+      const credential = EmailAuthProvider.credential(email, password);
+      const result = await linkWithCredential(user, credential);
 
       // Update display name if provided
       if (displayName && result.user) {
-        await result.user.updateProfile({ displayName });
+        await updateProfile(result.user, { displayName });
       }
 
       return this.mapFirebaseUser(result.user);
@@ -84,7 +97,7 @@ class FirebaseAuthService {
    */
   async signOut(): Promise<void> {
     try {
-      await auth().signOut();
+      await signOut(getFirebaseAuth());
     } catch (error) {
       console.error('Sign out failed:', error);
       throw new Error('Failed to sign out');
@@ -96,11 +109,11 @@ class FirebaseAuthService {
    */
   async deleteAccount(): Promise<void> {
     try {
-      const user = auth().currentUser;
+      const user = getFirebaseAuth().currentUser;
       if (!user) {
         throw new Error('No user to delete');
       }
-      await user.delete();
+      await deleteUser(user);
     } catch (error) {
       console.error('Account deletion failed:', error);
       throw new Error('Failed to delete account');
@@ -112,7 +125,7 @@ class FirebaseAuthService {
    */
   async resetPassword(email: string): Promise<void> {
     try {
-      await auth().sendPasswordResetEmail(email);
+      await sendPasswordResetEmail(getFirebaseAuth(), email);
     } catch (error: any) {
       console.error('Password reset failed:', error);
       throw new Error(this.getAuthErrorMessage(error.code));
@@ -123,7 +136,7 @@ class FirebaseAuthService {
    * Get current user
    */
   getCurrentUser(): AuthUser | null {
-    const user = auth().currentUser;
+    const user = getFirebaseAuth().currentUser;
     return user ? this.mapFirebaseUser(user) : null;
   }
 
@@ -131,7 +144,7 @@ class FirebaseAuthService {
    * Listen to auth state changes
    */
   onAuthStateChanged(callback: (user: AuthUser | null) => void): () => void {
-    return auth().onAuthStateChanged((user) => {
+    return onAuthStateChanged(getFirebaseAuth(), (user) => {
       callback(user ? this.mapFirebaseUser(user) : null);
     });
   }
@@ -139,7 +152,7 @@ class FirebaseAuthService {
   /**
    * Map Firebase user to our AuthUser interface
    */
-  private mapFirebaseUser(user: FirebaseAuthTypes.User): AuthUser {
+  private mapFirebaseUser(user: User): AuthUser {
     return {
       uid: user.uid,
       email: user.email,

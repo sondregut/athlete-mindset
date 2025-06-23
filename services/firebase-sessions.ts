@@ -1,4 +1,18 @@
-import firestore from '@react-native-firebase/firestore';
+import { 
+  doc, 
+  collection, 
+  setDoc, 
+  updateDoc, 
+  deleteDoc, 
+  getDocs, 
+  getDoc, 
+  query, 
+  orderBy, 
+  where, 
+  onSnapshot, 
+  writeBatch 
+} from 'firebase/firestore';
+import { getFirebaseFirestore } from '@/config/firebase';
 import { SessionLog } from '@/types/session';
 import { firebaseAuth } from './firebase-auth';
 
@@ -10,7 +24,7 @@ export interface FirebaseSessionLog extends Omit<SessionLog, 'id'> {
 
 class FirebaseSessionsService {
   private getCollectionRef(userId: string) {
-    return firestore().collection('users').doc(userId).collection('sessions');
+    return collection(getFirebaseFirestore(), 'users', userId, 'sessions');
   }
 
   /**
@@ -27,7 +41,8 @@ class FirebaseSessionsService {
         syncStatus: 'synced',
       };
 
-      await this.getCollectionRef(user.uid).doc(session.id).set(sessionData);
+      const sessionRef = doc(this.getCollectionRef(user.uid), session.id);
+      await setDoc(sessionRef, sessionData);
     } catch (error) {
       console.error('Failed to create session:', error);
       throw new Error('Failed to save session to cloud');
@@ -48,7 +63,8 @@ class FirebaseSessionsService {
         syncStatus: 'synced',
       };
 
-      await this.getCollectionRef(user.uid).doc(sessionId).update(updateData);
+      const sessionRef = doc(this.getCollectionRef(user.uid), sessionId);
+      await updateDoc(sessionRef, updateData);
     } catch (error) {
       console.error('Failed to update session:', error);
       throw new Error('Failed to update session in cloud');
@@ -63,7 +79,8 @@ class FirebaseSessionsService {
       const user = firebaseAuth.getCurrentUser();
       if (!user) throw new Error('User not authenticated');
 
-      await this.getCollectionRef(user.uid).doc(sessionId).delete();
+      const sessionRef = doc(this.getCollectionRef(user.uid), sessionId);
+      await deleteDoc(sessionRef);
     } catch (error) {
       console.error('Failed to delete session:', error);
       throw new Error('Failed to delete session from cloud');
@@ -78,9 +95,11 @@ class FirebaseSessionsService {
       const user = firebaseAuth.getCurrentUser();
       if (!user) throw new Error('User not authenticated');
 
-      const snapshot = await this.getCollectionRef(user.uid)
-        .orderBy('createdAt', 'desc')
-        .get();
+      const q = query(
+        this.getCollectionRef(user.uid),
+        orderBy('createdAt', 'desc')
+      );
+      const snapshot = await getDocs(q);
 
       return snapshot.docs.map(doc => ({
         id: doc.id,
@@ -100,13 +119,14 @@ class FirebaseSessionsService {
       const user = firebaseAuth.getCurrentUser();
       if (!user) throw new Error('User not authenticated');
 
-      const doc = await this.getCollectionRef(user.uid).doc(sessionId).get();
+      const sessionRef = doc(this.getCollectionRef(user.uid), sessionId);
+      const docSnap = await getDoc(sessionRef);
       
-      if (!doc.exists) return null;
+      if (!docSnap.exists()) return null;
 
       return {
-        id: doc.id,
-        ...doc.data(),
+        id: docSnap.id,
+        ...docSnap.data(),
       } as SessionLog;
     } catch (error) {
       console.error('Failed to get session:', error);
@@ -124,21 +144,25 @@ class FirebaseSessionsService {
       return () => {};
     }
 
-    return this.getCollectionRef(user.uid)
-      .orderBy('createdAt', 'desc')
-      .onSnapshot(
-        (snapshot) => {
-          const sessions = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-          })) as SessionLog[];
-          callback(sessions);
-        },
-        (error) => {
-          console.error('Session listener error:', error);
-          callback([]);
-        }
-      );
+    const q = query(
+      this.getCollectionRef(user.uid),
+      orderBy('createdAt', 'desc')
+    );
+    
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        const sessions = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as SessionLog[];
+        callback(sessions);
+      },
+      (error) => {
+        console.error('Session listener error:', error);
+        callback([]);
+      }
+    );
   }
 
   /**
@@ -149,7 +173,7 @@ class FirebaseSessionsService {
       const user = firebaseAuth.getCurrentUser();
       if (!user) throw new Error('User not authenticated');
 
-      const batch = firestore().batch();
+      const batch = writeBatch(getFirebaseFirestore());
       const collectionRef = this.getCollectionRef(user.uid);
 
       sessions.forEach(session => {
@@ -158,7 +182,8 @@ class FirebaseSessionsService {
           updatedAt: new Date(),
           syncStatus: 'synced',
         };
-        batch.set(collectionRef.doc(session.id), sessionData);
+        const sessionRef = doc(collectionRef, session.id);
+        batch.set(sessionRef, sessionData);
       });
 
       await batch.commit();
@@ -176,11 +201,13 @@ class FirebaseSessionsService {
       const user = firebaseAuth.getCurrentUser();
       if (!user) throw new Error('User not authenticated');
 
-      const snapshot = await this.getCollectionRef(user.uid)
-        .where('date', '>=', startDate)
-        .where('date', '<=', endDate)
-        .orderBy('date', 'desc')
-        .get();
+      const q = query(
+        this.getCollectionRef(user.uid),
+        where('date', '>=', startDate),
+        where('date', '<=', endDate),
+        orderBy('date', 'desc')
+      );
+      const snapshot = await getDocs(q);
 
       return snapshot.docs.map(doc => ({
         id: doc.id,

@@ -11,6 +11,7 @@ import SessionTypeBreakdown from '@/components/SessionTypeBreakdown';
 import MindsetSummary from '@/components/MindsetSummary';
 import SettingsSection from '@/components/SettingsSection';
 import ErrorMessage from '@/components/ErrorMessage';
+import FirebaseDebugPanel from '@/components/FirebaseDebugPanel';
 
 export default function ProfileScreen() {
   const { currentSession, elapsedTime, error: sessionError, clearError: clearSessionError } = useSessionStore();
@@ -106,6 +107,9 @@ export default function ProfileScreen() {
 
       {/* Settings */}
       <SettingsSection />
+
+      {/* Firebase Debug Panel (Dev Only) */}
+      <FirebaseDebugPanel />
     </ScrollView>
   );
 }

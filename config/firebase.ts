@@ -1,6 +1,16 @@
-import { initializeApp, getApps } from '@react-native-firebase/app';
-import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
+import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
+import { 
+  getAuth, 
+  Auth,
+  initializeAuth,
+  debugErrorMap,
+  prodErrorMap,
+  browserLocalPersistence,
+  browserSessionPersistence,
+  inMemoryPersistence
+} from 'firebase/auth';
+import { getFirestore, Firestore } from 'firebase/firestore';
+import { Platform } from 'react-native';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCo5H4l1Gfs5eOpV6gmHKLoB0wDYpNUBzE",
@@ -12,11 +22,66 @@ const firebaseConfig = {
   measurementId: "G-Q3GPE57EYN"
 };
 
-// Initialize Firebase if no apps are already initialized
-if (getApps().length === 0) {
-  initializeApp(firebaseConfig);
-}
+// Singleton instances
+let app: FirebaseApp | null = null;
+let auth: Auth | null = null;
+let firestore: Firestore | null = null;
+let isInitialized = false;
 
-// Export auth and firestore instances
-export { auth, firestore };
+// Initialize Firebase lazily
+export const initializeFirebase = () => {
+  if (!app) {
+    app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+  }
+  return app;
+};
+
+// Get Auth instance with Expo Go workaround
+export const getFirebaseAuth = (): Auth => {
+  if (!auth) {
+    const firebaseApp = initializeFirebase();
+    
+    try {
+      // Try to get existing auth instance
+      auth = getAuth(firebaseApp);
+    } catch (error) {
+      // If it fails, initialize auth with minimal config for Expo Go
+      console.log('Initializing auth with Expo Go workaround');
+      
+      if (Platform.OS === 'web') {
+        // Web uses standard initialization
+        auth = initializeAuth(firebaseApp, {
+          persistence: [browserLocalPersistence, browserSessionPersistence],
+          errorMap: __DEV__ ? debugErrorMap : prodErrorMap
+        });
+      } else {
+        // React Native in Expo Go - use minimal config
+        auth = initializeAuth(firebaseApp, {
+          persistence: inMemoryPersistence,
+          errorMap: prodErrorMap
+        });
+      }
+    }
+  }
+  return auth;
+};
+
+// Get Firestore instance
+export const getFirebaseFirestore = (): Firestore => {
+  if (!firestore) {
+    const firebaseApp = initializeFirebase();
+    firestore = getFirestore(firebaseApp);
+  }
+  return firestore;
+};
+
+// Mark as initialized
+export const markFirebaseInitialized = () => {
+  isInitialized = true;
+};
+
+// Check if initialized
+export const isFirebaseInitialized = () => isInitialized;
+
+// Export default config
 export default firebaseConfig;

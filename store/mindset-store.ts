@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { firebaseMindset } from '@/services/firebase-mindset';
+import { firebaseAuth } from '@/services/firebase-auth';
 
 export interface MindsetCheckin {
   id: string;
@@ -34,6 +36,7 @@ interface MindsetState {
   deleteCheckin: (id: string) => Promise<void>;
   setError: (error: string | null) => void;
   clearError: () => void;
+  syncWithFirebase: () => Promise<void>;
 }
 
 const getTodayDateString = () => {
@@ -88,6 +91,15 @@ export const useMindsetStore = create<MindsetState>()(
             checkins: updatedCheckins,
             todaysCheckin: checkin,
           });
+          
+          // Sync with Firebase if user is authenticated
+          const user = firebaseAuth.getCurrentUser();
+          if (user) {
+            firebaseMindset.submitCheckin(checkin).catch(error => {
+              console.error('Failed to sync checkin to Firebase:', error);
+              // Don't throw - allow offline functionality
+            });
+          }
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Failed to submit check-in';
           set({ error: errorMessage });
@@ -184,6 +196,18 @@ export const useMindsetStore = create<MindsetState>()(
             checkins: updatedCheckins,
             todaysCheckin: state.todaysCheckin?.id === id ? null : state.todaysCheckin,
           });
+          
+          // Sync with Firebase if user is authenticated
+          const user = firebaseAuth.getCurrentUser();
+          if (user) {
+            const checkinToDelete = state.checkins.find(c => c.id === id);
+            if (checkinToDelete) {
+              firebaseMindset.deleteCheckin(checkinToDelete.date).catch(error => {
+                console.error('Failed to delete checkin from Firebase:', error);
+                // Don't throw - allow offline functionality
+              });
+            }
+          }
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Failed to delete check-in';
           set({ error: errorMessage });
@@ -195,6 +219,41 @@ export const useMindsetStore = create<MindsetState>()(
       
       setError: (error) => set({ error }),
       clearError: () => set({ error: null }),
+      
+      // Sync with Firebase
+      syncWithFirebase: async () => {
+        const user = firebaseAuth.getCurrentUser();
+        if (!user) return;
+        
+        try {
+          // Set up real-time listener for Firebase changes
+          firebaseMindset.onCheckinsChange((firebaseCheckins) => {
+            // Merge Firebase data with local data
+            set((state) => {
+              const localIds = new Set(state.checkins.map(c => c.date)); // Using date as unique identifier
+              const firebaseIds = new Set(firebaseCheckins.map(c => c.date));
+              
+              // Keep local check-ins that aren't in Firebase (offline created)
+              const offlineCheckins = state.checkins.filter(c => !firebaseIds.has(c.date));
+              
+              // Merge and sort by date
+              const mergedCheckins = [...firebaseCheckins, ...offlineCheckins]
+                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+              
+              // Update today's checkin if needed
+              const today = getTodayDateString();
+              const todaysCheckin = mergedCheckins.find(c => c.date === today) || null;
+              
+              return { 
+                checkins: mergedCheckins,
+                todaysCheckin
+              };
+            });
+          });
+        } catch (error) {
+          console.error('Failed to set up Firebase sync:', error);
+        }
+      },
     }),
     {
       name: 'mindset-checkin-storage',

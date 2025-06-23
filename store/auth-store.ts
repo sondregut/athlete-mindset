@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { firebaseAuth, AuthUser } from '@/services/firebase-auth';
+import { initializeFirebase, markFirebaseInitialized } from '@/config/firebase';
 
 export interface AuthState {
   user: AuthUser | null;
@@ -21,7 +22,7 @@ export interface AuthState {
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   clearError: () => void;
-  initialize: () => void;
+  initialize: () => (() => void);
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -113,6 +114,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   clearError: () => set({ error: null }),
 
   initialize: () => {
+    // Initialize Firebase first
+    initializeFirebase();
+    markFirebaseInitialized();
+    
     // Set up auth state listener
     const unsubscribe = firebaseAuth.onAuthStateChanged((user) => {
       const currentState = get();
