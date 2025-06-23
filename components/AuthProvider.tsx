@@ -13,42 +13,67 @@ export default function AuthProvider({ children }: AuthProviderProps) {
   const { user, isLoading, isInitialized, signInAnonymously, error, clearError } = useAuthStore();
   const [retryCount, setRetryCount] = useState(0);
   const [isRetrying, setIsRetrying] = useState(false);
+  // Start with auth enabled now that we have proper authentication
+  const [skipAuth, setSkipAuth] = useState(false);
   const hasAttemptedSignIn = useRef(false);
+  const isCurrentlyAttempting = useRef(false);
 
   useEffect(() => {
-    // Auto sign-in anonymously if no user and auth is initialized
-    if (isInitialized && !user && !isLoading && !hasAttemptedSignIn.current) {
-      hasAttemptedSignIn.current = true;
-      
-      // Add a small delay to ensure Firebase is fully ready
-      const timeoutId = setTimeout(() => {
-        console.log('🔐 Auto-signing in anonymously...');
-        attemptAnonymousSignIn();
-      }, 1000);
-
-      return () => clearTimeout(timeoutId);
+    // Skip auth if user chose to continue offline
+    if (skipAuth && !user) {
+      // Set a local user to continue without Firebase
+      useAuthStore.setState({ 
+        user: { 
+          uid: 'local-user', 
+          email: null, 
+          displayName: 'Local User', 
+          isAnonymous: true, 
+          emailVerified: false 
+        },
+        isInitialized: true,
+        isLoading: false
+      });
+      return;
     }
-  }, [isInitialized, user, isLoading]);
+    
+    // DO NOT auto sign-in - let user choose authentication method
+    // This prevents network errors from blocking app startup
+  }, [isInitialized, user, isLoading, skipAuth]);
 
-  const attemptAnonymousSignIn = async () => {
+  const attemptAnonymousSignIn = async (currentRetryCount: number) => {
+    // Prevent multiple simultaneous attempts
+    if (isCurrentlyAttempting.current) {
+      console.log('Already attempting sign-in, skipping...');
+      return;
+    }
+    
+    isCurrentlyAttempting.current = true;
+    
     try {
       setIsRetrying(true);
+      setRetryCount(currentRetryCount);
       await signInAnonymously();
       setRetryCount(0);
       setIsRetrying(false);
+      isCurrentlyAttempting.current = false;
     } catch (error) {
-      console.error(`Failed to auto sign-in (attempt ${retryCount + 1}):`, error);
+      console.error(`Failed to auto sign-in (attempt ${currentRetryCount + 1}):`, error);
       setIsRetrying(false);
+      isCurrentlyAttempting.current = false;
       
       // Retry with exponential backoff, max 3 attempts
-      if (retryCount < 3) {
-        const delay = Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s
-        console.log(`Retrying in ${delay/1000} seconds...`);
+      if (currentRetryCount < 2) {
+        const nextRetryCount = currentRetryCount + 1;
+        const delay = Math.pow(2, nextRetryCount) * 1000; // 2s, 4s
+        console.log(`Will retry in ${delay/1000} seconds...`);
         
         setTimeout(() => {
-          setRetryCount(prev => prev + 1);
-          attemptAnonymousSignIn();
+          setRetryCount(nextRetryCount);
+          attemptAnonymousSignIn(nextRetryCount);
         }, delay);
+      } else {
+        console.log('Max retry attempts reached. Stopping.');
+        setRetryCount(currentRetryCount);
       }
     }
   };
@@ -56,8 +81,10 @@ export default function AuthProvider({ children }: AuthProviderProps) {
   const handleManualRetry = () => {
     clearError();
     hasAttemptedSignIn.current = false;
+    isCurrentlyAttempting.current = false;
     setRetryCount(0);
-    attemptAnonymousSignIn();
+    setSkipAuth(false);
+    attemptAnonymousSignIn(0);
   };
 
   const handleSkipAuth = () => {
@@ -65,6 +92,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
     // In a real app, you might want to set a flag to work offline
     console.log('⚠️ User chose to continue without account');
     clearError();
+    setSkipAuth(true);
     // Set a dummy user to bypass auth requirement
     // Note: This is temporary - data won't sync to Firebase
     useAuthStore.setState({ 
@@ -90,48 +118,23 @@ export default function AuthProvider({ children }: AuthProviderProps) {
     }
   }, [user]);
 
-  // Show loading screen while auth is initializing
-  if (!isInitialized || (isInitialized && !user && (isLoading || isRetrying))) {
+  // Skip auth screens if user chose offline mode
+  if (skipAuth) {
+    return <>{children}</>;
+  }
+
+  // Show loading screen ONLY while auth is actually initializing
+  if (!isInitialized) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>
-          {!isInitialized ? 'Initializing...' : 
-           isRetrying ? `Connecting... (Attempt ${retryCount + 1}/4)` : 
-           'Setting up your account...'}
-        </Text>
+        <Text style={styles.loadingText}>Initializing...</Text>
       </View>
     );
   }
 
-  // Show error state if auth failed after all retries
-  if (error && !user && retryCount >= 3) {
-    return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorTitle}>Connection Error</Text>
-        <Text style={styles.errorText}>
-          {error.includes('auth/network-request-failed') 
-            ? 'Unable to connect. Please check your internet connection.'
-            : error.includes('auth/too-many-requests')
-            ? 'Too many attempts. Please wait a moment before trying again.'
-            : 'Unable to set up your account. This might be a configuration issue.'}
-        </Text>
-        <Text style={styles.errorDetails}>
-          Error: {error}
-        </Text>
-        <Button 
-          title="Try Again" 
-          onPress={handleManualRetry}
-          style={styles.retryButton}
-        />
-        <TouchableOpacity onPress={handleSkipAuth} style={styles.skipButton}>
-          <Text style={styles.skipText}>Continue without account</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  // Render app when user is authenticated (including anonymous)
+  // If initialized but no user, render children (will show onboarding)
+  // This prevents the auth provider from blocking the app
   return <>{children}</>;
 }
 

@@ -22,6 +22,7 @@ const firebaseConfig = {
   measurementId: "G-Q3GPE57EYN"
 };
 
+
 // Singleton instances
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
@@ -31,9 +32,7 @@ let isInitialized = false;
 // Initialize Firebase lazily
 export const initializeFirebase = () => {
   if (!app) {
-    console.log('🔥 Initializing Firebase app...');
     app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-    console.log('✅ Firebase app initialized:', app.name);
   }
   return app;
 };
@@ -43,26 +42,20 @@ export const getFirebaseAuth = (): Auth => {
   if (!auth) {
     const firebaseApp = initializeFirebase();
     
-    try {
-      // Try to get existing auth instance
-      auth = getAuth(firebaseApp);
-    } catch (error) {
-      // If it fails, initialize auth with minimal config for Expo Go
-      console.log('Initializing auth with Expo Go workaround');
-      
-      if (Platform.OS === 'web') {
-        // Web uses standard initialization
-        auth = initializeAuth(firebaseApp, {
-          persistence: [browserLocalPersistence, browserSessionPersistence],
-          errorMap: __DEV__ ? debugErrorMap : prodErrorMap
-        });
-      } else {
-        // React Native in Expo Go - use minimal config
-        auth = initializeAuth(firebaseApp, {
-          persistence: inMemoryPersistence,
-          errorMap: prodErrorMap
-        });
-      }
+    // Always use initializeAuth for consistent behavior
+    if (Platform.OS === 'web') {
+      // Web uses standard initialization
+      auth = initializeAuth(firebaseApp, {
+        persistence: [browserLocalPersistence, browserSessionPersistence],
+        errorMap: __DEV__ ? debugErrorMap : prodErrorMap
+      });
+    } else {
+      // React Native in Expo Go - use in-memory persistence
+      // This is the most compatible option for Expo Go
+      auth = initializeAuth(firebaseApp, {
+        persistence: inMemoryPersistence,
+        errorMap: prodErrorMap
+      });
     }
   }
   return auth;

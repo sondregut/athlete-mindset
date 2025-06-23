@@ -15,7 +15,17 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "app.rork.athlete-mindset-toolkit-jda24fe"
+      "bundleIdentifier": "com.sondregut.athletemindset",
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "infoPlist": {
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "com.googleusercontent.apps.860569454039-tjvf38os5g430uct33se2lbra2sl6is1"
+            ]
+          }
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {

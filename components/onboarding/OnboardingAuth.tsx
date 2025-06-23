@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
 import { Mail, Lock, User, Globe } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 import { useAuthStore } from '@/store/auth-store';
 import Button from '../Button';
 import { useOnboardingStore } from '@/store/onboarding-store';
+import { useGoogleAuth, getGoogleIdToken } from '@/config/google-oauth';
 
 export default function OnboardingAuth() {
   const [mode, setMode] = useState<'choice' | 'signin' | 'signup'>('choice');
@@ -13,9 +14,11 @@ export default function OnboardingAuth() {
   const [displayName, setDisplayName] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   
-  const { signIn, createAccount, isLoading } = useAuthStore();
+  const { signIn, createAccount, signInWithGoogle, isLoading } = useAuthStore();
   const { nextStep } = useOnboardingStore();
+  const { request, response, promptAsync } = useGoogleAuth();
 
   const handleEmailSignIn = async () => {
     setError('');
@@ -57,14 +60,79 @@ export default function OnboardingAuth() {
     }
   };
 
-  const handleGoogleSignIn = () => {
-    // Placeholder for Google Sign-In
-    setError('Google Sign-In coming soon!');
+  // Handle Google OAuth response
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const idToken = getGoogleIdToken(response);
+      if (idToken) {
+        handleGoogleAuthSuccess(idToken);
+      } else {
+        setError('Failed to get authentication token from Google');
+        setIsGoogleLoading(false);
+      }
+    } else if (response?.type === 'error') {
+      setError('Google sign-in failed. Please try again.');
+      setIsGoogleLoading(false);
+    } else if (response?.type === 'dismiss') {
+      setIsGoogleLoading(false);
+    }
+  }, [response]);
+
+  const handleGoogleSignIn = async () => {
+    setError('');
+    setIsGoogleLoading(true);
+    
+    // Check if we're in Expo Go
+    if (__DEV__ && Platform.OS === 'ios') {
+      Alert.alert(
+        'Google Sign-In Limitation',
+        'Google Sign-In is not available in Expo Go on iOS. Please use email sign-in or test on Android/Web.',
+        [{ text: 'OK' }]
+      );
+      setIsGoogleLoading(false);
+      return;
+    }
+    
+    if (!request) {
+      setError('Configuring Google Sign-In...');
+      setIsGoogleLoading(false);
+      return;
+    }
+
+    try {
+      const result = await promptAsync();
+      // Response will be handled by the useEffect hook
+    } catch (err: any) {
+      console.error('Google sign-in error:', err);
+      setError('Failed to open Google sign-in');
+      setIsGoogleLoading(false);
+    }
   };
 
-  const handleSkip = () => {
-    // Continue as guest (anonymous user)
-    nextStep();
+  const handleGoogleAuthSuccess = async (idToken: string) => {
+    try {
+      await signInWithGoogle(idToken);
+      setIsGoogleLoading(false);
+      nextStep();
+    } catch (err: any) {
+      setError(err.message || 'Failed to sign in with Google');
+      setIsGoogleLoading(false);
+    }
+  };
+
+  const handleSkip = async () => {
+    // Continue as anonymous user
+    setError('');
+    try {
+      const { signInAnonymously } = useAuthStore.getState();
+      await signInAnonymously();
+      nextStep();
+    } catch (err: any) {
+      console.error('Failed to sign in anonymously:', err);
+      // If anonymous sign-in fails, continue anyway
+      // This prevents network issues from blocking the app
+      nextStep();
+    }
   };
 
   if (mode === 'choice') {
@@ -79,9 +147,19 @@ export default function OnboardingAuth() {
           </View>
 
           <View style={styles.authButtons}>
-          <TouchableOpacity style={styles.googleButton} onPress={handleGoogleSignIn}>
-            <Globe size={24} color={colors.text} />
-            <Text style={styles.googleButtonText}>Continue with Google</Text>
+          <TouchableOpacity 
+            style={[styles.googleButton, isGoogleLoading && styles.disabledButton]} 
+            onPress={handleGoogleSignIn}
+            disabled={isGoogleLoading || isLoading}
+          >
+            {isGoogleLoading ? (
+              <Text style={styles.googleButtonText}>Connecting...</Text>
+            ) : (
+              <>
+                <Globe size={24} color={colors.text} />
+                <Text style={styles.googleButtonText}>Continue with Google</Text>
+              </>
+            )}
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.emailButton} onPress={() => setMode('signup')}>
@@ -360,5 +438,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.darkGray,
     textDecorationLine: 'underline',
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
 });

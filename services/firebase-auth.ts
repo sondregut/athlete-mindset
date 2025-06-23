@@ -1,9 +1,11 @@
 import { 
-  signInAnonymously, 
+  signInAnonymously as firebaseSignInAnonymously, 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword,
   linkWithCredential,
   EmailAuthProvider,
+  GoogleAuthProvider,
+  signInWithCredential,
   signOut,
   deleteUser,
   sendPasswordResetEmail,
@@ -28,15 +30,15 @@ class FirebaseAuthService {
   async signInAnonymously(): Promise<AuthUser> {
     try {
       const auth = getFirebaseAuth();
-      console.log('🔐 Attempting anonymous sign-in...');
-      const result = await signInAnonymously(auth);
-      console.log('✅ Anonymous sign-in successful:', result.user.uid);
+      
+      // Check if we already have a user
+      if (auth.currentUser) {
+        return this.mapFirebaseUser(auth.currentUser);
+      }
+      
+      const result = await firebaseSignInAnonymously(auth);
       return this.mapFirebaseUser(result.user);
     } catch (error: any) {
-      console.error('❌ Anonymous sign in failed:', error);
-      console.error('Error code:', error.code);
-      console.error('Error message:', error.message);
-      
       // Provide more specific error messages
       if (error.code === 'auth/network-request-failed') {
         throw new Error('Network error. Please check your internet connection.');
@@ -44,8 +46,12 @@ class FirebaseAuthService {
         throw new Error('Too many attempts. Please wait before trying again.');
       } else if (error.code === 'auth/operation-not-allowed') {
         throw new Error('Anonymous authentication is not enabled. Please enable it in Firebase Console.');
+      } else if (error.code === 'auth/configuration-not-found') {
+        throw new Error('Firebase configuration error. Please check your Firebase setup.');
+      } else if (error.message?.includes('Network request failed')) {
+        throw new Error('Network connection failed. Please check your internet.');
       } else {
-        throw new Error(`Failed to sign in anonymously: ${error.code || error.message}`);
+        throw new Error(`Failed to sign in anonymously: ${error.code || error.message || 'Unknown error'}`);
       }
     }
   }
@@ -78,6 +84,39 @@ class FirebaseAuthService {
       return this.mapFirebaseUser(result.user);
     } catch (error: any) {
       console.error('Sign in failed:', error);
+      throw new Error(this.getAuthErrorMessage(error.code));
+    }
+  }
+
+  /**
+   * Sign in with Google
+   */
+  async signInWithGoogle(idToken: string): Promise<AuthUser> {
+    try {
+      const auth = getFirebaseAuth();
+      const credential = GoogleAuthProvider.credential(idToken);
+      
+      // Check if we have an anonymous user to link
+      if (auth.currentUser?.isAnonymous) {
+        try {
+          // Try to link the Google account to the anonymous account
+          const result = await linkWithCredential(auth.currentUser, credential);
+          return this.mapFirebaseUser(result.user);
+        } catch (linkError: any) {
+          // If linking fails (e.g., Google account already exists), sign in normally
+          if (linkError.code === 'auth/credential-already-in-use') {
+            const result = await signInWithCredential(auth, credential);
+            return this.mapFirebaseUser(result.user);
+          }
+          throw linkError;
+        }
+      } else {
+        // Regular Google sign-in
+        const result = await signInWithCredential(auth, credential);
+        return this.mapFirebaseUser(result.user);
+      }
+    } catch (error: any) {
+      console.error('Google sign-in failed:', error);
       throw new Error(this.getAuthErrorMessage(error.code));
     }
   }

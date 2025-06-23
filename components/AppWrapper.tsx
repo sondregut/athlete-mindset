@@ -33,11 +33,11 @@ export default function AppWrapper({ children }: AppWrapperProps) {
 
   // DEV: Auto-reset onboarding for testing (remove in production)
   useEffect(() => {
-    if (isHydrated && hasCompletedOnboarding) {
+    if (isHydrated) {
       console.log('🧪 DEV: Auto-resetting onboarding for testing');
       resetOnboarding();
     }
-  }, [isHydrated, hasCompletedOnboarding, resetOnboarding]);
+  }, [isHydrated, resetOnboarding]);
 
   useEffect(() => {
     console.log('🔄 AppWrapper useEffect triggered:', {
