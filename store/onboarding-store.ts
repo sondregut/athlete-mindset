@@ -19,6 +19,7 @@ interface OnboardingState {
   
   // Actions
   setOnboardingStep: (step: number) => void;
+  nextStep: () => void;
   completeOnboarding: () => void;
   updateGoals: (goals: Partial<OnboardingGoals>) => void;
   resetOnboarding: () => void; // For development/testing
@@ -41,6 +42,10 @@ export const useOnboardingStore = create<OnboardingState>()(
       isHydrated: false,
       
       setOnboardingStep: (step) => set({ currentStep: step }),
+      
+      nextStep: () => set((state) => ({ 
+        currentStep: Math.min(state.currentStep + 1, onboardingSteps.length - 1)
+      })),
       
       completeOnboarding: () => set({ 
         hasCompletedOnboarding: true,
@@ -105,6 +110,13 @@ export const onboardingSteps = [
     subtitle: 'Log sessions, track progress,\nbuild streaks',
     description: 'Set intentions before training, track your session, and reflect afterward to maximize growth.',
     icon: '📈',
+  },
+  {
+    id: 'auth',
+    title: 'Create Your\nAccount',
+    subtitle: 'Sync your data across devices',
+    description: 'Sign up to never lose your progress and access your data anywhere.',
+    icon: '🔐',
   },
   {
     id: 'profile',

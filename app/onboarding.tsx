@@ -9,6 +9,7 @@ import Button from '@/components/Button';
 import OnboardingWelcome from '@/components/onboarding/OnboardingWelcome';
 import OnboardingPhilosophy from '@/components/onboarding/OnboardingPhilosophy';
 import OnboardingFeatures from '@/components/onboarding/OnboardingFeatures';
+import OnboardingAuth from '@/components/onboarding/OnboardingAuth';
 import OnboardingProfile from '@/components/onboarding/OnboardingProfile';
 import OnboardingGoals from '@/components/onboarding/OnboardingGoals';
 
@@ -104,16 +105,20 @@ export default function OnboardingScreen() {
           );
         case 3:
           return (
+            <OnboardingAuth />
+          );
+        case 4:
+          return (
             <OnboardingProfile
-              step={onboardingSteps[3]}
+              step={onboardingSteps[4]}
               onNext={handleNext}
               onBack={handleBack}
             />
           );
-        case 4:
+        case 5:
           return (
             <OnboardingGoals
-              step={onboardingSteps[4]}
+              step={onboardingSteps[5]}
               onNext={handleNext}
               onBack={handleBack}
               onComplete={handleComplete}
