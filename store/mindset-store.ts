@@ -226,6 +226,9 @@ export const useMindsetStore = create<MindsetState>()(
         if (!user) return;
         
         try {
+          // Add a small delay to ensure user document is created
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
           // Set up real-time listener for Firebase changes
           firebaseMindset.onCheckinsChange((firebaseCheckins) => {
             // Merge Firebase data with local data

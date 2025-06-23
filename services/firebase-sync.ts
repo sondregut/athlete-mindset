@@ -4,6 +4,8 @@ import { MindsetCheckin } from '@/store/mindset-store';
 import { firebaseSessions } from './firebase-sessions';
 import { firebaseMindset } from './firebase-mindset';
 import { firebaseAuth } from './firebase-auth';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { getFirebaseFirestore } from '@/config/firebase';
 
 export interface SyncStatus {
   isOnline: boolean;
@@ -19,12 +21,38 @@ class FirebaseSyncService {
   private lastSyncKey = '@athlete-mindset/last-sync';
 
   /**
+   * Ensure user document exists in Firestore
+   */
+  private async ensureUserDocument(userId: string): Promise<void> {
+    try {
+      const userRef = doc(getFirebaseFirestore(), 'users', userId);
+      const userDoc = await getDoc(userRef);
+      
+      if (!userDoc.exists()) {
+        // Create initial user document
+        await setDoc(userRef, {
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          uid: userId
+        });
+        console.log('Created user document in Firestore');
+      }
+    } catch (error) {
+      console.error('Failed to ensure user document:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Initialize sync when user authenticates
    */
   async initializeSync(): Promise<void> {
     try {
       const user = firebaseAuth.getCurrentUser();
       if (!user) return;
+
+      // Ensure user document exists before syncing
+      await this.ensureUserDocument(user.uid);
 
       // Start initial sync of existing local data
       await this.syncLocalDataToFirebase();
