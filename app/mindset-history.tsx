@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import { Calendar, Heart, Zap, Target, ChevronDown, X, Clock, Play, CheckCircle } from 'lucide-react-native';
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { colors } from '@/constants/colors';
@@ -15,12 +15,10 @@ type HistoryTab = 'sessions' | 'mindset';
 export default function HistoryScreen() {
   const [activeTab, setActiveTab] = useState<HistoryTab>('sessions');
   const [selectedMonth, setSelectedMonth] = useState(new Date());
-  const [selectedCheckin, setSelectedCheckin] = useState<MindsetCheckin | null>(null);
   const [selectedSession, setSelectedSession] = useState<SessionLog | null>(null);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Mindset store
-  const { checkins, deleteCheckin } = useMindsetStore();
+  const { checkins } = useMindsetStore();
   
   // Session store
   const { logs: sessionLogs } = useSessionStore();
@@ -283,14 +281,6 @@ export default function HistoryScreen() {
       return '#9E9E9E';
     };
 
-    const handleDeleteCheckin = async () => {
-      if (selectedCheckin) {
-        await deleteCheckin(selectedCheckin.id);
-        setSelectedCheckin(null);
-        setShowDeleteConfirm(false);
-      }
-    };
-
     return (
       <>
         {/* Calendar Grid */}
@@ -316,7 +306,7 @@ export default function HistoryScreen() {
                   checkin && styles.hasCheckin,
                   checkin && { borderColor: getMoodColor(checkin.mood) }
                 ]}
-                onPress={() => checkin && setSelectedCheckin(checkin)}
+                onPress={() => checkin && router.push(`/mindset-detail?checkinId=${checkin.id}`)}
                 disabled={!checkin}
               >
                 <Text style={[
@@ -375,7 +365,7 @@ export default function HistoryScreen() {
         {checkins.slice(0, 10).map(checkin => (
           <TouchableOpacity
             key={checkin.id}
-            onPress={() => setSelectedCheckin(checkin)}
+            onPress={() => router.push(`/mindset-detail?checkinId=${checkin.id}`)}
           >
             <Card style={styles.checkinItem}>
               <View style={styles.checkinHeader}>
@@ -412,116 +402,6 @@ export default function HistoryScreen() {
             </Card>
           </TouchableOpacity>
         ))}
-
-        {/* Checkin Detail Modal */}
-        <Modal
-          visible={!!selectedCheckin}
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={() => setSelectedCheckin(null)}
-        >
-          {selectedCheckin && (
-            <View style={styles.modalContainer}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>
-                  {format(parseISO(selectedCheckin.date), 'EEEE, MMMM d, yyyy')}
-                </Text>
-                <TouchableOpacity onPress={() => setSelectedCheckin(null)}>
-                  <X size={24} color={colors.darkGray} />
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView style={styles.modalContent}>
-                {/* Scores */}
-                <View style={styles.scoresSection}>
-                  <View style={styles.scoreDetail}>
-                    <Heart size={24} color={getMoodColor(selectedCheckin.mood)} />
-                    <Text style={styles.scoreLabel}>Mood</Text>
-                    <Text style={styles.scoreValue}>{selectedCheckin.mood}/10</Text>
-                  </View>
-                  <View style={styles.scoreDetail}>
-                    <Zap size={24} color={colors.primary} />
-                    <Text style={styles.scoreLabel}>Energy</Text>
-                    <Text style={styles.scoreValue}>{selectedCheckin.energy}/10</Text>
-                  </View>
-                  <View style={styles.scoreDetail}>
-                    <Target size={24} color={colors.secondary} />
-                    <Text style={styles.scoreLabel}>Motivation</Text>
-                    <Text style={styles.scoreValue}>{selectedCheckin.motivation}/10</Text>
-                  </View>
-                </View>
-
-                {/* Tags */}
-                {selectedCheckin.tags && selectedCheckin.tags.length > 0 && (
-                  <View style={styles.section}>
-                    <Text style={styles.sectionLabel}>How I felt</Text>
-                    <View style={styles.tagsContainer}>
-                      {selectedCheckin.tags.map(tag => (
-                        <View key={tag} style={styles.detailTag}>
-                          <Text style={styles.detailTagText}>{tag}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                )}
-
-                {/* Gratitude */}
-                {selectedCheckin.gratitude && (
-                  <View style={styles.section}>
-                    <Text style={styles.sectionLabel}>Grateful for</Text>
-                    <Text style={styles.textContent}>{selectedCheckin.gratitude}</Text>
-                  </View>
-                )}
-
-                {/* Reflection */}
-                {selectedCheckin.reflection && (
-                  <View style={styles.section}>
-                    <Text style={styles.sectionLabel}>Reflection</Text>
-                    <Text style={styles.textContent}>{selectedCheckin.reflection}</Text>
-                  </View>
-                )}
-
-                {/* Delete Button */}
-                <Button
-                  title="Delete Check-in"
-                  onPress={() => setShowDeleteConfirm(true)}
-                  variant="outline"
-                  style={styles.deleteButton}
-                />
-              </ScrollView>
-            </View>
-          )}
-        </Modal>
-
-        {/* Delete Confirmation Modal */}
-        <Modal
-          visible={showDeleteConfirm}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowDeleteConfirm(false)}
-        >
-          <View style={styles.confirmOverlay}>
-            <View style={styles.confirmModal}>
-              <Text style={styles.confirmTitle}>Delete Check-in?</Text>
-              <Text style={styles.confirmText}>
-                This action cannot be undone.
-              </Text>
-              <View style={styles.confirmButtons}>
-                <Button
-                  title="Cancel"
-                  onPress={() => setShowDeleteConfirm(false)}
-                  variant="outline"
-                  style={styles.confirmButton}
-                />
-                <Button
-                  title="Delete"
-                  onPress={handleDeleteCheckin}
-                  style={styles.deleteConfirmButton}
-                />
-              </View>
-            </View>
-          </View>
-        </Modal>
       </>
     );
   };

@@ -70,14 +70,15 @@ export default function OnboardingAuth() {
   if (mode === 'choice') {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Create Your Account</Text>
-          <Text style={styles.subtitle}>
-            Sign up to sync your data across devices and never lose your progress
-          </Text>
-        </View>
+        <View style={styles.content}>
+          <View style={styles.header}>
+            <Text style={styles.title}>Create Your Account</Text>
+            <Text style={styles.subtitle}>
+              Sign up to sync your data across devices and never lose your progress
+            </Text>
+          </View>
 
-        <View style={styles.authButtons}>
+          <View style={styles.authButtons}>
           <TouchableOpacity style={styles.googleButton} onPress={handleGoogleSignIn}>
             <Globe size={24} color={colors.text} />
             <Text style={styles.googleButtonText}>Continue with Google</Text>
@@ -101,6 +102,7 @@ export default function OnboardingAuth() {
           <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
             <Text style={styles.skipButtonText}>Skip for now</Text>
           </TouchableOpacity>
+        </View>
         </View>
       </View>
     );
@@ -211,6 +213,12 @@ export default function OnboardingAuth() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: colors.background,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 40,
   },
   scrollContainer: {
     flexGrow: 1,

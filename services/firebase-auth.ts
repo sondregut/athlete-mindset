@@ -27,11 +27,26 @@ class FirebaseAuthService {
    */
   async signInAnonymously(): Promise<AuthUser> {
     try {
-      const result = await signInAnonymously(getFirebaseAuth());
+      const auth = getFirebaseAuth();
+      console.log('🔐 Attempting anonymous sign-in...');
+      const result = await signInAnonymously(auth);
+      console.log('✅ Anonymous sign-in successful:', result.user.uid);
       return this.mapFirebaseUser(result.user);
-    } catch (error) {
-      console.error('Anonymous sign in failed:', error);
-      throw new Error('Failed to sign in anonymously');
+    } catch (error: any) {
+      console.error('❌ Anonymous sign in failed:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+      
+      // Provide more specific error messages
+      if (error.code === 'auth/network-request-failed') {
+        throw new Error('Network error. Please check your internet connection.');
+      } else if (error.code === 'auth/too-many-requests') {
+        throw new Error('Too many attempts. Please wait before trying again.');
+      } else if (error.code === 'auth/operation-not-allowed') {
+        throw new Error('Anonymous authentication is not enabled. Please enable it in Firebase Console.');
+      } else {
+        throw new Error(`Failed to sign in anonymously: ${error.code || error.message}`);
+      }
     }
   }
 

@@ -31,7 +31,9 @@ let isInitialized = false;
 // Initialize Firebase lazily
 export const initializeFirebase = () => {
   if (!app) {
+    console.log('🔥 Initializing Firebase app...');
     app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+    console.log('✅ Firebase app initialized:', app.name);
   }
   return app;
 };

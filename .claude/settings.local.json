@@ -15,7 +15,9 @@
       "Bash(npm install:*)",
       "Bash(npm audit:*)",
       "Bash(grep:*)",
-      "Bash(bunx tsc:*)"
+      "Bash(bunx tsc:*)",
+      "Bash(bunx rork start:*)",
+      "Bash(kill:*)"
     ],
     "deny": []
   }

@@ -37,6 +37,7 @@ interface MindsetState {
   setError: (error: string | null) => void;
   clearError: () => void;
   syncWithFirebase: () => Promise<void>;
+  getCheckinById: (id: string) => MindsetCheckin | undefined;
 }
 
 const getTodayDateString = () => {
@@ -219,6 +220,10 @@ export const useMindsetStore = create<MindsetState>()(
       
       setError: (error) => set({ error }),
       clearError: () => set({ error: null }),
+      
+      getCheckinById: (id) => {
+        return get().checkins.find(c => c.id === id);
+      },
       
       // Sync with Firebase
       syncWithFirebase: async () => {
