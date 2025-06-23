@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(rg:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm start)",
+      "Bash(open:*)",
+      "Bash(xcrun simctl list:*)",
+      "Bash(npx expo start:*)",
+      "Bash(pkill:*)",
+      "Bash(true)",
+      "Bash(curl:*)",
+      "Bash(killall:*)",
+      "Bash(npm install:*)",
+      "Bash(npm audit:*)"
+    ],
+    "deny": []
+  }
+}
