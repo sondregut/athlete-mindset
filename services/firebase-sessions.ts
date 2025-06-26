@@ -27,6 +27,13 @@ class FirebaseSessionsService {
     return collection(getFirebaseFirestore(), 'users', userId, 'sessions');
   }
 
+  // Utility to remove undefined fields from an object
+  private removeUndefinedFields<T extends Record<string, any>>(obj: T): T {
+    return Object.fromEntries(
+      Object.entries(obj).filter(([_, v]) => v !== undefined)
+    ) as T;
+  }
+
   /**
    * Create a new session in Firestore
    */
@@ -35,11 +42,12 @@ class FirebaseSessionsService {
       const user = firebaseAuth.getCurrentUser();
       if (!user) throw new Error('User not authenticated');
 
-      const sessionData: FirebaseSessionLog = {
+      let sessionData: FirebaseSessionLog = {
         ...session,
         updatedAt: new Date(),
         syncStatus: 'synced',
       };
+      sessionData = this.removeUndefinedFields(sessionData);
 
       const sessionRef = doc(this.getCollectionRef(user.uid), session.id);
       await setDoc(sessionRef, sessionData);

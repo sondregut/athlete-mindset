@@ -75,6 +75,7 @@ class FirebaseSyncService {
   async syncLocalDataToFirebase(): Promise<void> {
     try {
       const user = firebaseAuth.getCurrentUser();
+      console.log('🔄 Syncing local data to Firebase', user);
       if (!user) throw new Error('User not authenticated');
 
       // Get local session data

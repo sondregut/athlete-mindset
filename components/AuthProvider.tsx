@@ -21,6 +21,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     // Skip auth if user chose to continue offline
     if (skipAuth && !user) {
+      console.log('🔄 User chose to continue without account');
       // Set a local user to continue without Firebase
       useAuthStore.setState({ 
         user: { 
