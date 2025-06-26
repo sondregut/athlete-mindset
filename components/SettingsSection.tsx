@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, Share, ActivityIndicator } from 'react-native';
 import { Download, Settings, Bell, HelpCircle, Trash2, ExternalLink, User, Mail, LogOut, Shield } from 'lucide-react-native';
 import { router } from 'expo-router';
-import { colors } from '@/constants/colors';
+import { useThemeColors } from '@/hooks/useThemeColors';
 import { useSessionStore } from '@/store/session-store';
 import { useUserStore } from '@/store/user-store';
 import { useOnboardingStore } from '@/store/onboarding-store';
@@ -10,6 +10,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 import Card from './Card';
 import AuthModal from './AuthModal';
+import PasswordResetModal from './PasswordResetModal';
 
 interface SettingsItemProps {
   icon: React.ReactNode;
@@ -21,6 +22,48 @@ interface SettingsItemProps {
 }
 
 function SettingsItem({ icon, title, subtitle, onPress, destructive = false, loading = false }: SettingsItemProps) {
+  const colors = useThemeColors();
+  
+  const styles = StyleSheet.create({
+    settingsItem: {
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    settingsItemContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    settingsIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 16,
+    },
+    settingsText: {
+      flex: 1,
+    },
+    settingsTitle: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: colors.text,
+      marginBottom: 2,
+    },
+    settingsSubtitle: {
+      fontSize: 14,
+      color: colors.darkGray,
+    },
+    settingsItemLoading: {
+      opacity: 0.6,
+    },
+    loadingText: {
+      opacity: 0.7,
+    },
+  });
+
   return (
     <TouchableOpacity 
       style={[styles.settingsItem, loading && styles.settingsItemLoading]} 
@@ -59,12 +102,14 @@ function SettingsItem({ icon, title, subtitle, onPress, destructive = false, loa
 }
 
 export default function SettingsSection() {
+  const colors = useThemeColors();
   const { logs, clearAllSessions, exportSessionData, isClearingData, isExportingData, error: sessionError } = useSessionStore();
   const { resetProfile, isResettingProfile, error: userError } = useUserStore();
   const { user, signOut, isLoading: isAuthLoading } = useAuthStore();
   const { executeWithErrorHandling } = useErrorHandler();
   const [authModalVisible, setAuthModalVisible] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup' | 'link'>('signin');
+  const [showPasswordReset, setShowPasswordReset] = useState(false);
 
   const handleExportData = async () => {
     await executeWithErrorHandling(async () => {
@@ -159,6 +204,75 @@ export default function SettingsSection() {
     );
   };
 
+  const styles = StyleSheet.create({
+    container: {
+      marginBottom: 16,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      marginBottom: 12,
+      color: colors.text,
+      paddingHorizontal: 4,
+    },
+    settingsCard: {
+      padding: 0,
+      overflow: 'hidden',
+    },
+    accountCard: {
+      padding: 20,
+    },
+    accountInfo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    accountIcon: {
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: `${colors.primary}15`,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 16,
+    },
+    accountDetails: {
+      flex: 1,
+    },
+    accountStatus: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 4,
+    },
+    accountSubtext: {
+      fontSize: 14,
+      color: colors.darkGray,
+      lineHeight: 18,
+    },
+    accountButton: {
+      backgroundColor: colors.primary,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 12,
+      paddingHorizontal: 24,
+      borderRadius: 12,
+      gap: 8,
+    },
+    accountButtonText: {
+      color: colors.background,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    signOutButton: {
+      backgroundColor: `${colors.error}15`,
+    },
+    signOutText: {
+      color: colors.error,
+    },
+  });
+
   return (
     <View style={styles.container}>
       {/* Account Section */}
@@ -226,6 +340,15 @@ export default function SettingsSection() {
           onPress={handleNotifications}
         />
         
+        {!user?.isAnonymous && user?.email && (
+          <SettingsItem
+            icon={<Shield size={20} color={colors.primary} />}
+            title="Reset Password"
+            subtitle="Change your account password"
+            onPress={() => setShowPasswordReset(true)}
+          />
+        )}
+        
         <SettingsItem
           icon={<HelpCircle size={20} color={colors.primary} />}
           title="About"
@@ -249,112 +372,12 @@ export default function SettingsSection() {
         onClose={() => setAuthModalVisible(false)}
         mode={authModalMode}
       />
+      
+      {/* Password Reset Modal */}
+      <PasswordResetModal
+        isVisible={showPasswordReset}
+        onClose={() => setShowPasswordReset(false)}
+      />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 12,
-    color: colors.text,
-    paddingHorizontal: 4,
-  },
-  settingsCard: {
-    padding: 0,
-    overflow: 'hidden',
-  },
-  settingsItem: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.lightGray,
-  },
-  settingsItemContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  settingsIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  settingsText: {
-    flex: 1,
-  },
-  settingsTitle: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: colors.text,
-    marginBottom: 2,
-  },
-  settingsSubtitle: {
-    fontSize: 14,
-    color: colors.darkGray,
-  },
-  settingsItemLoading: {
-    opacity: 0.6,
-  },
-  loadingText: {
-    opacity: 0.7,
-  },
-  accountCard: {
-    padding: 20,
-  },
-  accountInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  accountIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: `${colors.primary}15`,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  accountDetails: {
-    flex: 1,
-  },
-  accountStatus: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 4,
-  },
-  accountSubtext: {
-    fontSize: 14,
-    color: colors.darkGray,
-    lineHeight: 18,
-  },
-  accountButton: {
-    backgroundColor: colors.primary,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    gap: 8,
-  },
-  accountButtonText: {
-    color: colors.background,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  signOutButton: {
-    backgroundColor: `${colors.error}15`,
-  },
-  signOutText: {
-    color: colors.error,
-  },
-});

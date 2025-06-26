@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Modal, ActivityIndicator } from 'react-native';
 import { User, Edit2, ChevronDown } from 'lucide-react-native';
-import { colors } from '@/constants/colors';
-import { useUserStore, sportOptions, SportType } from '@/store/user-store';
+import { useThemeColors } from '@/hooks/useThemeColors';
+import { useUserStore, sportOptions, SportType, experienceLevelOptions, ageRangeOptions } from '@/store/user-store';
 import Card from './Card';
 
 export default function ProfileHeader() {
+  const colors = useThemeColors();
   const { profile, updateProfile, isUpdatingProfile } = useUserStore();
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState(profile.name);
@@ -27,6 +28,137 @@ export default function ProfileHeader() {
 
   const selectedSport = sportOptions.find(s => s.value === profile.sport);
   const displayName = profile.name || 'Athlete';
+
+  const styles = StyleSheet.create({
+    container: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 20,
+      marginBottom: 16,
+    },
+    avatarContainer: {
+      marginRight: 16,
+    },
+    avatar: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: colors.mediumGray,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    infoContainer: {
+      flex: 1,
+    },
+    nameSection: {
+      marginBottom: 8,
+    },
+    nameContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    name: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: colors.text,
+      marginRight: 8,
+    },
+    editIcon: {
+      opacity: 0.6,
+    },
+    nameEditContainer: {
+      borderBottomWidth: 2,
+      borderBottomColor: colors.primary,
+    },
+    nameInput: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: colors.text,
+      paddingVertical: 4,
+    },
+    sportContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 8,
+      paddingVertical: 4,
+    },
+    sportLabel: {
+      fontSize: 16,
+      color: colors.darkGray,
+      marginRight: 8,
+    },
+    sportValue: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+      flex: 1,
+    },
+    profileDetail: {
+      fontSize: 14,
+      color: colors.darkGray,
+      marginBottom: 4,
+    },
+    joinDate: {
+      fontSize: 14,
+      color: colors.darkGray,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    modalContent: {
+      backgroundColor: colors.background,
+      borderRadius: 16,
+      padding: 24,
+      width: '80%',
+      maxHeight: '70%',
+    },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 20,
+      textAlign: 'center',
+    },
+    sportOption: {
+      paddingVertical: 16,
+      paddingHorizontal: 20,
+      borderRadius: 8,
+      marginBottom: 8,
+      borderWidth: 1,
+      borderColor: colors.mediumGray,
+    },
+    selectedSportOption: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    sportOptionText: {
+      fontSize: 16,
+      color: colors.text,
+      textAlign: 'center',
+    },
+    selectedSportOptionText: {
+      color: colors.background,
+      fontWeight: '600',
+    },
+    modalCloseButton: {
+      marginTop: 16,
+      paddingVertical: 12,
+      alignItems: 'center',
+    },
+    modalCloseButtonText: {
+      fontSize: 16,
+      color: colors.darkGray,
+    },
+    loadingContainer: {
+      opacity: 0.6,
+    },
+    loadingText: {
+      opacity: 0.7,
+    },
+  });
 
   return (
     <Card style={styles.container}>
@@ -83,6 +215,19 @@ export default function ProfileHeader() {
           )}
         </TouchableOpacity>
 
+        {/* Additional Profile Info */}
+        {profile.ageRange && (
+          <Text style={styles.profileDetail}>
+            Age: {ageRangeOptions.find(a => a.value === profile.ageRange)?.label || profile.ageRange}
+          </Text>
+        )}
+        
+        {profile.experienceLevel && (
+          <Text style={styles.profileDetail}>
+            Level: {experienceLevelOptions.find(e => e.value === profile.experienceLevel)?.label || profile.experienceLevel}
+          </Text>
+        )}
+        
         {/* Join Date */}
         <Text style={styles.joinDate}>
           Member since {new Date(profile.joinDate).toLocaleDateString('en-US', { 
@@ -133,129 +278,3 @@ export default function ProfileHeader() {
     </Card>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-    marginBottom: 16,
-  },
-  avatarContainer: {
-    marginRight: 16,
-  },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: colors.mediumGray,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  infoContainer: {
-    flex: 1,
-  },
-  nameSection: {
-    marginBottom: 8,
-  },
-  nameContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  name: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: colors.text,
-    marginRight: 8,
-  },
-  editIcon: {
-    opacity: 0.6,
-  },
-  nameEditContainer: {
-    borderBottomWidth: 2,
-    borderBottomColor: colors.primary,
-  },
-  nameInput: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: colors.text,
-    paddingVertical: 4,
-  },
-  sportContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-    paddingVertical: 4,
-  },
-  sportLabel: {
-    fontSize: 16,
-    color: colors.darkGray,
-    marginRight: 8,
-  },
-  sportValue: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-    flex: 1,
-  },
-  joinDate: {
-    fontSize: 14,
-    color: colors.darkGray,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: colors.background,
-    borderRadius: 16,
-    padding: 24,
-    width: '80%',
-    maxHeight: '70%',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  sportOption: {
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: colors.mediumGray,
-  },
-  selectedSportOption: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  sportOptionText: {
-    fontSize: 16,
-    color: colors.text,
-    textAlign: 'center',
-  },
-  selectedSportOptionText: {
-    color: colors.background,
-    fontWeight: '600',
-  },
-  modalCloseButton: {
-    marginTop: 16,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  modalCloseButtonText: {
-    fontSize: 16,
-    color: colors.darkGray,
-  },
-  loadingContainer: {
-    opacity: 0.6,
-  },
-  loadingText: {
-    opacity: 0.7,
-  },
-});

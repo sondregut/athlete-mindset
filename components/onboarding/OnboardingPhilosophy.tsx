@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { Brain, Heart, Target } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
-import Button from '@/components/Button';
+import OnboardingButton from './OnboardingButton';
 
 interface OnboardingPhilosophyProps {
   step: {
@@ -66,16 +66,10 @@ export default function OnboardingPhilosophy({ step, onNext, onBack }: Onboardin
 
       {/* Actions */}
       <View style={styles.actions}>
-        <Button
+        <OnboardingButton
           title="Continue"
           onPress={onNext}
           style={styles.primaryButton}
-        />
-        <Button
-          title="Back"
-          onPress={onBack}
-          variant="outline"
-          style={styles.secondaryButton}
         />
       </View>
     </View>

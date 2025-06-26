@@ -3,11 +3,24 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingVi
 import { Mail, Lock, User, Globe } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 import { useAuthStore } from '@/store/auth-store';
-import Button from '../Button';
-import { useOnboardingStore } from '@/store/onboarding-store';
+import OnboardingButton from './OnboardingButton';
+import { useOnboardingStore, OnboardingGoals } from '@/store/onboarding-store';
 import { useGoogleAuth, getGoogleIdToken } from '@/config/google-oauth';
+import { useUserStore } from '@/store/user-store';
+import { router } from 'expo-router';
+import { checkNetworkConnection } from '@/utils/network';
 
-export default function OnboardingAuth() {
+interface OnboardingAuthProps {
+  step?: {
+    id: string;
+    title: string;
+    subtitle: string;
+    description: string;
+    icon: string;
+  };
+}
+
+export default function OnboardingAuth({ step }: OnboardingAuthProps) {
   const [mode, setMode] = useState<'choice' | 'signin' | 'signup'>('choice');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,8 +30,49 @@ export default function OnboardingAuth() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   
   const { signIn, createAccount, signInWithGoogle, isLoading } = useAuthStore();
-  const { nextStep } = useOnboardingStore();
+  const { completeOnboarding } = useOnboardingStore();
+  const { updateProfile } = useUserStore();
   const { request, response, promptAsync } = useGoogleAuth();
+
+  const handleComplete = async () => {
+    console.log('✅ Onboarding complete, syncing data and navigating to main app...');
+    
+    try {
+      // Get the onboarding goals to sync them to the user profile
+      const { goals } = useOnboardingStore.getState();
+      
+      // Sync goals data to user profile for easy access
+      const profileUpdate: any = {
+        joinDate: new Date().toISOString(),
+      };
+      
+      // Add goals data to profile if they exist
+      if (goals.weeklySessionTarget !== undefined) {
+        profileUpdate.weeklySessionTarget = goals.weeklySessionTarget;
+      }
+      if (goals.streakGoal !== undefined) {
+        profileUpdate.streakGoal = goals.streakGoal;
+      }
+      if (goals.primaryFocus !== undefined) {
+        profileUpdate.primaryFocus = goals.primaryFocus;
+      }
+      if (goals.motivationType !== undefined) {
+        profileUpdate.motivationType = goals.motivationType;
+      }
+      
+      // Update profile with all collected data
+      await updateProfile(profileUpdate);
+      
+      // Mark onboarding as complete
+      completeOnboarding();
+      
+      // Navigate to main app
+      router.replace('/(tabs)');
+      console.log('🏠 Navigation to main app initiated with synced data');
+    } catch (error) {
+      console.error('❌ Error completing onboarding:', error);
+    }
+  };
 
   const handleEmailSignIn = async () => {
     setError('');
@@ -29,7 +83,7 @@ export default function OnboardingAuth() {
 
     try {
       await signIn(email, password);
-      nextStep();
+      handleComplete();
     } catch (err: any) {
       setError(err.message || 'Failed to sign in');
     }
@@ -54,7 +108,7 @@ export default function OnboardingAuth() {
 
     try {
       await createAccount(email, password, displayName || undefined);
-      nextStep();
+      handleComplete();
     } catch (err: any) {
       setError(err.message || 'Failed to create account');
     }
@@ -113,37 +167,34 @@ export default function OnboardingAuth() {
     try {
       await signInWithGoogle(idToken);
       setIsGoogleLoading(false);
-      nextStep();
+      handleComplete();
     } catch (err: any) {
       setError(err.message || 'Failed to sign in with Google');
       setIsGoogleLoading(false);
     }
   };
 
-  const handleSkip = async () => {
-    // Continue as anonymous user
-    setError('');
-    try {
-      const { signInAnonymously } = useAuthStore.getState();
-      await signInAnonymously();
-      nextStep();
-    } catch (err: any) {
-      console.error('Failed to sign in anonymously:', err);
-      // If anonymous sign-in fails, continue anyway
-      // This prevents network issues from blocking the app
-      nextStep();
-    }
+
+
+  const stepData = step || {
+    icon: '🔐',
+    title: 'Create Your\nAccount',
+    subtitle: '',
+    description: ''
   };
 
   if (mode === 'choice') {
     return (
       <View style={styles.container}>
-        <View style={styles.content}>
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          {/* Header with icon */}
           <View style={styles.header}>
-            <Text style={styles.title}>Create Your Account</Text>
-            <Text style={styles.subtitle}>
-              Sign up to sync your data across devices and never lose your progress
-            </Text>
+            <View style={styles.iconContainer}>
+              <Text style={styles.icon}>{stepData.icon}</Text>
+            </View>
+            <Text style={styles.title}>{stepData.title}</Text>
+            {stepData.subtitle ? <Text style={styles.subtitle}>{stepData.subtitle}</Text> : null}
+            {stepData.description ? <Text style={styles.description}>{stepData.description}</Text> : null}
           </View>
 
           <View style={styles.authButtons}>
@@ -177,11 +228,17 @@ export default function OnboardingAuth() {
             <Text style={styles.signInButtonText}>Sign In</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
-            <Text style={styles.skipButtonText}>Skip for now</Text>
-          </TouchableOpacity>
+          {/* Development only - Skip Login */}
+          {__DEV__ && (
+            <TouchableOpacity 
+              style={styles.skipButton} 
+              onPress={handleComplete}
+            >
+              <Text style={styles.skipButtonText}>Skip Login (Dev Only)</Text>
+            </TouchableOpacity>
+          )}
         </View>
-        </View>
+        </ScrollView>
       </View>
     );
   }
@@ -266,22 +323,12 @@ export default function OnboardingAuth() {
             </View>
           )}
 
-          <Button
+          <OnboardingButton
             title={mode === 'signin' ? 'Sign In' : 'Create Account'}
             onPress={mode === 'signin' ? handleEmailSignIn : handleEmailSignUp}
             loading={isLoading}
             style={styles.submitButton}
           />
-
-          <View style={styles.footer}>
-            <TouchableOpacity onPress={() => setMode('choice')}>
-              <Text style={styles.backLink}>← Back to options</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={handleSkip}>
-              <Text style={styles.skipLink}>Skip for now</Text>
-            </TouchableOpacity>
-          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -295,8 +342,6 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 40,
   },
   scrollContainer: {
     flexGrow: 1,
@@ -304,21 +349,49 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   header: {
-    marginBottom: 32,
+    alignItems: 'center',
+    paddingTop: 20,
+    paddingBottom: 32,
+    paddingHorizontal: 24,
+  },
+  iconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: `${colors.primary}15`,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  icon: {
+    fontSize: 40,
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: colors.text,
-    marginBottom: 8,
+    textAlign: 'center',
+    marginBottom: 12,
+    lineHeight: 34,
   },
   subtitle: {
     fontSize: 16,
+    fontWeight: '500',
+    color: colors.primary,
+    textAlign: 'center',
+    marginBottom: 16,
+    lineHeight: 22,
+  },
+  description: {
+    fontSize: 15,
     color: colors.darkGray,
-    lineHeight: 24,
+    textAlign: 'center',
+    lineHeight: 22,
+    paddingHorizontal: 8,
   },
   authButtons: {
     gap: 16,
+    paddingHorizontal: 24,
   },
   googleButton: {
     flexDirection: 'row',
@@ -425,14 +498,8 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   footer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 24,
-  },
-  backLink: {
-    fontSize: 16,
-    color: colors.primary,
   },
   skipLink: {
     fontSize: 16,

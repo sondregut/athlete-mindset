@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Flame, Calendar, Trophy, TrendingUp, Target, Star, ArrowRight, Heart, Zap } from 'lucide-react-native';
 import { router } from 'expo-router';
-import { colors } from '@/constants/colors';
+import { useThemeColors } from '@/hooks/useThemeColors';
 import { useSessionStore } from '@/store/session-store';
 import { useMindsetStore } from '@/store/mindset-store';
 import Card from './Card';
@@ -16,23 +16,68 @@ interface StatCardProps {
   loading?: boolean;
 }
 
-function StatCard({ title, value, subtitle, icon, color = colors.primary, loading = false }: StatCardProps) {
+function StatCard({ title, value, subtitle, icon, color, loading = false }: StatCardProps) {
+  const colors = useThemeColors();
+  const iconColor = color || colors.primary;
+  
+  const styles = StyleSheet.create({
+    statCard: {
+      flex: 1,
+      padding: 16,
+    },
+    statHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    statIcon: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 8,
+    },
+    statTitle: {
+      fontSize: 12,
+      color: colors.darkGray,
+      fontWeight: '500',
+      flex: 1,
+    },
+    statValue: {
+      fontSize: 24,
+      fontWeight: '700',
+      marginBottom: 4,
+    },
+    statSubtitle: {
+      fontSize: 11,
+      color: colors.darkGray,
+    },
+    loadingCard: {
+      opacity: 0.6,
+    },
+    loadingContainer: {
+      height: 40,
+      justifyContent: 'center',
+    },
+  });
+  
   return (
     <Card style={[styles.statCard, loading && styles.loadingCard] as any}>
       <View style={styles.statHeader}>
-        <View style={[styles.statIcon, { backgroundColor: `${color}15` }]}>
+        <View style={[styles.statIcon, { backgroundColor: `${iconColor}15` }]}>
           {icon}
         </View>
-        <Text style={styles.statTitle}>{title}</Text>
+        <Text style={[styles.statTitle, { color: colors.text }]}>{title}</Text>
       </View>
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color={color} />
+          <ActivityIndicator size="small" color={iconColor} />
         </View>
       ) : (
         <>
-          <Text style={[styles.statValue, { color }]}>{value}</Text>
-          {subtitle && <Text style={styles.statSubtitle}>{subtitle}</Text>}
+          <Text style={[styles.statValue, { color: iconColor }]}>{value}</Text>
+          {subtitle && <Text style={[styles.statSubtitle, { color: colors.darkGray }]}>{subtitle}</Text>}
         </>
       )}
     </Card>
@@ -40,6 +85,7 @@ function StatCard({ title, value, subtitle, icon, color = colors.primary, loadin
 }
 
 export default function AnalyticsDashboard() {
+  const colors = useThemeColors();
   const { 
     getStreak, 
     getWeeklyLogs, 
@@ -106,14 +152,108 @@ export default function AnalyticsDashboard() {
   const { currentStreak, weeklyLogs, monthlyStats, longestStreak, totalSessions, mindsetInsights, performanceTrends, mindsetStreak, mindsetAverages } = analytics;
 
   const getStreakColor = () => {
-    if (currentStreak >= 7) return '#4CAF50'; // Green for week+
-    if (currentStreak >= 3) return '#FF8C42'; // Orange for 3+ days
+    if (currentStreak >= 7) return colors.success; // Green for week+
+    if (currentStreak >= 3) return colors.orange; // Orange for 3+ days
     return colors.primary; // Blue for starting out
   };
 
   const formatAverage = (num: number, decimals = 1) => {
     return num > 0 ? num.toFixed(decimals) : '0';
   };
+
+  const styles = StyleSheet.create({
+    container: {
+      marginBottom: 16,
+    },
+    sectionHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 12,
+      paddingHorizontal: 4,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    viewAllButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    viewAllText: {
+      fontSize: 14,
+      color: colors.primary,
+      fontWeight: '500',
+    },
+    row: {
+      flexDirection: 'row',
+      gap: 12,
+      marginBottom: 12,
+    },
+    statCard: {
+      flex: 1,
+      padding: 16,
+    },
+    statHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    statIcon: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 8,
+    },
+    statTitle: {
+      fontSize: 12,
+      color: colors.darkGray,
+      fontWeight: '500',
+      flex: 1,
+    },
+    statValue: {
+      fontSize: 24,
+      fontWeight: '700',
+      marginBottom: 4,
+    },
+    statSubtitle: {
+      fontSize: 11,
+      color: colors.darkGray,
+    },
+    summaryCard: {
+      padding: 16,
+      marginBottom: 12,
+    },
+    summaryContent: {
+      gap: 4,
+    },
+    summaryTitle: {
+      fontSize: 14,
+      color: colors.darkGray,
+      marginBottom: 4,
+    },
+    summaryValue: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.primary,
+      marginBottom: 4,
+    },
+    summarySubtitle: {
+      fontSize: 14,
+      color: colors.darkGray,
+    },
+    loadingCard: {
+      opacity: 0.6,
+    },
+    loadingContainer: {
+      height: 40,
+      justifyContent: 'center',
+    },
+  });
 
   return (
     <View style={styles.container}>
@@ -128,16 +268,8 @@ export default function AnalyticsDashboard() {
         </TouchableOpacity>
       </View>
       
-      {/* Top Row - Current Performance */}
+      {/* Top Row - Weekly Performance */}
       <View style={styles.row}>
-        <StatCard
-          title="Current Streak"
-          value={currentStreak}
-          subtitle={currentStreak === 1 ? 'day' : 'days'}
-          icon={<Flame size={20} color={getStreakColor()} />}
-          color={getStreakColor()}
-          loading={isCalculatingAnalytics}
-        />
         <StatCard
           title="This Week"
           value={weeklyLogs}
@@ -145,9 +277,17 @@ export default function AnalyticsDashboard() {
           icon={<Calendar size={20} color={colors.primary} />}
           loading={isCalculatingAnalytics}
         />
+        <StatCard
+          title="Best Streak"
+          value={longestStreak}
+          subtitle={longestStreak === 1 ? 'day' : 'days'}
+          icon={<Trophy size={20} color='#FFD700' />}
+          color='#FFD700'
+          loading={isCalculatingAnalytics}
+        />
       </View>
 
-      {/* Second Row - Monthly & Records */}
+      {/* Second Row - Monthly Performance */}
       <View style={styles.row}>
         <StatCard
           title="This Month"
@@ -161,11 +301,11 @@ export default function AnalyticsDashboard() {
           loading={isCalculatingAnalytics}
         />
         <StatCard
-          title="Best Streak"
-          value={longestStreak}
-          subtitle={longestStreak === 1 ? 'day' : 'days'}
-          icon={<Trophy size={20} color='#FFD700' />}
-          color='#FFD700'
+          title="Avg RPE"
+          value={formatAverage(performanceTrends.avgRPE)}
+          subtitle="last 30 days"
+          icon={<Target size={20} color='#9C27B0' />}
+          color='#9C27B0'
           loading={isCalculatingAnalytics}
         />
       </View>
@@ -210,117 +350,20 @@ export default function AnalyticsDashboard() {
         />
       </View>
 
-      {/* Total Sessions Summary */}
-      <Card style={styles.summaryCard}>
-        <View style={styles.summaryContent}>
-          <Text style={styles.summaryTitle}>Total Sessions Logged</Text>
-          <Text style={styles.summaryValue}>{totalSessions}</Text>
-          {mindsetInsights.topCues.length > 0 && (
-            <Text style={styles.summarySubtitle}>
-              Top mindset cue: "{mindsetInsights.topCues[0]}"
-            </Text>
-          )}
-        </View>
-      </Card>
+      {/* Mindset Insights Summary */}
+      {mindsetInsights.topCues.length > 0 && (
+        <Card style={styles.summaryCard}>
+          <View style={styles.summaryContent}>
+            <Text style={styles.summaryTitle}>Your Top Mindset Focus</Text>
+            <Text style={styles.summaryValue}>"{mindsetInsights.topCues[0]}"</Text>
+            {mindsetInsights.topCues.length > 1 && (
+              <Text style={styles.summarySubtitle}>
+                Also focused on: "{mindsetInsights.topCues[1]}"
+              </Text>
+            )}
+          </View>
+        </Card>
+      )}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: 16,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-    paddingHorizontal: 4,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  viewAllButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  viewAllText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.primary,
-  },
-  row: {
-    flexDirection: 'row',
-    marginBottom: 12,
-    marginHorizontal: -6,
-  },
-  statCard: {
-    flex: 1,
-    padding: 16,
-    marginHorizontal: 6,
-  },
-  statHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  statIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 8,
-  },
-  statTitle: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.darkGray,
-    flex: 1,
-  },
-  statValue: {
-    fontSize: 28,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  statSubtitle: {
-    fontSize: 12,
-    color: colors.darkGray,
-  },
-  summaryCard: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  summaryContent: {
-    alignItems: 'center',
-  },
-  summaryTitle: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: colors.darkGray,
-    marginBottom: 8,
-  },
-  summaryValue: {
-    fontSize: 36,
-    fontWeight: '700',
-    color: colors.primary,
-    marginBottom: 4,
-  },
-  summarySubtitle: {
-    fontSize: 14,
-    color: colors.darkGray,
-    fontStyle: 'italic',
-    textAlign: 'center',
-  },
-  loadingCard: {
-    opacity: 0.6,
-  },
-  loadingContainer: {
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-});

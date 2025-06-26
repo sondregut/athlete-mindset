@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { Dumbbell, Trophy, Heart, HelpCircle } from 'lucide-react-native';
-import { colors } from '@/constants/colors';
+import { useThemeColors } from '@/hooks/useThemeColors';
 import { useSessionStore } from '@/store/session-store';
 import { SessionType } from '@/types/session';
 import Card from './Card';
@@ -15,8 +15,60 @@ interface TypeBreakdownItemProps {
 }
 
 function TypeBreakdownItem({ type, count, total, icon, color }: TypeBreakdownItemProps) {
+  const colors = useThemeColors();
   const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
   const barWidth = `${percentage}%` as any;
+
+  const styles = StyleSheet.create({
+    breakdownItem: {
+      marginBottom: 20,
+    },
+    typeHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    typeInfo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+    },
+    typeIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 12,
+    },
+    typeName: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: colors.text,
+    },
+    typeCount: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    progressBarContainer: {
+      height: 8,
+      backgroundColor: colors.mediumGray,
+      borderRadius: 4,
+      overflow: 'hidden',
+      marginBottom: 4,
+    },
+    progressBar: {
+      height: '100%',
+      borderRadius: 4,
+    },
+    percentage: {
+      fontSize: 12,
+      color: colors.darkGray,
+      textAlign: 'right',
+    },
+  });
 
   return (
     <View style={styles.breakdownItem}>
@@ -40,6 +92,7 @@ function TypeBreakdownItem({ type, count, total, icon, color }: TypeBreakdownIte
 }
 
 export default function SessionTypeBreakdown() {
+  const colors = useThemeColors();
   const { getSessionTypeBreakdown, getTotalSessions, isCalculatingAnalytics } = useSessionStore();
   const [breakdown, setBreakdown] = useState<{ [key: string]: number }>({});
   const [totalSessions, setTotalSessions] = useState(0);
@@ -92,6 +145,42 @@ export default function SessionTypeBreakdown() {
   const sortedBreakdown = Object.entries(breakdown)
     .sort(([,a], [,b]) => b - a);
 
+  const styles = StyleSheet.create({
+    container: {
+      padding: 20,
+      marginBottom: 16,
+    },
+    title: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 8,
+    },
+    subtitle: {
+      fontSize: 14,
+      color: colors.darkGray,
+      marginBottom: 20,
+    },
+    loadingContainer: {
+      paddingVertical: 40,
+      alignItems: 'center',
+    },
+    loadingText: {
+      marginTop: 12,
+      fontSize: 14,
+      color: colors.darkGray,
+    },
+    emptyText: {
+      fontSize: 14,
+      color: colors.darkGray,
+      textAlign: 'center',
+      paddingVertical: 20,
+    },
+    breakdownList: {
+      marginTop: 4,
+    },
+  });
+
   if (isCalculatingAnalytics) {
     return (
       <Card style={styles.container}>
@@ -137,88 +226,3 @@ export default function SessionTypeBreakdown() {
     </Card>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: colors.darkGray,
-    marginBottom: 20,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: colors.darkGray,
-    textAlign: 'center',
-    fontStyle: 'italic',
-    paddingVertical: 20,
-  },
-  breakdownList: {
-    gap: 16,
-  },
-  breakdownItem: {
-    marginBottom: 4,
-  },
-  typeHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  typeInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  typeIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  typeName: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: colors.text,
-    flex: 1,
-  },
-  typeCount: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  progressBarContainer: {
-    height: 6,
-    backgroundColor: colors.lightGray,
-    borderRadius: 3,
-    marginBottom: 4,
-  },
-  progressBar: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  percentage: {
-    fontSize: 12,
-    color: colors.darkGray,
-    textAlign: 'right',
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  loadingText: {
-    fontSize: 14,
-    color: colors.darkGray,
-    marginTop: 16,
-  },
-});

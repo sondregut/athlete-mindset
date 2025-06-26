@@ -2,7 +2,7 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Dumbbell, Trophy, Heart, Lightbulb, HelpCircle } from 'lucide-react-native';
 import { SessionType } from '@/types/session';
-import { colors } from '@/constants/colors';
+import { useThemeColors } from '@/hooks/useThemeColors';
 
 interface SessionTypeIconProps {
   type: SessionType;
@@ -11,6 +11,8 @@ interface SessionTypeIconProps {
 }
 
 export default function SessionTypeIcon({ type, size = 24, color }: SessionTypeIconProps) {
+  const colors = useThemeColors();
+  
   const getIcon = () => {
     const iconColor = color || colors.sessionTypes[type];
     

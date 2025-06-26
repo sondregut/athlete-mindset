@@ -6,6 +6,9 @@ import { StorageError, ValidationError } from '@/hooks/useErrorHandler';
 import * as Notifications from 'expo-notifications';
 import { firebaseSessions } from '@/services/firebase-sessions';
 import { firebaseAuth } from '@/services/firebase-auth';
+import { firebaseNotifications } from '@/services/firebase-notifications';
+import { useNotificationStore } from '@/store/notification-store';
+import { useAchievementStore } from './achievement-store';
 
 interface SessionState {
   logs: SessionLog[];
@@ -32,7 +35,7 @@ interface SessionState {
   // Actions
   addLog: (log: SessionLog) => void;
   updateCurrentSession: (data: Partial<SessionLog>) => void;
-  completeCurrentSession: () => Promise<void>;
+  completeCurrentSession: () => Promise<any>;
   resetCurrentSession: () => void;
   editSession: (sessionId: string, data: Partial<SessionLog>) => Promise<void>;
   setCurrentSessionForEdit: (sessionId: string) => void;
@@ -150,6 +153,10 @@ export const useSessionStore = create<SessionState>()(
               currentSession: null
             }));
             
+            // Check for streak milestones after adding the new session
+            const newStreak = get().getStreak();
+            const unlockedMilestone = useAchievementStore.getState().checkAndUnlockMilestone(newStreak);
+            
             // Send celebration notification
             get().sendSessionCompletionNotification(currentSession);
             
@@ -161,6 +168,9 @@ export const useSessionStore = create<SessionState>()(
                 // Don't throw - allow offline functionality
               });
             }
+            
+            // Return the unlocked milestone (if any) so the UI can show celebration
+            return unlockedMilestone;
           }
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Failed to complete session';
@@ -603,29 +613,11 @@ export const useSessionStore = create<SessionState>()(
       sendSessionCompletionNotification: async (session: SessionLog) => {
         try {
           // Check if celebration notifications are enabled
-          // Note: In a real implementation, you'd check notification settings from the notification store
-          const celebrationMessages = [
-            "🎉 Session completed! You're building mental strength one training at a time.",
-            "💪 Great work! Another step closer to your goals.",
-            "⭐ Session logged! Your consistency is paying off.",
-            "🔥 Amazing! You're developing both physical and mental fitness.",
-            "🏆 Well done! Every session counts towards your success."
-          ];
+          const notificationSettings = await firebaseNotifications.getSettings();
           
-          const randomMessage = celebrationMessages[Math.floor(Math.random() * celebrationMessages.length)];
-          
-          await Notifications.scheduleNotificationAsync({
-            content: {
-              title: 'Session Complete!',
-              body: randomMessage,
-              data: { 
-                type: 'celebration',
-                sessionId: session.id,
-                sessionType: session.sessionType
-              },
-            },
-            trigger: { seconds: 1 } as any, // Send immediately
-          });
+          if (notificationSettings.enabled && notificationSettings.sessionCompletionCelebration) {
+            await firebaseNotifications.sendSessionCompletionCelebration(session.sessionType);
+          }
           
           // Check for streak milestones
           const currentStreak = get().getStreak();
@@ -640,29 +632,11 @@ export const useSessionStore = create<SessionState>()(
       
       sendStreakNotification: async (streak: number) => {
         try {
-          const streakMessages = {
-            5: "🔥 5-day streak! You're on fire!",
-            10: "⚡ 10 days strong! Your consistency is incredible!",
-            15: "🌟 15-day streak! You're a training machine!",
-            20: "🚀 20 days! Your mental toughness is showing!",
-            30: "👑 30-day streak! You're a true champion!",
-            50: "🏆 50 days! Legend status achieved!",
-            100: "💎 100-day streak! You're absolutely unstoppable!"
-          };
+          const notificationSettings = await firebaseNotifications.getSettings();
           
-          const message = streakMessages[streak as keyof typeof streakMessages] || `🔥 ${streak}-day streak! Keep the momentum going!`;
-          
-          await Notifications.scheduleNotificationAsync({
-            content: {
-              title: 'Streak Milestone!',
-              body: message,
-              data: { 
-                type: 'streak',
-                streakCount: streak
-              },
-            },
-            trigger: { seconds: 2 } as any, // Send after completion notification
-          });
+          if (notificationSettings.enabled && notificationSettings.streakMotivation) {
+            await firebaseNotifications.sendStreakMotivation(streak);
+          }
         } catch (error) {
           console.log('Failed to send streak notification:', error);
           // Don't throw error for notification failures

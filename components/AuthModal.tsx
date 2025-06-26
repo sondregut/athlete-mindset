@@ -3,8 +3,10 @@ import { View, Text, StyleSheet, TextInput, Modal, ScrollView, TouchableOpacity,
 import { X, Mail, Lock, User } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 import { useAuthStore } from '@/store/auth-store';
-import Button from './Button';
+import OnboardingButton from './onboarding/OnboardingButton';
 import Card from './Card';
+import PasswordResetModal from './PasswordResetModal';
+import { checkNetworkConnection } from '@/utils/network';
 
 interface AuthModalProps {
   visible: boolean;
@@ -17,6 +19,7 @@ export default function AuthModal({ visible, onClose, mode }: AuthModalProps) {
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPasswordReset, setShowPasswordReset] = useState(false);
   const { signIn, createAccount, linkAccount, resetPassword, isLoading, error, clearError } = useAuthStore();
 
   const resetForm = () => {
@@ -61,6 +64,17 @@ export default function AuthModal({ visible, onClose, mode }: AuthModalProps) {
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
+    // Check network connectivity first
+    const isConnected = await checkNetworkConnection();
+    if (!isConnected) {
+      Alert.alert(
+        'No Internet Connection',
+        'Please check your internet connection and try again.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     try {
       switch (mode) {
         case 'signin':
@@ -74,26 +88,21 @@ export default function AuthModal({ visible, onClose, mode }: AuthModalProps) {
           break;
       }
       handleClose();
-    } catch (error) {
-      // Error is handled by the store
+    } catch (error: any) {
+      // Show more detailed error for network issues
+      if (error.message?.includes('Network')) {
+        Alert.alert(
+          'Connection Error',
+          'Unable to connect to our servers. Please check your internet connection and try again.',
+          [{ text: 'OK' }]
+        );
+      }
+      // Other errors are handled by the store
     }
   };
 
-  const handleForgotPassword = async () => {
-    if (!email.trim()) {
-      Alert.alert('Error', 'Please enter your email address first');
-      return;
-    }
-
-    try {
-      await resetPassword(email);
-      Alert.alert(
-        'Password Reset',
-        'Password reset email sent! Check your inbox and follow the instructions to reset your password.'
-      );
-    } catch (error) {
-      // Error is handled by the store
-    }
+  const handleForgotPassword = () => {
+    setShowPasswordReset(true);
   };
 
   const getTitle = () => {
@@ -199,7 +208,7 @@ export default function AuthModal({ visible, onClose, mode }: AuthModalProps) {
               </View>
             )}
 
-            <Button
+            <OnboardingButton
               title={mode === 'link' ? 'Secure My Data' : getTitle()}
               onPress={handleSubmit}
               loading={isLoading}
@@ -209,6 +218,16 @@ export default function AuthModal({ visible, onClose, mode }: AuthModalProps) {
             {mode === 'signin' && (
               <TouchableOpacity onPress={handleForgotPassword} style={styles.forgotButton}>
                 <Text style={styles.forgotText}>Forgot Password?</Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Development only - Skip Login */}
+            {__DEV__ && (
+              <TouchableOpacity 
+                style={styles.skipButton} 
+                onPress={handleClose}
+              >
+                <Text style={styles.skipText}>Skip Login (Dev Only)</Text>
               </TouchableOpacity>
             )}
           </Card>
@@ -226,6 +245,11 @@ export default function AuthModal({ visible, onClose, mode }: AuthModalProps) {
           )}
         </ScrollView>
       </View>
+      
+      <PasswordResetModal
+        isVisible={showPasswordReset}
+        onClose={() => setShowPasswordReset(false)}
+      />
     </Modal>
   );
 }
@@ -320,5 +344,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.darkGray,
     lineHeight: 20,
+  },
+  skipButton: {
+    marginTop: 16,
+    alignItems: 'center',
+  },
+  skipText: {
+    fontSize: 14,
+    color: colors.darkGray,
+    textDecorationLine: 'underline',
   },
 });

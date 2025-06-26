@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { PlayCircle, Target, Clock, TrendingUp } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
-import Button from '@/components/Button';
+import OnboardingButton from './OnboardingButton';
 
 interface OnboardingFeaturesProps {
   step: {
@@ -93,16 +93,10 @@ export default function OnboardingFeatures({ step, onNext, onBack }: OnboardingF
 
       {/* Actions */}
       <View style={styles.actions}>
-        <Button
+        <OnboardingButton
           title="Set My Goals"
           onPress={onNext}
           style={styles.primaryButton}
-        />
-        <Button
-          title="Back"
-          onPress={onBack}
-          variant="outline"
-          style={styles.secondaryButton}
         />
       </View>
     </View>

@@ -4,11 +4,18 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import { StatusBar } from "expo-status-bar";
-import { colors } from "@/constants/colors";
 import AppWrapper from "@/components/AppWrapper";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import AuthProvider from "@/components/AuthProvider";
 import { useAuthStore } from "@/store/auth-store";
+import { firebaseNotifications } from '@/services/firebase-notifications';
+import { useSessionStore } from '@/store/session-store';
+import * as Notifications from 'expo-notifications';
+import { router } from 'expo-router';
+import NetworkStatusBanner from "@/components/NetworkStatusBanner";
+import { ThemeProvider } from "@/contexts/ThemeContext";
+import ThemedStatusBar from "@/components/ThemedStatusBar";
+import ThemedStack from "@/components/ThemedStack";
 // Firebase will be initialized when first used
 
 export const unstable_settings = {
@@ -44,8 +51,41 @@ export default function RootLayout() {
     // Initialize Firebase auth state listener
     console.log('🔥 Initializing Firebase auth...');
     const unsubscribe = initializeAuth();
+    
+    // Setup notification listeners
+    firebaseNotifications.setupListeners(
+      // Handler for notifications received while app is foregrounded
+      (notification) => {
+        console.log('📬 Notification received:', notification);
+      },
+      // Handler for when user interacts with a notification
+      async (response) => {
+        console.log('👆 Notification tapped:', response);
+        const data = response.notification.request.content.data;
+        
+        // Navigate based on notification type
+        switch (data.type) {
+          case 'daily_reminder':
+            router.push('/log-session');
+            break;
+          case 'weekly_goal':
+            router.push('/goals');
+            break;
+          case 'streak_motivation':
+            router.push('/(tabs)/profile');
+            break;
+          case 'missed_session':
+            router.push('/log-session');
+            break;
+          default:
+            router.push('/(tabs)');
+        }
+      }
+    );
+    
     return () => {
       if (unsubscribe) unsubscribe();
+      firebaseNotifications.removeListeners();
     };
   }, []);
 
@@ -63,70 +103,15 @@ function RootLayoutNav() {
   
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <AppWrapper>
-          <StatusBar style="dark" />
-          <Stack
-          screenOptions={{
-            headerStyle: {
-              backgroundColor: colors.background,
-            },
-            headerTitleStyle: {
-              fontWeight: '600',
-            },
-            headerShadowVisible: false,
-            contentStyle: {
-              backgroundColor: colors.lightGray,
-            },
-          }}
-        >
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen 
-            name="onboarding" 
-            options={{ 
-              headerShown: false,
-              gestureEnabled: false,
-            }} 
-          />
-          <Stack.Screen name="modal" options={{ presentation: "modal" }} />
-          <Stack.Screen 
-            name="activity" 
-            options={{ 
-              title: "Activity History",
-              animation: "slide_from_right",
-            }} 
-          />
-          <Stack.Screen 
-            name="session-detail" 
-            options={{ 
-              title: "Session Details",
-              animation: "slide_from_right",
-            }} 
-          />
-          <Stack.Screen 
-            name="notification-settings" 
-            options={{ 
-              title: "Notifications",
-              animation: "slide_from_right",
-            }} 
-          />
-          <Stack.Screen 
-            name="analytics" 
-            options={{ 
-              title: "Analytics",
-              animation: "slide_from_right",
-            }} 
-          />
-          <Stack.Screen 
-            name="mindset-history" 
-            options={{ 
-              title: "History",
-              animation: "slide_from_right",
-            }} 
-          />
-        </Stack>
-        </AppWrapper>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <AppWrapper>
+            <ThemedStatusBar />
+            <NetworkStatusBanner />
+            <ThemedStack />
+          </AppWrapper>
+        </AuthProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }

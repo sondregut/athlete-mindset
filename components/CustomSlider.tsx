@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
-import { colors } from '@/constants/colors';
+import { useThemeColors } from '@/hooks/useThemeColors';
 
 interface CustomSliderProps {
   value: number;
@@ -20,11 +20,17 @@ export default function CustomSlider({
   maximumValue,
   step = 1,
   onValueChange,
-  minimumTrackTintColor = colors.primary,
-  maximumTrackTintColor = colors.mediumGray,
-  thumbTintColor = colors.primary,
+  minimumTrackTintColor,
+  maximumTrackTintColor,
+  thumbTintColor,
   style
 }: CustomSliderProps) {
+  const colors = useThemeColors();
+  
+  // Apply default colors using dynamic theme
+  const trackMinColor = minimumTrackTintColor || colors.primary;
+  const trackMaxColor = maximumTrackTintColor || colors.mediumGray;
+  const thumbColor = thumbTintColor || colors.primary;
   const range = maximumValue - minimumValue;
   const percentage = ((value - minimumValue) / range) * 100;
   
@@ -41,15 +47,79 @@ export default function CustomSlider({
     steps.push(i);
   }
 
+  // Create styles dynamically with theme colors
+  const styles = StyleSheet.create({
+    container: {
+      paddingVertical: 10,
+    },
+    trackContainer: {
+      height: 40,
+      justifyContent: 'center',
+      position: 'relative',
+      marginBottom: 10,
+    },
+    track: {
+      height: 4,
+      borderRadius: 2,
+    },
+    activeTrack: {
+      height: 4,
+      borderRadius: 2,
+      position: 'absolute',
+      top: '50%',
+      marginTop: -2,
+    },
+    thumb: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      position: 'absolute',
+      top: '50%',
+      marginTop: -10,
+      marginLeft: -10,
+      ...Platform.select({
+        web: {
+          cursor: 'pointer',
+        },
+      }),
+    },
+    buttonsContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      flexWrap: 'wrap',
+    },
+    stepButton: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 16,
+      backgroundColor: colors.lightGray,
+      marginHorizontal: 2,
+      marginVertical: 2,
+      minWidth: 40,
+      alignItems: 'center',
+    },
+    activeStepButton: {
+      backgroundColor: colors.primary,
+    },
+    stepButtonText: {
+      fontSize: 14,
+      color: colors.text,
+      fontWeight: '500',
+    },
+    activeStepButtonText: {
+      color: colors.background,
+    },
+  });
+
   return (
     <View style={[styles.container, style]}>
       <View style={styles.trackContainer}>
-        <View style={[styles.track, { backgroundColor: maximumTrackTintColor }]} />
+        <View style={[styles.track, { backgroundColor: trackMaxColor }]} />
         <View 
           style={[
             styles.activeTrack, 
             { 
-              backgroundColor: minimumTrackTintColor,
+              backgroundColor: trackMinColor,
               width: `${percentage}%`
             }
           ]} 
@@ -58,7 +128,7 @@ export default function CustomSlider({
           style={[
             styles.thumb, 
             { 
-              backgroundColor: thumbTintColor,
+              backgroundColor: thumbColor,
               left: `${percentage}%`
             }
           ]} 
@@ -87,66 +157,3 @@ export default function CustomSlider({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    paddingVertical: 10,
-  },
-  trackContainer: {
-    height: 40,
-    justifyContent: 'center',
-    position: 'relative',
-    marginBottom: 10,
-  },
-  track: {
-    height: 4,
-    borderRadius: 2,
-  },
-  activeTrack: {
-    height: 4,
-    borderRadius: 2,
-    position: 'absolute',
-    top: '50%',
-    marginTop: -2,
-  },
-  thumb: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    position: 'absolute',
-    top: '50%',
-    marginTop: -10,
-    marginLeft: -10,
-    ...Platform.select({
-      web: {
-        cursor: 'pointer',
-      },
-    }),
-  },
-  buttonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
-  },
-  stepButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: colors.lightGray,
-    marginHorizontal: 2,
-    marginVertical: 2,
-    minWidth: 40,
-    alignItems: 'center',
-  },
-  activeStepButton: {
-    backgroundColor: colors.primary,
-  },
-  stepButtonText: {
-    fontSize: 14,
-    color: colors.text,
-    fontWeight: '500',
-  },
-  activeStepButtonText: {
-    color: colors.background,
-  },
-});

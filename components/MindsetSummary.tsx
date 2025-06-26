@@ -2,11 +2,12 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Heart, Zap, Target, ArrowRight } from 'lucide-react-native';
 import { router } from 'expo-router';
-import { colors } from '@/constants/colors';
+import { useThemeColors } from '@/hooks/useThemeColors';
 import { useMindsetStore } from '@/store/mindset-store';
 import Card from './Card';
 
 export default function MindsetSummary() {
+  const colors = useThemeColors();
   const { getCheckinStreak, getAverageScores, getRecentCheckins } = useMindsetStore();
   
   const streak = getCheckinStreak();
@@ -14,8 +15,91 @@ export default function MindsetSummary() {
   const recentCheckins = getRecentCheckins(7);
   
   const handleViewHistory = () => {
-    router.push('/mindset-history');
+    router.push('/(tabs)/history?defaultView=checkins');
   };
+  
+  const styles = StyleSheet.create({
+    container: {
+      marginBottom: 16,
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 12,
+      paddingHorizontal: 4,
+    },
+    title: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    viewButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    viewButtonText: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.primary,
+    },
+    card: {
+      padding: 20,
+    },
+    streakSection: {
+      alignItems: 'center',
+      marginBottom: 20,
+    },
+    streakText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.primary,
+      textAlign: 'center',
+    },
+    sectionLabel: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.darkGray,
+      marginBottom: 12,
+    },
+    scoresSection: {
+      marginBottom: 20,
+    },
+    scoresContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+    },
+    scoreItem: {
+      alignItems: 'center',
+      flex: 1,
+    },
+    scoreValue: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: colors.text,
+      marginTop: 8,
+      marginBottom: 4,
+    },
+    scoreLabel: {
+      fontSize: 12,
+      color: colors.darkGray,
+    },
+    scoreDivider: {
+      width: 1,
+      backgroundColor: colors.mediumGray,
+      marginVertical: 8,
+    },
+    activitySection: {
+      borderTopWidth: 1,
+      borderTopColor: colors.mediumGray,
+      paddingTop: 16,
+    },
+    activityText: {
+      fontSize: 16,
+      color: colors.text,
+    },
+  });
   
   return (
     <View style={styles.container}>
@@ -70,86 +154,3 @@ export default function MindsetSummary() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: 16,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-    paddingHorizontal: 4,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  viewButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  viewButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.primary,
-  },
-  card: {
-    padding: 20,
-  },
-  streakSection: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  streakText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.primary,
-    textAlign: 'center',
-  },
-  sectionLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.darkGray,
-    marginBottom: 12,
-  },
-  scoresSection: {
-    marginBottom: 20,
-  },
-  scoresContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  scoreItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  scoreValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: colors.text,
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  scoreLabel: {
-    fontSize: 12,
-    color: colors.darkGray,
-  },
-  scoreDivider: {
-    width: 1,
-    backgroundColor: colors.mediumGray,
-    marginVertical: 8,
-  },
-  activitySection: {
-    borderTopWidth: 1,
-    borderTopColor: colors.mediumGray,
-    paddingTop: 16,
-  },
-  activityText: {
-    fontSize: 16,
-    color: colors.text,
-  },
-});

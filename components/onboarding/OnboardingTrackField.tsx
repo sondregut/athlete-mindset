@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 
 import { Search } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 import { trackFieldEventOptions, TrackFieldEvent } from '@/store/user-store';
-import Button from '@/components/Button';
+import OnboardingButton from './OnboardingButton';
 
 interface OnboardingTrackFieldProps {
   onSelectEvent: (event: TrackFieldEvent) => void;
@@ -94,17 +94,11 @@ export default function OnboardingTrackField({ onSelectEvent, onBack, selectedEv
 
       {/* Actions */}
       <View style={styles.actions}>
-        <Button
+        <OnboardingButton
           title="Continue"
           onPress={handleContinue}
           style={styles.primaryButton}
           disabled={!selectedEvent}
-        />
-        <Button
-          title="Back"
-          onPress={onBack}
-          variant="outline"
-          style={styles.secondaryButton}
         />
       </View>
     </View>

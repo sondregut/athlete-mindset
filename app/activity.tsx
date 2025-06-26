@@ -1,24 +1,40 @@
 import React from 'react';
-import { View, Text, StyleSheet, FlatList } from 'react-native';
-import { Stack } from 'expo-router';
+import { View, Text, StyleSheet } from 'react-native';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { useSessionStore } from '@/store/session-store';
-import { colors } from '@/constants/colors';
-import SessionLogItem from '@/components/SessionLogItem';
+import { useThemeColors } from '@/hooks/useThemeColors';
+import ActivityHistoryTabs from '@/components/ActivityHistoryTabs';
 
 export default function ActivityScreen() {
   const { logs } = useSessionStore();
+  const { defaultView } = useLocalSearchParams<{ defaultView?: string }>();
+  const colors = useThemeColors();
+
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    emptyContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 24,
+    },
+    emptyText: {
+      fontSize: 16,
+      color: colors.darkGray,
+      textAlign: 'center',
+      lineHeight: 24,
+    },
+  });
 
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ title: "Activity History" }} />
       
       {logs.length > 0 ? (
-        <FlatList
-          data={logs}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <SessionLogItem log={item} />}
-          contentContainerStyle={styles.listContent}
-        />
+        <ActivityHistoryTabs sessions={logs} defaultView={defaultView} />
       ) : (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>
@@ -29,25 +45,3 @@ export default function ActivityScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  listContent: {
-    padding: 16,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: colors.darkGray,
-    textAlign: 'center',
-    lineHeight: 24,
-  },
-});

@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity } from 
 import { Search } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 import { useUserStore, sportOptions, experienceLevelOptions, SportType, ExperienceLevel, TrackFieldEvent } from '@/store/user-store';
-import Button from '@/components/Button';
+import OnboardingButton from './OnboardingButton';
 import OnboardingTrackField from './OnboardingTrackField';
 
 interface OnboardingProfileProps {
@@ -25,10 +25,10 @@ export default function OnboardingProfile({ step, onNext, onBack }: OnboardingPr
   const [formData, setFormData] = useState({
     name: profile.name || '',
     age: profile.age?.toString() || '',
-    sport: profile.sport || 'other' as SportType,
+    sport: profile.sport as SportType | undefined,
     trackFieldEvent: profile.trackFieldEvent,
-    experienceLevel: profile.experienceLevel || 'beginner' as ExperienceLevel,
-    preferredUnits: profile.preferredUnits || 'metric' as 'metric' | 'imperial',
+    experienceLevel: profile.experienceLevel as ExperienceLevel | undefined,
+    preferredUnits: profile.preferredUnits as ('metric' | 'imperial') | undefined,
   });
 
   const [errors, setErrors] = useState({
@@ -76,10 +76,19 @@ export default function OnboardingProfile({ step, onNext, onBack }: OnboardingPr
       // Save form data to user store
       const profileUpdate: any = {
         name: formData.name.trim(),
-        sport: formData.sport,
-        experienceLevel: formData.experienceLevel,
-        preferredUnits: formData.preferredUnits,
       };
+
+      if (formData.sport) {
+        profileUpdate.sport = formData.sport;
+      }
+
+      if (formData.experienceLevel) {
+        profileUpdate.experienceLevel = formData.experienceLevel;
+      }
+
+      if (formData.preferredUnits) {
+        profileUpdate.preferredUnits = formData.preferredUnits;
+      }
 
       if (formData.age && formData.age.trim()) {
         profileUpdate.age = parseInt(formData.age);
@@ -180,7 +189,7 @@ export default function OnboardingProfile({ step, onNext, onBack }: OnboardingPr
 
         {/* Sport Selection */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Primary Sport/Activity *</Text>
+          <Text style={styles.sectionTitle}>Primary Sport/Activity</Text>
           <Text style={styles.sectionDescription}>
             What's your main training focus? Track & Field athletes will select their specific event next.
           </Text>
@@ -295,16 +304,10 @@ export default function OnboardingProfile({ step, onNext, onBack }: OnboardingPr
 
       {/* Actions */}
       <View style={styles.actions}>
-        <Button
+        <OnboardingButton
           title="Continue"
           onPress={handleNext}
           style={styles.primaryButton}
-        />
-        <Button
-          title="Back"
-          onPress={onBack}
-          variant="outline"
-          style={styles.secondaryButton}
         />
       </View>
     </View>

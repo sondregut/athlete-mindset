@@ -3,10 +3,10 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface OnboardingGoals {
-  weeklySessionTarget: number;
-  streakGoal: number;
-  primaryFocus: 'consistency' | 'performance' | 'mindset' | 'recovery';
-  motivationType: 'achievement' | 'progress' | 'community' | 'personal';
+  weeklySessionTarget?: number;
+  streakGoal?: number;
+  primaryFocus?: 'consistency' | 'performance' | 'mindset' | 'recovery';
+  motivationType?: 'achievement' | 'progress' | 'community' | 'personal';
 }
 
 interface OnboardingState {
@@ -26,12 +26,7 @@ interface OnboardingState {
   setHydrated: (hydrated: boolean) => void;
 }
 
-const defaultGoals: OnboardingGoals = {
-  weeklySessionTarget: 3,
-  streakGoal: 7,
-  primaryFocus: 'consistency',
-  motivationType: 'progress',
-};
+const defaultGoals: OnboardingGoals = {};
 
 export const useOnboardingStore = create<OnboardingState>()(
   persist(
@@ -112,13 +107,6 @@ export const onboardingSteps = [
     icon: '📈',
   },
   {
-    id: 'auth',
-    title: 'Create Your\nAccount',
-    subtitle: 'Sync your data across devices',
-    description: 'Sign up to never lose your progress and access your data anywhere.',
-    icon: '🔐',
-  },
-  {
     id: 'profile',
     title: 'Tell Us About\nYourself',
     subtitle: 'Personalize your experience',
@@ -131,6 +119,13 @@ export const onboardingSteps = [
     subtitle: 'What would you like to achieve?',
     description: 'Let\'s set some initial goals to keep you motivated and on track.',
     icon: '🏆',
+  },
+  {
+    id: 'auth',
+    title: 'Create Your\nAccount',
+    subtitle: '',
+    description: '',
+    icon: '🔐',
   },
 ];
 

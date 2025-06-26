@@ -8,7 +8,7 @@ import {
   TextStyle,
   Alert
 } from 'react-native';
-import { colors } from '@/constants/colors';
+import { useThemeColors } from '@/hooks/useThemeColors';
 
 interface ButtonProps {
   title: string;
@@ -35,6 +35,64 @@ export default function Button({
 }: ButtonProps) {
   const [internalLoading, setInternalLoading] = useState(false);
   const isLoading = loading || internalLoading;
+  const colors = useThemeColors();
+
+  const styles = StyleSheet.create({
+    button: {
+      borderRadius: 8,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+    },
+    primaryButton: {
+      backgroundColor: colors.primary,
+    },
+    secondaryButton: {
+      backgroundColor: colors.secondary,
+    },
+    outlineButton: {
+      backgroundColor: 'transparent',
+      borderWidth: 1,
+      borderColor: colors.primary,
+    },
+    smallButton: {
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+    },
+    largeButton: {
+      paddingHorizontal: 24,
+      paddingVertical: 16,
+    },
+    disabledButton: {
+      backgroundColor: colors.mediumGray,
+      borderColor: colors.mediumGray,
+    },
+    buttonText: {
+      fontWeight: '600',
+      textAlign: 'center',
+      fontSize: 16,
+    },
+    primaryButtonText: {
+      color: colors.background,
+    },
+    secondaryButtonText: {
+      color: colors.background,
+    },
+    outlineButtonText: {
+      color: colors.primary,
+    },
+    smallButtonText: {
+      fontSize: 14,
+    },
+    largeButtonText: {
+      fontSize: 18,
+    },
+    disabledButtonText: {
+      color: colors.darkGray,
+    },
+  });
+
   const getButtonStyle = (): ViewStyle => {
     const baseStyle = { ...styles.button };
     
@@ -142,59 +200,3 @@ export default function Button({
     </TouchableOpacity>
   );
 }
-
-const styles = StyleSheet.create({
-  button: {
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  primaryButton: {
-    backgroundColor: colors.primary,
-  },
-  secondaryButton: {
-    backgroundColor: colors.secondary,
-  },
-  outlineButton: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: colors.primary,
-  },
-  smallButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  largeButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-  },
-  disabledButton: {
-    backgroundColor: colors.mediumGray,
-    borderColor: colors.mediumGray,
-  },
-  buttonText: {
-    fontWeight: '600',
-    textAlign: 'center',
-    fontSize: 16,
-  },
-  primaryButtonText: {
-    color: colors.background,
-  },
-  secondaryButtonText: {
-    color: colors.background,
-  },
-  outlineButtonText: {
-    color: colors.primary,
-  },
-  smallButtonText: {
-    fontSize: 14,
-  },
-  largeButtonText: {
-    fontSize: 18,
-  },
-  disabledButtonText: {
-    color: colors.darkGray,
-  },
-});

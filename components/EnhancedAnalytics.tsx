@@ -357,7 +357,7 @@ export default function EnhancedAnalytics() {
           />
           <View style={styles.goalDetails}>
             <Text style={styles.goalText}>
-              Target: {goals.weeklySessionTarget * 4} sessions/month
+              Target: {(goals.weeklySessionTarget || 0) * 4} sessions/month
             </Text>
             <Text style={styles.goalSubtext}>
               {Math.round(chartData.monthlyGoalProgress * 100)}% complete

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { AlertTriangle, X, RefreshCw } from 'lucide-react-native';
-import { colors } from '@/constants/colors';
+import { useThemeColors } from '@/hooks/useThemeColors';
 
 interface ErrorMessageProps {
   message: string;
@@ -18,6 +18,8 @@ export default function ErrorMessage({
   variant = 'error',
   showIcon = true 
 }: ErrorMessageProps) {
+  const colors = useThemeColors();
+  
   const getVariantStyles = () => {
     switch (variant) {
       case 'warning':
@@ -42,6 +44,37 @@ export default function ErrorMessage({
   };
 
   const variantStyles = getVariantStyles();
+  
+  const styles = StyleSheet.create({
+    container: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 12,
+      borderRadius: 8,
+      borderWidth: 1,
+      marginVertical: 4,
+    },
+    content: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    icon: {
+      marginRight: 8,
+    },
+    message: {
+      fontSize: 14,
+      flex: 1,
+      lineHeight: 20,
+    },
+    actions: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    actionButton: {
+      padding: 4,
+    },
+  });
 
   return (
     <View style={[
@@ -85,34 +118,3 @@ export default function ErrorMessage({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    marginVertical: 4,
-  },
-  content: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  icon: {
-    marginRight: 8,
-  },
-  message: {
-    fontSize: 14,
-    flex: 1,
-    lineHeight: 20,
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  actionButton: {
-    padding: 4,
-  },
-});

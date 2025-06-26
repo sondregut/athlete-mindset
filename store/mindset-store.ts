@@ -4,12 +4,21 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { firebaseMindset } from '@/services/firebase-mindset';
 import { firebaseAuth } from '@/services/firebase-auth';
 
+export interface BodyPainArea {
+  location: string; // e.g., "head", "neck", "lower-back", "left-shoulder"
+  severity: 'minor' | 'moderate' | 'significant';
+}
+
 export interface MindsetCheckin {
   id: string;
   date: string; // YYYY-MM-DD format
   mood: number; // 1-10 scale
   energy: number; // 1-10 scale
   motivation: number; // 1-10 scale
+  selfDescription?: string; // Max 150 characters
+  bodyPainAreas?: BodyPainArea[];
+  overallPainLevel?: 'none' | 'minor' | 'moderate' | 'significant';
+  // Legacy fields for backward compatibility
   gratitude?: string;
   reflection?: string;
   tags?: string[]; // e.g., ["stressed", "excited", "focused"]
@@ -29,6 +38,7 @@ interface MindsetState {
   
   // Actions
   submitCheckin: (checkin: Omit<MindsetCheckin, 'id' | 'date' | 'createdAt'>) => Promise<void>;
+  updateCheckin: (id: string, updates: Partial<Omit<MindsetCheckin, 'id' | 'date' | 'createdAt'>>) => Promise<void>;
   getTodaysCheckin: () => MindsetCheckin | null;
   getCheckinStreak: () => number;
   getRecentCheckins: (days: number) => MindsetCheckin[];
@@ -72,6 +82,8 @@ export const useMindsetStore = create<MindsetState>()(
             date: today,
             createdAt: existingCheckin?.createdAt || new Date().toISOString(),
             ...checkinData,
+            // Ensure selfDescription doesn't exceed 150 characters
+            selfDescription: checkinData.selfDescription ? checkinData.selfDescription.slice(0, 150) : undefined,
           };
           
           // Simulate processing time
@@ -103,6 +115,52 @@ export const useMindsetStore = create<MindsetState>()(
           }
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Failed to submit check-in';
+          set({ error: errorMessage });
+          throw error;
+        } finally {
+          set({ isSubmittingCheckin: false });
+        }
+      },
+      
+      updateCheckin: async (id, updates) => {
+        set({ isSubmittingCheckin: true, error: null });
+        
+        try {
+          const state = get();
+          const checkinToUpdate = state.checkins.find(c => c.id === id);
+          
+          if (!checkinToUpdate) {
+            throw new Error('Check-in not found');
+          }
+          
+          const updatedCheckin: MindsetCheckin = {
+            ...checkinToUpdate,
+            ...updates,
+            // Ensure selfDescription doesn't exceed 150 characters
+            selfDescription: updates.selfDescription !== undefined 
+              ? updates.selfDescription.slice(0, 150) 
+              : checkinToUpdate.selfDescription,
+          };
+          
+          const updatedCheckins = state.checkins.map(c => 
+            c.id === id ? updatedCheckin : c
+          );
+          
+          set({ 
+            checkins: updatedCheckins,
+            todaysCheckin: state.todaysCheckin?.id === id ? updatedCheckin : state.todaysCheckin,
+          });
+          
+          // Sync with Firebase if user is authenticated
+          const user = firebaseAuth.getCurrentUser();
+          if (user) {
+            firebaseMindset.submitCheckin(updatedCheckin).catch(error => {
+              console.error('Failed to sync updated checkin to Firebase:', error);
+              // Don't throw - allow offline functionality
+            });
+          }
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Failed to update check-in';
           set({ error: errorMessage });
           throw error;
         } finally {

@@ -3,7 +3,7 @@ import { View, StyleSheet, Text, ActivityIndicator } from 'react-native';
 import { Slot, router } from 'expo-router';
 import { useOnboardingStore } from '@/store/onboarding-store';
 import { useNotifications } from '@/hooks/useNotifications';
-import { colors } from '@/constants/colors';
+import { useThemeColors } from '@/hooks/useThemeColors';
 
 interface AppWrapperProps {
   children: React.ReactNode;
@@ -15,6 +15,7 @@ export default function AppWrapper({ children }: AppWrapperProps) {
   const [hasNavigated, setHasNavigated] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [forceNavigation, setForceNavigation] = useState(false);
+  const colors = useThemeColors();
   
   // Initialize notifications with error handling
   try {
@@ -113,6 +114,22 @@ export default function AppWrapper({ children }: AppWrapperProps) {
     }
   }, [isHydrated, hasNavigated, error, hasCompletedOnboarding]);
 
+  // Create styles before using them
+  const styles = StyleSheet.create({
+    loadingContainer: {
+      flex: 1,
+      backgroundColor: colors.background,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    loadingText: {
+      marginTop: 16,
+      fontSize: 16,
+      color: colors.text,
+      textAlign: 'center',
+    },
+  });
+
   // Show error if something went wrong
   if (error) {
     return (
@@ -148,18 +165,3 @@ export default function AppWrapper({ children }: AppWrapperProps) {
 
   return <>{children}</>;
 }
-
-const styles = StyleSheet.create({
-  loadingContainer: {
-    flex: 1,
-    backgroundColor: colors.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: colors.text,
-    textAlign: 'center',
-  },
-});

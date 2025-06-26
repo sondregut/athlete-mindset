@@ -17,7 +17,12 @@
       "Bash(grep:*)",
       "Bash(bunx tsc:*)",
       "Bash(bunx rork start:*)",
-      "Bash(kill:*)"
+      "Bash(kill:*)",
+      "Bash(xcrun simctl openurl:*)",
+      "Bash(bun run:*)",
+      "Bash(bun add:*)",
+      "WebFetch(domain:console.firebase.google.com)",
+      "Bash(bun remove:*)"
     ],
     "deny": []
   }

@@ -11,6 +11,7 @@ import {
 } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCo5H4l1Gfs5eOpV6gmHKLoB0wDYpNUBzE",
@@ -50,12 +51,16 @@ export const getFirebaseAuth = (): Auth => {
         errorMap: __DEV__ ? debugErrorMap : prodErrorMap
       });
     } else {
-      // React Native in Expo Go - use in-memory persistence
-      // This is the most compatible option for Expo Go
+      // React Native - use in-memory persistence for Expo Go compatibility
+      // Note: This means auth state won't persist between app restarts in development
+      // For production, use expo-secure-store or implement custom persistence
       auth = initializeAuth(firebaseApp, {
         persistence: inMemoryPersistence,
         errorMap: prodErrorMap
       });
+      
+      // Log warning about persistence limitation
+      console.log('Firebase Auth initialized with in-memory persistence. Auth state will not persist between app restarts.');
     }
   }
   return auth;

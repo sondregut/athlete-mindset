@@ -9,13 +9,13 @@ import { useSessionStore } from '@/store/session-store';
 import { SessionLog } from '@/types/session';
 import Card from '@/components/Card';
 import Button from '@/components/Button';
+import SessionLogItem from '@/components/SessionLogItem';
 
 type HistoryTab = 'sessions' | 'mindset';
 
 export default function HistoryScreen() {
   const [activeTab, setActiveTab] = useState<HistoryTab>('sessions');
   const [selectedMonth, setSelectedMonth] = useState(new Date());
-  const [selectedSession, setSelectedSession] = useState<SessionLog | null>(null);
 
   // Mindset store
   const { checkins } = useMindsetStore();
@@ -142,7 +142,7 @@ export default function HistoryScreen() {
                   styles.calendarDay,
                   sessions.length > 0 && styles.hasSession,
                 ]}
-                onPress={() => sessions.length > 0 && setSelectedSession(sessions[0])}
+                onPress={() => sessions.length > 0 && router.push(`/session-detail?sessionId=${sessions[0].id}`)}
                 disabled={sessions.length === 0}
               >
                 <Text style={[
@@ -209,34 +209,7 @@ export default function HistoryScreen() {
         {/* Recent Sessions List */}
         <Text style={styles.sectionTitle}>Recent Sessions</Text>
         {sessionLogs.slice(0, 10).map(session => (
-          <TouchableOpacity
-            key={session.id}
-            onPress={() => setSelectedSession(session)}
-          >
-            <Card style={styles.sessionItem}>
-              <View style={styles.sessionHeader}>
-                <Text style={styles.sessionDate}>
-                  {format(parseISO(session.createdAt), 'EEEE, MMMM d')}
-                </Text>
-                <View style={styles.sessionInfo}>
-                  {getSessionIcon(session)}
-                  <Text style={styles.sessionType}>
-                    {session.sessionType.charAt(0).toUpperCase() + session.sessionType.slice(1)}
-                  </Text>
-                </View>
-              </View>
-              {session.activity && (
-                <Text style={styles.sessionActivity}>{session.activity}</Text>
-              )}
-              {session.readinessRating && (
-                <View style={styles.sessionStats}>
-                  <Text style={styles.readinessText}>
-                    Readiness: {session.readinessRating}/10
-                  </Text>
-                </View>
-              )}
-            </Card>
-          </TouchableOpacity>
+          <SessionLogItem key={session.id} log={session} />
         ))}
       </>
     );
@@ -426,80 +399,6 @@ export default function HistoryScreen() {
         {renderMonthNavigator()}
         {activeTab === 'sessions' ? renderSessionHistory() : renderMindsetHistory()}
       </ScrollView>
-
-      {/* Session Detail Modal */}
-      <Modal
-        visible={!!selectedSession}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setSelectedSession(null)}
-      >
-        {selectedSession && (
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {format(parseISO(selectedSession.createdAt), 'EEEE, MMMM d, yyyy')}
-              </Text>
-              <TouchableOpacity onPress={() => setSelectedSession(null)}>
-                <X size={24} color={colors.darkGray} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.modalContent}>
-              {/* Session Info */}
-              <View style={styles.section}>
-                <Text style={styles.sectionLabel}>Session Type</Text>
-                <Text style={styles.textContent}>
-                  {selectedSession.sessionType.charAt(0).toUpperCase() + selectedSession.sessionType.slice(1)}
-                  {selectedSession.sessionType === 'other' && selectedSession.customSessionType && 
-                    ` - ${selectedSession.customSessionType}`}
-                </Text>
-              </View>
-
-              {selectedSession.activity && (
-                <View style={styles.section}>
-                  <Text style={styles.sectionLabel}>Activity</Text>
-                  <Text style={styles.textContent}>{selectedSession.activity}</Text>
-                </View>
-              )}
-
-              {selectedSession.intention && (
-                <View style={styles.section}>
-                  <Text style={styles.sectionLabel}>Intention</Text>
-                  <Text style={styles.textContent}>{selectedSession.intention}</Text>
-                </View>
-              )}
-
-              {selectedSession.readinessRating && (
-                <View style={styles.section}>
-                  <Text style={styles.sectionLabel}>Readiness Rating</Text>
-                  <Text style={styles.textContent}>{selectedSession.readinessRating}/10</Text>
-                </View>
-              )}
-
-              {selectedSession.mindsetCues && selectedSession.mindsetCues.length > 0 && (
-                <View style={styles.section}>
-                  <Text style={styles.sectionLabel}>Mindset Cues</Text>
-                  <View style={styles.tagsContainer}>
-                    {selectedSession.mindsetCues.map((cue: string) => (
-                      <View key={cue} style={styles.detailTag}>
-                        <Text style={styles.detailTagText}>{cue}</Text>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              )}
-
-              {selectedSession.notes && (
-                <View style={styles.section}>
-                  <Text style={styles.sectionLabel}>Notes</Text>
-                  <Text style={styles.textContent}>{selectedSession.notes}</Text>
-                </View>
-              )}
-            </ScrollView>
-          </View>
-        )}
-      </Modal>
     </View>
   );
 }
@@ -654,44 +553,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: 12,
   },
-  sessionItem: {
-    marginBottom: 12,
-  },
-  sessionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  sessionDate: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: colors.text,
-  },
-  sessionInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  sessionType: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.darkGray,
-  },
-  sessionActivity: {
-    fontSize: 14,
-    color: colors.darkGray,
-    marginBottom: 4,
-  },
-  sessionStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  readinessText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.primary,
-  },
   checkinItem: {
     marginBottom: 12,
   },
@@ -739,115 +600,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.darkGray,
     fontStyle: 'italic',
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.mediumGray,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  modalContent: {
-    flex: 1,
-    padding: 24,
-  },
-  scoresSection: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 32,
-  },
-  scoreDetail: {
-    alignItems: 'center',
-  },
-  scoreLabel: {
-    fontSize: 14,
-    color: colors.darkGray,
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  scoreValue: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 8,
-  },
-  tagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  detailTag: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  detailTagText: {
-    color: colors.background,
-    fontSize: 14,
-  },
-  textContent: {
-    fontSize: 16,
-    color: colors.text,
-    lineHeight: 24,
-  },
-  deleteButton: {
-    marginTop: 32,
-    borderColor: colors.error,
-  },
-  confirmOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  confirmModal: {
-    backgroundColor: colors.background,
-    borderRadius: 12,
-    padding: 24,
-    width: '80%',
-    maxWidth: 320,
-  },
-  confirmTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 8,
-  },
-  confirmText: {
-    fontSize: 16,
-    color: colors.darkGray,
-    marginBottom: 24,
-  },
-  confirmButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  confirmButton: {
-    flex: 1,
-  },
-  deleteConfirmButton: {
-    flex: 1,
-    backgroundColor: colors.error,
   },
 });

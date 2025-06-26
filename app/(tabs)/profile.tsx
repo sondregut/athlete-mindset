@@ -2,18 +2,24 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Play, Clock, ArrowRight } from 'lucide-react-native';
 import { router } from 'expo-router';
-import { colors } from '@/constants/colors';
+import { useThemeColors } from '@/hooks/useThemeColors';
 import { useSessionStore } from '@/store/session-store';
 import { useUserStore } from '@/store/user-store';
 import ProfileHeader from '@/components/ProfileHeader';
+import ProfileStats from '@/components/ProfileStats';
 import AnalyticsDashboard from '@/components/AnalyticsDashboard';
 import SessionTypeBreakdown from '@/components/SessionTypeBreakdown';
 import MindsetSummary from '@/components/MindsetSummary';
 import SettingsSection from '@/components/SettingsSection';
 import ErrorMessage from '@/components/ErrorMessage';
 import FirebaseDebugPanel from '@/components/FirebaseDebugPanel';
+import GoalsDisplay from '@/components/GoalsDisplay';
+import ProfilePreferences from '@/components/ProfilePreferences';
+import ThemeSettings from '@/components/ThemeSettings';
+import AchievementsSection from '@/components/AchievementsSection';
 
 export default function ProfileScreen() {
+  const colors = useThemeColors();
   const { currentSession, elapsedTime, error: sessionError, clearError: clearSessionError } = useSessionStore();
   const { error: userError, clearError: clearUserError } = useUserStore();
 
@@ -42,6 +48,67 @@ export default function ProfileScreen() {
            (currentSession.sessionType === 'other' ? currentSession.customSessionType : null) || 
            currentSession.sessionType.charAt(0).toUpperCase() + currentSession.sessionType.slice(1);
   };
+
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    contentContainer: {
+      padding: 16,
+      paddingBottom: 32,
+    },
+    sessionBanner: {
+      backgroundColor: colors.primary,
+      borderRadius: 12,
+      marginBottom: 16,
+      shadowColor: colors.primary,
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.25,
+      shadowRadius: 3.84,
+      elevation: 5,
+    },
+    sessionBannerContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: 16,
+    },
+    sessionBannerLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+    },
+    sessionBannerIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: 'rgba(255, 255, 255, 0.2)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 12,
+    },
+    sessionBannerText: {
+      flex: 1,
+    },
+    sessionBannerTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.background,
+      marginBottom: 2,
+    },
+    sessionBannerSubtitle: {
+      fontSize: 14,
+      color: 'rgba(255, 255, 255, 0.8)',
+    },
+    activeBanner: {
+      backgroundColor: colors.activeSession,
+      shadowColor: colors.activeSession,
+    },
+  });
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
@@ -95,6 +162,15 @@ export default function ProfileScreen() {
 
       {/* Profile Header */}
       <ProfileHeader />
+      
+      {/* Profile Stats */}
+      <ProfileStats />
+      
+      {/* Goals Display */}
+      <GoalsDisplay />
+      
+      {/* Achievements */}
+      <AchievementsSection />
 
       {/* Analytics Dashboard */}
       <AnalyticsDashboard />
@@ -104,6 +180,12 @@ export default function ProfileScreen() {
 
       {/* Mindset Summary */}
       <MindsetSummary />
+      
+      {/* Profile Preferences */}
+      <ProfilePreferences />
+      
+      {/* Theme Settings */}
+      <ThemeSettings />
 
       {/* Settings */}
       <SettingsSection />
@@ -113,64 +195,3 @@ export default function ProfileScreen() {
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  contentContainer: {
-    padding: 16,
-    paddingBottom: 32,
-  },
-  sessionBanner: {
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    marginBottom: 16,
-    shadowColor: colors.primary,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  sessionBannerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-  },
-  sessionBannerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  sessionBannerIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  sessionBannerText: {
-    flex: 1,
-  },
-  sessionBannerTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.background,
-    marginBottom: 2,
-  },
-  sessionBannerSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
-  },
-  activeBanner: {
-    backgroundColor: '#FF8C42', // Vibrant orange for active sessions
-    shadowColor: '#FF8C42',
-  },
-});

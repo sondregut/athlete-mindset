@@ -1,16 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Modal, KeyboardAvoidingView, Platform } from 'react-native';
 import { CheckCircle, X, Calendar, Heart, Zap, Target } from 'lucide-react-native';
-import { colors } from '@/constants/colors';
-import { useMindsetStore, mindsetTags } from '@/store/mindset-store';
+import { useThemeColors } from '@/hooks/useThemeColors';
+import { useMindsetStore, BodyPainArea } from '@/store/mindset-store';
 import Card from './Card';
 import Button from './Button';
+import BodyPainSelector from './BodyPainSelector';
 
 interface DailyMindsetCheckinProps {
   compact?: boolean;
 }
 
 export default function DailyMindsetCheckin({ compact = false }: DailyMindsetCheckinProps) {
+  const colors = useThemeColors();
   const { 
     getTodaysCheckin, 
     submitCheckin, 
@@ -24,11 +26,11 @@ export default function DailyMindsetCheckin({ compact = false }: DailyMindsetChe
   const [mood, setMood] = useState(7);
   const [energy, setEnergy] = useState(7);
   const [motivation, setMotivation] = useState(7);
-  const [gratitude, setGratitude] = useState('');
-  const [reflection, setReflection] = useState('');
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [gratitudeY, setGratitudeY] = useState(0);
-  const [reflectionY, setReflectionY] = useState(0);
+  const [selfDescription, setSelfDescription] = useState('');
+  const [bodyPainAreas, setBodyPainAreas] = useState<BodyPainArea[]>([]);
+  const [overallPainLevel, setOverallPainLevel] = useState<'none' | 'minor' | 'moderate' | 'significant'>('none');
+  const [descriptionY, setDescriptionY] = useState(0);
+  const [isNewCheckin, setIsNewCheckin] = useState(false);
 
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -41,9 +43,9 @@ export default function DailyMindsetCheckin({ compact = false }: DailyMindsetChe
       setMood(todaysCheckin.mood);
       setEnergy(todaysCheckin.energy);
       setMotivation(todaysCheckin.motivation);
-      setGratitude(todaysCheckin.gratitude || '');
-      setReflection(todaysCheckin.reflection || '');
-      setSelectedTags(todaysCheckin.tags || []);
+      setSelfDescription(todaysCheckin.selfDescription || '');
+      setBodyPainAreas(todaysCheckin.bodyPainAreas || []);
+      setOverallPainLevel(todaysCheckin.overallPainLevel || 'none');
     }
   }, [todaysCheckin]);
 
@@ -53,9 +55,9 @@ export default function DailyMindsetCheckin({ compact = false }: DailyMindsetChe
         mood,
         energy,
         motivation,
-        gratitude: gratitude.trim() || undefined,
-        reflection: reflection.trim() || undefined,
-        tags: selectedTags.length > 0 ? selectedTags : undefined,
+        selfDescription: selfDescription.trim() || undefined,
+        bodyPainAreas: bodyPainAreas.length > 0 ? bodyPainAreas : undefined,
+        overallPainLevel: overallPainLevel || undefined,
       });
       setShowModal(false);
     } catch (error) {
@@ -63,26 +65,25 @@ export default function DailyMindsetCheckin({ compact = false }: DailyMindsetChe
     }
   };
 
-  const toggleTag = (tag: string) => {
-    setSelectedTags(prev => 
-      prev.includes(tag) 
-        ? prev.filter(t => t !== tag)
-        : [...prev, tag]
-    );
+  const getMoodEmoji = (value: number) => {
+    if (value <= 3) return '😞';
+    if (value <= 7) return '😐';
+    return '😊';
   };
 
   const resetForm = () => {
     setMood(7);
     setEnergy(7);
     setMotivation(7);
-    setGratitude('');
-    setReflection('');
-    setSelectedTags([]);
+    setSelfDescription('');
+    setBodyPainAreas([]);
+    setOverallPainLevel('none');
     clearError();
   };
 
-  const handleOpenModal = () => {
-    if (!todaysCheckin) {
+  const handleOpenModal = (startFresh = false) => {
+    setIsNewCheckin(startFresh);
+    if (!todaysCheckin || startFresh) {
       resetForm();
     }
     setShowModal(true);
@@ -91,7 +92,7 @@ export default function DailyMindsetCheckin({ compact = false }: DailyMindsetChe
   const scrollToInput = (yPosition: number) => {
     if (scrollViewRef.current && yPosition > 0) {
       scrollViewRef.current.scrollTo({
-        y: yPosition - 150, // Offset to ensure input is visible above keyboard
+        y: yPosition - 100, // Offset to ensure input is visible above keyboard
         animated: true,
       });
     }
@@ -102,16 +103,22 @@ export default function DailyMindsetCheckin({ compact = false }: DailyMindsetChe
     if (todaysCheckin) {
       return (
         <Card style={styles.compactCard}>
-          <View style={styles.compactHeader}>
-            <CheckCircle size={24} color={colors.success} />
-            <View style={styles.compactInfo}>
-              <Text style={styles.compactTitle}>Daily Check-in Complete</Text>
-              <Text style={styles.compactSubtitle}>
-                {streak} day{streak !== 1 ? 's' : ''} streak
-              </Text>
+          <View style={styles.compactCompleteContainer}>
+            <View style={styles.compactHeader}>
+              <CheckCircle size={24} color={colors.success} />
+              <View style={styles.compactInfo}>
+                <Text style={styles.compactTitle}>Daily Check-in Complete</Text>
+                <Text style={styles.compactSubtitle}>
+                  {streak} day{streak !== 1 ? 's' : ''} streak
+                </Text>
+              </View>
             </View>
-            <TouchableOpacity onPress={handleOpenModal} style={styles.compactButton}>
-              <Text style={styles.compactButtonText}>View</Text>
+            <TouchableOpacity 
+              onPress={() => handleOpenModal(true)} 
+              activeOpacity={0.7}
+              style={styles.logAnotherButton}
+            >
+              <Text style={styles.logAnotherButtonText}>Log Another</Text>
             </TouchableOpacity>
           </View>
         </Card>
@@ -119,228 +126,24 @@ export default function DailyMindsetCheckin({ compact = false }: DailyMindsetChe
     }
 
     return (
-      <Card style={styles.compactCard}>
-        <View style={styles.compactHeader}>
-          <Calendar size={24} color={colors.primary} />
-          <View style={styles.compactInfo}>
-            <Text style={styles.compactTitle}>Daily Mindset Check-in</Text>
-            <Text style={styles.compactSubtitle}>How are you feeling today?</Text>
+      <TouchableOpacity onPress={() => handleOpenModal()} activeOpacity={0.7}>
+        <Card style={styles.compactCard}>
+          <View style={styles.compactHeader}>
+            <Calendar size={24} color={colors.primary} />
+            <View style={styles.compactInfo}>
+              <Text style={styles.compactTitle}>Daily Mindset Check-in</Text>
+              <Text style={styles.compactSubtitle}>How are you feeling today?</Text>
+            </View>
+            <View style={styles.compactActionButton}>
+              <Text style={styles.compactActionButtonText}>Start</Text>
+            </View>
           </View>
-          <Button
-            title="Start"
-            onPress={handleOpenModal}
-            style={styles.compactActionButton}
-          />
-        </View>
-      </Card>
+        </Card>
+      </TouchableOpacity>
     );
   };
 
-  // Always render both the view and the modal
-  return (
-    <>
-      {compact && renderCompactView()}
-      <Modal
-        visible={showModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowModal(false)}
-      >
-        <KeyboardAvoidingView 
-          style={styles.modalContainer}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={0}
-        >
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Daily Mindset Check-in</Text>
-            <TouchableOpacity onPress={() => setShowModal(false)}>
-              <X size={24} color={colors.darkGray} />
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView 
-            ref={scrollViewRef}
-            style={styles.modalContent} 
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.scrollContentContainer}
-            keyboardShouldPersistTaps="handled"
-          >
-            {error && (
-              <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>{error}</Text>
-              </View>
-            )}
-
-            {/* Mood Rating */}
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Heart size={20} color={colors.primary} />
-                <Text style={styles.sectionTitle}>Mood</Text>
-              </View>
-              <Text style={styles.sectionDescription}>How are you feeling overall?</Text>
-              <View style={styles.scaleContainer}>
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((value) => (
-                  <TouchableOpacity
-                    key={value}
-                    style={[
-                      styles.scaleButton,
-                      mood === value && styles.selectedScaleButton
-                    ]}
-                    onPress={() => setMood(value)}
-                  >
-                    <Text style={[
-                      styles.scaleButtonText,
-                      mood === value && styles.selectedScaleButtonText
-                    ]}>
-                      {value}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            {/* Energy Rating */}
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Zap size={20} color={colors.primary} />
-                <Text style={styles.sectionTitle}>Energy</Text>
-              </View>
-              <Text style={styles.sectionDescription}>How energized do you feel?</Text>
-              <View style={styles.scaleContainer}>
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((value) => (
-                  <TouchableOpacity
-                    key={value}
-                    style={[
-                      styles.scaleButton,
-                      energy === value && styles.selectedScaleButton
-                    ]}
-                    onPress={() => setEnergy(value)}
-                  >
-                    <Text style={[
-                      styles.scaleButtonText,
-                      energy === value && styles.selectedScaleButtonText
-                    ]}>
-                      {value}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            {/* Motivation Rating */}
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Target size={20} color={colors.primary} />
-                <Text style={styles.sectionTitle}>Motivation</Text>
-              </View>
-              <Text style={styles.sectionDescription}>How motivated are you for training?</Text>
-              <View style={styles.scaleContainer}>
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((value) => (
-                  <TouchableOpacity
-                    key={value}
-                    style={[
-                      styles.scaleButton,
-                      motivation === value && styles.selectedScaleButton
-                    ]}
-                    onPress={() => setMotivation(value)}
-                  >
-                    <Text style={[
-                      styles.scaleButtonText,
-                      motivation === value && styles.selectedScaleButtonText
-                    ]}>
-                      {value}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            {/* Tags */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>How would you describe yourself today?</Text>
-              <View style={styles.tagsContainer}>
-                {mindsetTags.map((tag) => (
-                  <TouchableOpacity
-                    key={tag}
-                    style={[
-                      styles.tag,
-                      selectedTags.includes(tag) && styles.selectedTag
-                    ]}
-                    onPress={() => toggleTag(tag)}
-                  >
-                    <Text style={[
-                      styles.tagText,
-                      selectedTags.includes(tag) && styles.selectedTagText
-                    ]}>
-                      {tag}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            {/* Gratitude */}
-            <View 
-              style={styles.section}
-              onLayout={(event) => {
-                setGratitudeY(event.nativeEvent.layout.y);
-              }}
-            >
-              <Text style={styles.sectionTitle}>What are you grateful for today?</Text>
-              <TextInput
-                style={styles.textInput}
-                value={gratitude}
-                onChangeText={setGratitude}
-                onFocus={() => {
-                  setTimeout(() => scrollToInput(gratitudeY), 100);
-                }}
-                placeholder="Something you appreciate today..."
-                placeholderTextColor={colors.darkGray}
-                multiline
-                numberOfLines={3}
-                textAlignVertical="top"
-              />
-            </View>
-
-            {/* Reflection */}
-            <View 
-              style={styles.section}
-              onLayout={(event) => {
-                setReflectionY(event.nativeEvent.layout.y);
-              }}
-            >
-              <Text style={styles.sectionTitle}>Any thoughts or reflections?</Text>
-              <TextInput
-                style={styles.textInput}
-                value={reflection}
-                onChangeText={setReflection}
-                onFocus={() => {
-                  setTimeout(() => scrollToInput(reflectionY), 100);
-                }}
-                placeholder="What's on your mind..."
-                placeholderTextColor={colors.darkGray}
-                multiline
-                numberOfLines={3}
-                textAlignVertical="top"
-              />
-            </View>
-          </ScrollView>
-
-          <View style={styles.modalActions}>
-            <Button
-              title={todaysCheckin ? "Update Check-in" : "Complete Check-in"}
-              onPress={handleSubmit}
-              loading={isSubmittingCheckin}
-              style={styles.submitButton}
-            />
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
-    </>
-  );
-}
-
-const styles = StyleSheet.create({
+  const styles = StyleSheet.create({
   compactCard: {
     marginHorizontal: 0,
     marginVertical: 8,
@@ -377,6 +180,28 @@ const styles = StyleSheet.create({
   compactActionButton: {
     paddingHorizontal: 20,
     paddingVertical: 8,
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+  },
+  compactActionButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.background,
+  },
+  compactCompleteContainer: {
+    gap: 12,
+  },
+  logAnotherButton: {
+    alignSelf: 'flex-start',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: colors.lightGray,
+    borderRadius: 6,
+  },
+  logAnotherButtonText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.darkGray,
   },
   modalContainer: {
     flex: 1,
@@ -402,7 +227,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   scrollContentContainer: {
-    paddingBottom: 20,
+    paddingBottom: 120, // Extra padding to ensure submit button is visible above keyboard
   },
   errorContainer: {
     backgroundColor: colors.error,
@@ -428,6 +253,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text,
     marginLeft: 8,
+  },
+  emojiIndicator: {
+    fontSize: 24,
+    marginLeft: 'auto',
   },
   sectionDescription: {
     fontSize: 14,
@@ -472,52 +301,57 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: '700',
   },
-  tagsContainer: {
+  scaleLabels: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    justifyContent: 'space-between',
     marginTop: 8,
+    paddingHorizontal: 4,
   },
-  tag: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: colors.border,
-    backgroundColor: colors.cardBackground,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+  scaleLabelLeft: {
+    fontSize: 20,
   },
-  selectedTag: {
-    borderColor: colors.selectedBorder,
-    backgroundColor: colors.selectedBackground,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
+  scaleLabelCenter: {
+    fontSize: 20,
   },
-  tagText: {
-    fontSize: 14,
-    color: colors.text,
+  scaleLabelRight: {
+    fontSize: 20,
+  },
+  scaleTextLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    paddingHorizontal: 4,
+  },
+  scaleTextLabelLeft: {
+    fontSize: 12,
+    color: colors.darkGray,
     fontWeight: '500',
   },
-  selectedTagText: {
-    color: colors.primary,
-    fontWeight: '600',
+  scaleTextLabelRight: {
+    fontSize: 12,
+    color: colors.darkGray,
+    fontWeight: '500',
+  },
+  textInputContainer: {
+    position: 'relative',
+    marginTop: 8,
   },
   textInput: {
     backgroundColor: colors.lightGray,
     borderRadius: 8,
     padding: 16,
+    paddingBottom: 28,
     fontSize: 16,
     color: colors.text,
     minHeight: 80,
     textAlignVertical: 'top',
-    marginTop: 8,
+  },
+  charCount: {
+    position: 'absolute',
+    bottom: 8,
+    right: 12,
+    fontSize: 12,
+    color: colors.darkGray,
   },
   modalActions: {
     padding: 24,
@@ -529,3 +363,192 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
 });
+
+  // Always render both the view and the modal
+  return (
+    <>
+      {compact && renderCompactView()}
+      <Modal
+        visible={showModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowModal(false)}
+      >
+        <KeyboardAvoidingView 
+          style={styles.modalContainer}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
+        >
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>
+              {isNewCheckin && todaysCheckin ? 'Replace Today\'s Check-in' : 'Daily Mindset Check-in'}
+            </Text>
+            <TouchableOpacity onPress={() => setShowModal(false)}>
+              <X size={24} color={colors.darkGray} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView 
+            ref={scrollViewRef}
+            style={styles.modalContent} 
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContentContainer}
+            keyboardShouldPersistTaps="handled"
+          >
+            {error && (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            )}
+
+            {/* Mood Rating */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Heart size={20} color={colors.primary} />
+                <Text style={styles.sectionTitle}>Mood</Text>
+                <Text style={styles.emojiIndicator}>{getMoodEmoji(mood)}</Text>
+              </View>
+              <Text style={styles.sectionDescription}>How are you feeling overall?</Text>
+              <View style={styles.scaleContainer}>
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((value) => (
+                  <TouchableOpacity
+                    key={value}
+                    style={[
+                      styles.scaleButton,
+                      mood === value && styles.selectedScaleButton
+                    ]}
+                    onPress={() => setMood(value)}
+                  >
+                    <Text style={[
+                      styles.scaleButtonText,
+                      mood === value && styles.selectedScaleButtonText
+                    ]}>
+                      {value}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <View style={styles.scaleLabels}>
+                <Text style={styles.scaleLabelLeft}>😞</Text>
+                <Text style={styles.scaleLabelCenter}>😐</Text>
+                <Text style={styles.scaleLabelRight}>😊</Text>
+              </View>
+            </View>
+
+            {/* Energy Rating */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Zap size={20} color={colors.primary} />
+                <Text style={styles.sectionTitle}>Energy</Text>
+              </View>
+              <Text style={styles.sectionDescription}>How energized do you feel?</Text>
+              <View style={styles.scaleContainer}>
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((value) => (
+                  <TouchableOpacity
+                    key={value}
+                    style={[
+                      styles.scaleButton,
+                      energy === value && styles.selectedScaleButton
+                    ]}
+                    onPress={() => setEnergy(value)}
+                  >
+                    <Text style={[
+                      styles.scaleButtonText,
+                      energy === value && styles.selectedScaleButtonText
+                    ]}>
+                      {value}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <View style={styles.scaleTextLabels}>
+                <Text style={styles.scaleTextLabelLeft}>Drained</Text>
+                <Text style={styles.scaleTextLabelRight}>Energized</Text>
+              </View>
+            </View>
+
+            {/* Motivation Rating */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Target size={20} color={colors.primary} />
+                <Text style={styles.sectionTitle}>Motivation</Text>
+              </View>
+              <Text style={styles.sectionDescription}>How motivated are you for training?</Text>
+              <View style={styles.scaleContainer}>
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((value) => (
+                  <TouchableOpacity
+                    key={value}
+                    style={[
+                      styles.scaleButton,
+                      motivation === value && styles.selectedScaleButton
+                    ]}
+                    onPress={() => setMotivation(value)}
+                  >
+                    <Text style={[
+                      styles.scaleButtonText,
+                      motivation === value && styles.selectedScaleButtonText
+                    ]}>
+                      {value}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <View style={styles.scaleTextLabels}>
+                <Text style={styles.scaleTextLabelLeft}>Not feeling it</Text>
+                <Text style={styles.scaleTextLabelRight}>Ready to crush it</Text>
+              </View>
+            </View>
+
+            {/* Self Description */}
+            <View 
+              style={styles.section}
+              onLayout={(event) => {
+                setDescriptionY(event.nativeEvent.layout.y);
+              }}
+            >
+              <Text style={styles.sectionTitle}>Describe yourself today</Text>
+              <View style={styles.textInputContainer}>
+                <TextInput
+                  style={styles.textInput}
+                  value={selfDescription}
+                  onChangeText={(text) => {
+                    if (text.length <= 150) {
+                      setSelfDescription(text);
+                    }
+                  }}
+                  onFocus={() => {
+                    setTimeout(() => scrollToInput(descriptionY), 100);
+                  }}
+                  placeholder="How would you describe yourself today?"
+                  placeholderTextColor={colors.darkGray}
+                  multiline
+                  numberOfLines={3}
+                  textAlignVertical="top"
+                  maxLength={150}
+                />
+                <Text style={styles.charCount}>{selfDescription.length}/150</Text>
+              </View>
+            </View>
+
+            {/* Body Pain Selector */}
+            <BodyPainSelector
+              selectedAreas={bodyPainAreas}
+              onAreasChange={setBodyPainAreas}
+              overallPainLevel={overallPainLevel}
+              onOverallPainChange={setOverallPainLevel}
+            />
+          </ScrollView>
+
+          <View style={styles.modalActions}>
+            <Button
+              title={todaysCheckin ? "Update Check-in" : "Complete Check-in"}
+              onPress={handleSubmit}
+              loading={isSubmittingCheckin}
+              style={styles.submitButton}
+            />
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+    </>
+  );
+}

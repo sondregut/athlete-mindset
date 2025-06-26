@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, Platform, TouchableOpacity, Modal, Dimensions, NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { colors } from '@/constants/colors';
+import { useThemeColors } from '@/hooks/useThemeColors';
 import { useSessionStore } from '@/store/session-store';
 import { SessionLog, SessionType } from '@/types/session';
 import { mindsetCues } from '@/constants/mindset-cues';
@@ -11,6 +11,7 @@ import SelectableTag from '@/components/SelectableTag';
 import StarRating from '@/components/StarRating';
 import SessionTypeIcon from '@/components/SessionTypeIcon';
 import RPESlider from '@/components/RPESlider';
+import SessionHistoryModal from '@/components/SessionHistoryModal';
 
 // Step 1: Initial Setup
 function SetupStep({
@@ -24,6 +25,9 @@ function SetupStep({
   onActivityChange,
   onContinue,
   onBack,
+  onShowHistory,
+  colors,
+  styles,
 }: {
   date: string;
   sessionType: SessionType;
@@ -35,6 +39,9 @@ function SetupStep({
   onActivityChange: (value: string) => void;
   onContinue: () => void;
   onBack?: () => void;
+  onShowHistory?: () => void;
+  colors: any;
+  styles: any;
 }) {
   const sessionTypes: { value: SessionType; label: string }[] = [
     { value: 'training', label: 'Training' },
@@ -184,6 +191,8 @@ function SetupStep({
         placeholderTextColor={colors.darkGray}
       />
       
+
+      
       <View style={styles.buttonContainer}>
         {onBack && (
           <Button
@@ -215,6 +224,8 @@ function IntentionStep({
   onReadinessChange,
   onStartSession,
   onBack,
+  colors,
+  styles,
 }: {
   intention: string;
   selectedCues: string[];
@@ -226,6 +237,8 @@ function IntentionStep({
   onReadinessChange: (value: number) => void;
   onStartSession: () => void;
   onBack?: () => void;
+  colors: any;
+  styles: any;
 }) {
   const toggleCue = (cue: string) => {
     if (selectedCues.includes(cue)) {
@@ -307,11 +320,15 @@ function SessionUnderwayStep({
   elapsedTime,
   onFinishSession,
   onBack,
+  colors,
+  styles,
 }: {
   sessionData: Partial<SessionLog>;
   elapsedTime: string;
   onFinishSession: () => void;
   onBack?: () => void;
+  colors: any;
+  styles: any;
 }) {
   const sessionType = sessionData.sessionType || 'training';
   const customSessionType = sessionData.customSessionType || '';
@@ -392,6 +409,8 @@ function ReflectionStep({
   onSessionRatingChange,
   onCompleteSession,
   onBack,
+  colors,
+  styles,
 }: {
   positives: string[];
   stretchGoal: string;
@@ -403,6 +422,8 @@ function ReflectionStep({
   onSessionRatingChange: (value: number) => void;
   onCompleteSession: () => void;
   onBack?: () => void;
+  colors: any;
+  styles: any;
 }) {
   return (
     <Card>
@@ -473,6 +494,7 @@ function ReflectionStep({
 
 
 export default function LogSessionScreen() {
+  const colors = useThemeColors();
   const params = useLocalSearchParams();
   const isEditMode = !!params.edit;
   
@@ -512,6 +534,10 @@ export default function LogSessionScreen() {
   const [stretchGoal, setStretchGoal] = useState('');
   const [rpe, setRpe] = useState(7);
   const [sessionRating, setSessionRating] = useState(3);
+  
+  // Session History Modal state
+  const [showSessionHistory, setShowSessionHistory] = useState(false);
+  const { getRecentLogs } = useSessionStore();
   
   // Reset state when screen is focused and no current session
   useFocusEffect(
@@ -623,6 +649,21 @@ export default function LogSessionScreen() {
     navigateToStep(4);
   };
   
+  const handleSelectSessionFromHistory = (session: SessionLog) => {
+    // Populate form with selected session data
+    setDate(session.date);
+    setSessionType(session.sessionType);
+    setCustomSessionType(session.customSessionType || '');
+    setActivity(session.activity || '');
+    setIntention(session.intention || '');
+    setSelectedCues(session.mindsetCues || []);
+    setNotes(session.notes || '');
+    setReadinessRating(session.readinessRating || 7);
+    
+    // Close the modal
+    setShowSessionHistory(false);
+  };
+  
   const handlePositiveChange = (index: number, value: string) => {
     const newPositives = [...positives];
     newPositives[index] = value;
@@ -666,24 +707,35 @@ export default function LogSessionScreen() {
       
       // Complete the session and navigate back to home
       // Using setTimeout to ensure the state update completes first
-      setTimeout(() => {
+      setTimeout(async () => {
         stopSessionTimer(); // Stop timer when completing session
-        completeCurrentSession();
-        // Reset all local state for a fresh start next time
-        setStep(1);
-        setDate(new Date().toISOString().split('T')[0]);
-        setSessionType('training');
-        setCustomSessionType('');
-        setActivity('');
-        setIntention('');
-        setSelectedCues([]);
-        setNotes('');
-        setReadinessRating(7);
-        setPositives(['', '', '']);
-        setStretchGoal('');
-        setRpe(7);
-        setSessionRating(3);
-        router.replace('/');
+        
+        // Complete session and check for milestones
+        try {
+          const milestone = await completeCurrentSession();
+          
+          // Reset all local state for a fresh start next time
+          setStep(1);
+          setDate(new Date().toISOString().split('T')[0]);
+          setSessionType('training');
+          setCustomSessionType('');
+          setActivity('');
+          setIntention('');
+          setSelectedCues([]);
+          setNotes('');
+          setReadinessRating(7);
+          setPositives(['', '', '']);
+          setStretchGoal('');
+          setRpe(7);
+          setSessionRating(3);
+          
+          // Navigate to home - milestone celebration will be shown there
+          router.replace('/');
+        } catch (error) {
+          console.error('Error completing session:', error);
+          // Still navigate home even if there's an error
+          router.replace('/');
+        }
       }, 150);
     }
   };
@@ -704,16 +756,14 @@ export default function LogSessionScreen() {
     if (step > 1) {
       navigateToStep(step - 1);
     } else {
-      // If backing out from the first step and no meaningful data has been entered, reset the session
-      const hasData = currentSession && (
-        currentSession.activity?.trim() ||
-        currentSession.intention?.trim() ||
-        currentSession.notes?.trim() ||
-        (currentSession.mindsetCues && currentSession.mindsetCues.length > 0) ||
-        currentSession.readinessRating !== undefined
-      );
+      // If backing out from the first step, check if any data has been entered
+      const hasData = sessionType !== 'training' || // Non-default session type
+        customSessionType.trim() !== '' ||
+        activity.trim() !== '' ||
+        date !== new Date().toISOString().split('T')[0]; // Non-default date
       
-      if (!hasData) {
+      // Reset the session if no meaningful data has been entered
+      if (!hasData && currentSession) {
         resetCurrentSession();
       }
       
@@ -725,11 +775,14 @@ export default function LogSessionScreen() {
   const handleContinueFromSetup = () => {
     console.log('📋 Continue from setup - moving to step 2');
     
+    // Only create/update session when user has entered meaningful data
+    const sessionId = currentSession?.id || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
     // Update session data
     updateCurrentSession({
-      id: currentSession?.id || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: sessionId,
       date,
-      createdAt: new Date().toISOString(),
+      createdAt: currentSession?.createdAt || new Date().toISOString(),
       sessionType,
       customSessionType: sessionType === 'other' ? customSessionType : undefined,
       activity,
@@ -819,6 +872,9 @@ export default function LogSessionScreen() {
             onActivityChange={setActivity}
             onContinue={handleContinueFromSetup}
             onBack={handleBack}
+            onShowHistory={() => setShowSessionHistory(true)}
+            colors={colors}
+            styles={styles}
           />
         );
       case 2:
@@ -834,6 +890,8 @@ export default function LogSessionScreen() {
             onReadinessChange={setReadinessRating}
             onStartSession={handleStartSession}
             onBack={handleBack}
+            colors={colors}
+            styles={styles}
           />
         );
       case 3:
@@ -843,6 +901,8 @@ export default function LogSessionScreen() {
             elapsedTime={elapsedTime}
             onFinishSession={handleFinishSession}
             onBack={handleBack}
+            colors={colors}
+            styles={styles}
           />
         );
       case 4:
@@ -858,12 +918,309 @@ export default function LogSessionScreen() {
             onSessionRatingChange={setSessionRating}
             onCompleteSession={handleCompleteSession}
             onBack={handleBack}
+            colors={colors}
+            styles={styles}
           />
         );
       default:
         return null;
     }
   };
+
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    horizontalScrollView: {
+      flex: 1,
+    },
+    horizontalContentContainer: {
+      flexDirection: 'row',
+    },
+    stepContainer: {
+      flex: 1,
+      height: '100%',
+    },
+    verticalScrollView: {
+      flex: 1,
+    },
+    contentContainer: {
+      padding: 16,
+      paddingBottom: 32,
+    },
+    stepIndicatorContainer: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      height: 44, // Back to standard nav bar height
+      paddingHorizontal: 16, // iOS standard horizontal padding
+      paddingTop: 8, // Minimal top padding
+      paddingBottom: 4, // Minimal bottom padding
+      marginBottom: 4, // Minimal space before content
+      alignItems: 'center', // Center the dots vertically
+    },
+    stepIndicator: {
+      width: 8, // Slightly smaller dots for cleaner look
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: colors.mediumGray,
+      marginHorizontal: 8, // iOS standard 8pt spacing between elements
+    },
+    activeStepIndicator: {
+      backgroundColor: colors.primary,
+      width: 10, // Proportional to the smaller base size
+      height: 10,
+      borderRadius: 5,
+    },
+    completedStepIndicator: {
+      backgroundColor: colors.primary,
+      opacity: 0.5,
+    },
+    stepTitle: {
+      fontSize: 20,
+      fontWeight: '600',
+      marginBottom: 16,
+      color: colors.text,
+      textAlign: 'center',
+    },
+    inputLabel: {
+      fontSize: 16,
+      fontWeight: '500',
+      marginBottom: 8,
+      marginTop: 16,
+      color: colors.text,
+    },
+    input: {
+      backgroundColor: colors.background,
+      borderWidth: 1,
+      borderColor: colors.mediumGray,
+      borderRadius: 8,
+      padding: 12,
+      fontSize: 16,
+      color: colors.text,
+      marginBottom: 8,
+    },
+    textArea: {
+      minHeight: 80,
+      maxHeight: 120,
+      textAlignVertical: 'top',
+      paddingTop: 12,
+    },
+    sessionTypeContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      marginTop: 8,
+    },
+    cuesContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      marginTop: 8,
+    },
+    actionButton: {
+      flex: 1,
+    },
+    backButton: {
+      marginRight: 8,
+    },
+    continueButton: {
+      marginTop: 24,
+    },
+    sessionInfoContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 16,
+      padding: 16,
+      backgroundColor: colors.cardBackground,
+      borderRadius: 8,
+    },
+    sessionTypeIconContainer: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: colors.background,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 16,
+    },
+    sessionInfoTextContainer: {
+      flex: 1,
+    },
+    sessionInfoTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    sessionInfoSubtitle: {
+      fontSize: 14,
+      color: colors.darkGray,
+      marginTop: 4,
+    },
+    intentionSummaryContainer: {
+      marginBottom: 16,
+      padding: 16,
+      backgroundColor: colors.cardBackground,
+      borderRadius: 8,
+    },
+    intentionSummaryLabel: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 8,
+    },
+    intentionSummaryText: {
+      fontSize: 16,
+      color: colors.text,
+      lineHeight: 22,
+    },
+    cuesSummaryContainer: {
+      marginTop: 12,
+    },
+    cuesSummaryLabel: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 4,
+    },
+    cuesSummaryList: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+    },
+    cuesSummaryItem: {
+      backgroundColor: colors.primary,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 12,
+      marginRight: 6,
+      marginBottom: 6,
+    },
+    cuesSummaryText: {
+      color: colors.background,
+      fontSize: 12,
+      fontWeight: '500',
+    },
+    timerContainer: {
+      alignItems: 'center',
+      marginVertical: 24,
+    },
+    timerLabel: {
+      fontSize: 14,
+      color: colors.darkGray,
+      marginBottom: 4,
+    },
+    timerValue: {
+      fontSize: 36,
+      fontWeight: '700',
+      color: colors.primary,
+      fontVariant: ['tabular-nums'],
+    },
+    ratingContainer: {
+      alignItems: 'center',
+      marginTop: 8,
+    },
+    dateButton: {
+      backgroundColor: colors.cardBackground,
+      borderWidth: 2,
+      borderColor: colors.border,
+      borderRadius: 8,
+      padding: 12,
+      marginBottom: 8,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 1,
+    },
+    dateButtonText: {
+      fontSize: 16,
+      color: colors.text,
+      fontWeight: '500',
+    },
+    buttonContainer: {
+      flexDirection: 'row',
+      marginTop: 24,
+      gap: 12,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    modalContent: {
+      backgroundColor: colors.background,
+      borderRadius: 12,
+      padding: 20,
+      width: '80%',
+      maxHeight: '60%',
+    },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      marginBottom: 16,
+      textAlign: 'center',
+      color: colors.text,
+    },
+    dateOptionsContainer: {
+      maxHeight: 300,
+    },
+    dateOption: {
+      padding: 16,
+      borderRadius: 8,
+      marginBottom: 8,
+      backgroundColor: colors.cardBackground,
+      borderWidth: 2,
+      borderColor: colors.border,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 1,
+    },
+    selectedDateOption: {
+      backgroundColor: colors.selectedBackground,
+      borderColor: colors.selectedBorder,
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    dateOptionText: {
+      fontSize: 16,
+      color: colors.text,
+      textAlign: 'center',
+      fontWeight: '500',
+    },
+    selectedDateOptionText: {
+      color: colors.primary,
+      fontWeight: '700',
+    },
+    modalCloseButton: {
+      marginTop: 16,
+      padding: 12,
+      backgroundColor: colors.mediumGray,
+      borderRadius: 8,
+    },
+    modalCloseButtonText: {
+      fontSize: 16,
+      color: colors.text,
+      textAlign: 'center',
+      fontWeight: '500',
+    },
+    historyButton: {
+      marginTop: 12,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      backgroundColor: colors.lightGray,
+      borderRadius: 8,
+      alignItems: 'center',
+    },
+    historyButtonText: {
+      fontSize: 14,
+      color: colors.primary,
+      fontWeight: '600',
+    },
+  });
 
   return (
     <View style={styles.container}>
@@ -903,288 +1260,11 @@ export default function LogSessionScreen() {
           </View>
         ))}
       </ScrollView>
+      
+      <SessionHistoryModal
+        isVisible={showSessionHistory}
+        onClose={() => setShowSessionHistory(false)}
+      />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  horizontalScrollView: {
-    flex: 1,
-  },
-  horizontalContentContainer: {
-    flexDirection: 'row',
-  },
-  stepContainer: {
-    flex: 1,
-    height: '100%',
-  },
-  verticalScrollView: {
-    flex: 1,
-  },
-  contentContainer: {
-    padding: 16,
-    paddingBottom: 32,
-  },
-  stepIndicatorContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    height: 44, // Back to standard nav bar height
-    paddingHorizontal: 16, // iOS standard horizontal padding
-    paddingTop: 8, // Minimal top padding
-    paddingBottom: 4, // Minimal bottom padding
-    marginBottom: 4, // Minimal space before content
-    alignItems: 'center', // Center the dots vertically
-  },
-  stepIndicator: {
-    width: 8, // Slightly smaller dots for cleaner look
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.mediumGray,
-    marginHorizontal: 8, // iOS standard 8pt spacing between elements
-  },
-  activeStepIndicator: {
-    backgroundColor: colors.primary,
-    width: 10, // Proportional to the smaller base size
-    height: 10,
-    borderRadius: 5,
-  },
-  completedStepIndicator: {
-    backgroundColor: colors.primary,
-    opacity: 0.5,
-  },
-  stepTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    marginBottom: 16,
-    color: colors.text,
-    textAlign: 'center',
-  },
-  inputLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    marginBottom: 8,
-    marginTop: 16,
-    color: colors.text,
-  },
-  input: {
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.mediumGray,
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    color: colors.text,
-    marginBottom: 8,
-  },
-  textArea: {
-    minHeight: 80,
-    maxHeight: 120,
-    textAlignVertical: 'top',
-    paddingTop: 12,
-  },
-  sessionTypeContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 8,
-  },
-  cuesContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 8,
-  },
-  actionButton: {
-    flex: 1,
-  },
-  backButton: {
-    marginRight: 8,
-  },
-  continueButton: {
-    marginTop: 24,
-  },
-  sessionInfoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    padding: 16,
-    backgroundColor: colors.cardBackground,
-    borderRadius: 8,
-  },
-  sessionTypeIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  sessionInfoTextContainer: {
-    flex: 1,
-  },
-  sessionInfoTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  sessionInfoSubtitle: {
-    fontSize: 14,
-    color: colors.darkGray,
-    marginTop: 4,
-  },
-  intentionSummaryContainer: {
-    marginBottom: 16,
-    padding: 16,
-    backgroundColor: colors.cardBackground,
-    borderRadius: 8,
-  },
-  intentionSummaryLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 8,
-  },
-  intentionSummaryText: {
-    fontSize: 16,
-    color: colors.text,
-    lineHeight: 22,
-  },
-  cuesSummaryContainer: {
-    marginTop: 12,
-  },
-  cuesSummaryLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 4,
-  },
-  cuesSummaryList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  cuesSummaryItem: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginRight: 6,
-    marginBottom: 6,
-  },
-  cuesSummaryText: {
-    color: colors.background,
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  timerContainer: {
-    alignItems: 'center',
-    marginVertical: 24,
-  },
-  timerLabel: {
-    fontSize: 14,
-    color: colors.darkGray,
-    marginBottom: 4,
-  },
-  timerValue: {
-    fontSize: 36,
-    fontWeight: '700',
-    color: colors.primary,
-    fontVariant: ['tabular-nums'],
-  },
-  ratingContainer: {
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  dateButton: {
-    backgroundColor: colors.cardBackground,
-    borderWidth: 2,
-    borderColor: colors.border,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  dateButtonText: {
-    fontSize: 16,
-    color: colors.text,
-    fontWeight: '500',
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    marginTop: 24,
-    gap: 12,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: colors.background,
-    borderRadius: 12,
-    padding: 20,
-    width: '80%',
-    maxHeight: '60%',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 16,
-    textAlign: 'center',
-    color: colors.text,
-  },
-  dateOptionsContainer: {
-    maxHeight: 300,
-  },
-  dateOption: {
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 8,
-    backgroundColor: colors.cardBackground,
-    borderWidth: 2,
-    borderColor: colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  selectedDateOption: {
-    backgroundColor: colors.selectedBackground,
-    borderColor: colors.selectedBorder,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  dateOptionText: {
-    fontSize: 16,
-    color: colors.text,
-    textAlign: 'center',
-    fontWeight: '500',
-  },
-  selectedDateOptionText: {
-    color: colors.primary,
-    fontWeight: '700',
-  },
-  modalCloseButton: {
-    marginTop: 16,
-    padding: 12,
-    backgroundColor: colors.mediumGray,
-    borderRadius: 8,
-  },
-  modalCloseButtonText: {
-    fontSize: 16,
-    color: colors.text,
-    textAlign: 'center',
-    fontWeight: '500',
-  },
-});

@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Play, Clock, CheckCircle } from 'lucide-react-native';
 import { router } from 'expo-router';
-import { colors } from '@/constants/colors';
+import { useThemeColors } from '@/hooks/useThemeColors';
 import { useSessionStore } from '@/store/session-store';
 import Card from './Card';
 import Button from './Button';
@@ -13,6 +13,7 @@ interface SessionLoggerProps {
 
 export default function SessionLogger({ compact = false }: SessionLoggerProps) {
   const { currentSession, elapsedTime } = useSessionStore();
+  const colors = useThemeColors();
 
   const handleStartSession = () => {
     router.push('/log-session');
@@ -92,6 +93,35 @@ export default function SessionLogger({ compact = false }: SessionLoggerProps) {
     );
   };
 
+  const styles = StyleSheet.create({
+    compactCard: {
+      marginHorizontal: 0,
+      marginVertical: 8,
+    },
+    compactHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    compactInfo: {
+      flex: 1,
+      marginLeft: 12,
+    },
+    compactTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 2,
+    },
+    compactSubtitle: {
+      fontSize: 14,
+      color: colors.darkGray,
+    },
+    compactActionButton: {
+      paddingHorizontal: 20,
+      paddingVertical: 8,
+    },
+  });
+
   if (compact) {
     return renderCompactView();
   }
@@ -99,32 +129,3 @@ export default function SessionLogger({ compact = false }: SessionLoggerProps) {
   // Non-compact view (if needed in the future)
   return renderCompactView();
 }
-
-const styles = StyleSheet.create({
-  compactCard: {
-    marginHorizontal: 0,
-    marginVertical: 8,
-  },
-  compactHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  compactInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  compactTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 2,
-  },
-  compactSubtitle: {
-    fontSize: 14,
-    color: colors.darkGray,
-  },
-  compactActionButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-  },
-});

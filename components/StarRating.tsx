@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Star } from 'lucide-react-native';
-import { colors } from '@/constants/colors';
+import { useThemeColors } from '@/hooks/useThemeColors';
 
 interface StarRatingProps {
   rating: number;
@@ -18,6 +18,19 @@ export default function StarRating({
   onRatingChange,
   readonly = false
 }: StarRatingProps) {
+  const colors = useThemeColors();
+  
+  const styles = StyleSheet.create({
+    container: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    starContainer: {
+      padding: 4,
+    },
+  });
+
   return (
     <View style={styles.container}>
       {Array.from({ length: maxRating }).map((_, index) => (
@@ -37,14 +50,3 @@ export default function StarRating({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  starContainer: {
-    padding: 4,
-  },
-});

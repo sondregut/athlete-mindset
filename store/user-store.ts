@@ -83,20 +83,44 @@ export type TrackFieldEvent =
   | 'race-walk';
 export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced';
 
+export type AgeRange = 
+  | 'under-18'
+  | '18-24'
+  | '25-34'
+  | '35-44'
+  | '45-54'
+  | '55-64'
+  | '65-plus'
+  | 'prefer-not-to-say';
+
 interface UserProfile {
   name: string;
   age?: number;
-  sport: SportType;
+  ageRange?: AgeRange;
+  sport?: SportType;
   trackFieldEvent?: TrackFieldEvent; // Only used when sport is 'track-and-field'
-  experienceLevel: ExperienceLevel;
+  experienceLevel?: ExperienceLevel;
   joinDate: string;
-  preferredUnits: 'metric' | 'imperial';
+  preferredUnits?: 'metric' | 'imperial';
   notificationsEnabled: boolean;
   reminderTime?: string; // HH:MM format
+  // Goals from onboarding
+  weeklySessionTarget?: number;
+  streakGoal?: number;
+  primaryFocus?: 'consistency' | 'performance' | 'mindset' | 'recovery';
+  motivationType?: 'achievement' | 'progress' | 'community' | 'personal';
+}
+
+interface UserPreferences {
+  pushNotifications?: boolean;
+  darkMode?: boolean;
+  publicProfile?: boolean;
+  shareData?: boolean;
 }
 
 interface UserState {
   profile: UserProfile;
+  preferences: UserPreferences;
   
   // Loading states
   isUpdatingProfile: boolean;
@@ -107,6 +131,7 @@ interface UserState {
   
   // Actions
   updateProfile: (data: Partial<UserProfile>) => Promise<void>;
+  updatePreferences: (data: Partial<UserPreferences>) => void;
   resetProfile: () => Promise<void>;
   setError: (error: string | null) => void;
   clearError: () => void;
@@ -114,10 +139,7 @@ interface UserState {
 
 const defaultProfile: UserProfile = {
   name: '',
-  sport: 'other',
-  experienceLevel: 'beginner',
   joinDate: new Date().toISOString(),
-  preferredUnits: 'metric',
   notificationsEnabled: true,
 };
 
@@ -125,6 +147,7 @@ export const useUserStore = create<UserState>()(
   persist(
     (set, get) => ({
       profile: defaultProfile,
+      preferences: {},
       
       // Loading states
       isUpdatingProfile: false,
@@ -159,6 +182,12 @@ export const useUserStore = create<UserState>()(
         } finally {
           set({ isUpdatingProfile: false });
         }
+      },
+      
+      updatePreferences: (data) => {
+        set((state) => ({
+          preferences: { ...state.preferences, ...data }
+        }));
       },
       
       resetProfile: async () => {
@@ -241,6 +270,17 @@ export const sportOptions: { value: SportType; label: string; icon: string }[] =
   { value: 'wrestling', label: 'Wrestling', icon: '🤼' },
   { value: 'yoga', label: 'Yoga & Mindfulness', icon: '🧘' },
   { value: 'other', label: 'Other', icon: '🏃' },
+];
+
+export const ageRangeOptions: { value: AgeRange; label: string; icon: string }[] = [
+  { value: 'under-18', label: 'Under 18', icon: '👶' },
+  { value: '18-24', label: '18-24', icon: '🧑' },
+  { value: '25-34', label: '25-34', icon: '👤' },
+  { value: '35-44', label: '35-44', icon: '🧑‍💼' },
+  { value: '45-54', label: '45-54', icon: '👨‍💼' },
+  { value: '55-64', label: '55-64', icon: '🧓' },
+  { value: '65-plus', label: '65+', icon: '👴' },
+  { value: 'prefer-not-to-say', label: 'Prefer not to say', icon: '🤐' },
 ];
 
 export const experienceLevelOptions: { value: ExperienceLevel; label: string; description: string; icon: string }[] = [

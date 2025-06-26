@@ -24,6 +24,7 @@ import {
 } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 import { useNotificationStore } from '@/store/notification-store';
+import { firebaseNotifications } from '@/services/firebase-notifications';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 import Card from './Card';
 import Button from './Button';
@@ -196,7 +197,12 @@ export default function NotificationSettings() {
 
   const handlePermissionRequest = async () => {
     const granted = await executeWithErrorHandling(async () => {
-      return await requestPermission();
+      // Use Firebase notification service to request permissions
+      const firebaseGranted = await firebaseNotifications.requestPermissions();
+      if (firebaseGranted) {
+        await requestPermission(); // Update local store state
+      }
+      return firebaseGranted;
     }, {
       fallbackMessage: 'Failed to request notification permission'
     });
@@ -228,7 +234,20 @@ export default function NotificationSettings() {
 
   const handleSettingChange = async (key: keyof typeof settings, value: any) => {
     await executeWithErrorHandling(async () => {
+      // Update local store
       await updateSettings({ [key]: value });
+      
+      // Update Firebase settings
+      await firebaseNotifications.updateSettings({ [key]: value });
+      
+      // Handle specific notification scheduling
+      if (key === 'dailyReminder' && value && settings.dailyReminderTime) {
+        await firebaseNotifications.scheduleDailyReminder(settings.dailyReminderTime);
+      } else if (key === 'dailyReminderTime' && settings.dailyReminder) {
+        await firebaseNotifications.scheduleDailyReminder(value);
+      } else if (key === 'weeklyGoalReminder' && value) {
+        await firebaseNotifications.scheduleWeeklyGoalReminder();
+      }
     }, {
       fallbackMessage: `Failed to update ${key} setting`
     });

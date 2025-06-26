@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, Dimensions, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { ChevronLeft } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 import { useOnboardingStore, onboardingSteps } from '@/store/onboarding-store';
 import { useUserStore } from '@/store/user-store';
-import Button from '@/components/Button';
+import OnboardingButton from '@/components/onboarding/OnboardingButton';
 import OnboardingWelcome from '@/components/onboarding/OnboardingWelcome';
 import OnboardingPhilosophy from '@/components/onboarding/OnboardingPhilosophy';
 import OnboardingFeatures from '@/components/onboarding/OnboardingFeatures';
@@ -71,7 +72,8 @@ export default function OnboardingScreen() {
   };
 
   const handleSkip = () => {
-    handleComplete();
+    // Skip to the authentication screen (last step)
+    setOnboardingStep(5);
   };
 
   const renderStep = () => {
@@ -105,11 +107,15 @@ export default function OnboardingScreen() {
           );
         case 3:
           return (
-            <OnboardingAuth />
+            <OnboardingProfile
+              step={onboardingSteps[3]}
+              onNext={handleNext}
+              onBack={handleBack}
+            />
           );
         case 4:
           return (
-            <OnboardingProfile
+            <OnboardingGoals
               step={onboardingSteps[4]}
               onNext={handleNext}
               onBack={handleBack}
@@ -117,11 +123,8 @@ export default function OnboardingScreen() {
           );
         case 5:
           return (
-            <OnboardingGoals
+            <OnboardingAuth 
               step={onboardingSteps[5]}
-              onNext={handleNext}
-              onBack={handleBack}
-              onComplete={handleComplete}
             />
           );
         default:
@@ -131,7 +134,7 @@ export default function OnboardingScreen() {
               <Text style={{ fontSize: 18, color: colors.text, textAlign: 'center' }}>
                 Something went wrong. Let's start over.
               </Text>
-              <Button 
+              <OnboardingButton 
                 title="Reset Onboarding" 
                 onPress={() => {
                   setOnboardingStep(0);
@@ -148,7 +151,7 @@ export default function OnboardingScreen() {
           <Text style={{ fontSize: 18, color: colors.error, textAlign: 'center', marginBottom: 20 }}>
             Error loading onboarding step
           </Text>
-          <Button 
+          <OnboardingButton 
             title="Try Again" 
             onPress={() => {
               setOnboardingStep(0);
@@ -163,18 +166,32 @@ export default function OnboardingScreen() {
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
       
-      {/* Progress Indicator */}
+      {/* Progress Indicator with Back Button */}
       <View style={styles.progressContainer}>
-        {onboardingSteps.map((_, index) => (
-          <View
-            key={index}
-            style={[
-              styles.progressDot,
-              index === currentStep && styles.activeDot,
-              index < currentStep && styles.completedDot,
-            ]}
-          />
-        ))}
+        {/* Back Button */}
+        {currentStep > 0 && (
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={handleBack}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <ChevronLeft size={20} color={colors.darkGray} />
+          </TouchableOpacity>
+        )}
+        
+        {/* Progress Dots */}
+        <View style={styles.dotsContainer}>
+          {onboardingSteps.map((_, index) => (
+            <View
+              key={index}
+              style={[
+                styles.progressDot,
+                index === currentStep && styles.activeDot,
+                index < currentStep && styles.completedDot,
+              ]}
+            />
+          ))}
+        </View>
       </View>
 
       {/* Step Content */}
@@ -191,12 +208,28 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   progressContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    position: 'relative',
     paddingTop: 20,
     paddingHorizontal: 20,
     paddingBottom: 10,
+    zIndex: 5,
+  },
+  backButton: {
+    position: 'absolute',
+    left: 20,
+    top: 20,
+    width: 40,
+    height: 40,
+    backgroundColor: colors.lightGray,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  dotsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
     gap: 8,
   },
   progressDot: {

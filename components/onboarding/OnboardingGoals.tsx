@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 import { useOnboardingStore, focusOptions, motivationOptions } from '@/store/onboarding-store';
-import Button from '@/components/Button';
+import OnboardingButton from './OnboardingButton';
 
 interface OnboardingGoalsProps {
   step: {
@@ -15,16 +15,15 @@ interface OnboardingGoalsProps {
   };
   onNext: () => void;
   onBack: () => void;
-  onComplete: () => void;
 }
 
-export default function OnboardingGoals({ step, onNext, onBack, onComplete }: OnboardingGoalsProps) {
+export default function OnboardingGoals({ step, onNext, onBack }: OnboardingGoalsProps) {
   const { goals, updateGoals } = useOnboardingStore();
   const [localGoals, setLocalGoals] = useState(goals);
 
-  const handleSaveAndComplete = () => {
+  const handleSaveAndNext = () => {
     updateGoals(localGoals);
-    onComplete();
+    onNext();
   };
 
   const updateLocalGoals = (updates: Partial<typeof localGoals>) => {
@@ -166,16 +165,10 @@ export default function OnboardingGoals({ step, onNext, onBack, onComplete }: On
 
       {/* Actions */}
       <View style={styles.actions}>
-        <Button
-          title="Complete Setup"
-          onPress={handleSaveAndComplete}
+        <OnboardingButton
+          title="Next"
+          onPress={handleSaveAndNext}
           style={styles.primaryButton}
-        />
-        <Button
-          title="Back"
-          onPress={onBack}
-          variant="outline"
-          style={styles.secondaryButton}
         />
       </View>
     </View>

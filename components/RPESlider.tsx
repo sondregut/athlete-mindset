@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Slider from '@react-native-community/slider';
-import { colors } from '@/constants/colors';
+import { useThemeColors } from '@/hooks/useThemeColors';
 
 interface RPESliderProps {
   title?: string;
@@ -20,6 +20,8 @@ export default function RPESlider({
   maximumValue = 10,
   step = 1,
 }: RPESliderProps) {
+  const colors = useThemeColors();
+  
   // Generate scale labels
   const generateLabels = () => {
     const labels = [];
@@ -30,6 +32,52 @@ export default function RPESlider({
   };
 
   const labels = generateLabels();
+
+  const styles = StyleSheet.create({
+    container: {
+      marginVertical: 16,
+    },
+    title: {
+      fontSize: 16,
+      fontWeight: '500',
+      marginBottom: 16,
+      color: colors.text,
+    },
+    sliderContainer: {
+      paddingHorizontal: 4,
+    },
+    slider: {
+      width: '100%',
+      height: 40,
+      marginBottom: 8,
+    },
+    thumb: {
+      width: 20,
+      height: 20,
+      backgroundColor: colors.primary,
+    },
+    labelsContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: 12,
+      paddingHorizontal: 10,
+    },
+    label: {
+      fontSize: 12,
+      color: colors.text,
+      textAlign: 'center',
+    },
+    valueContainer: {
+      alignItems: 'center',
+      marginTop: 8,
+    },
+    currentValue: {
+      fontSize: 24,
+      fontWeight: '600',
+      color: colors.primary,
+      textAlign: 'center',
+    },
+  });
 
   return (
     <View style={styles.container}>
@@ -65,49 +113,3 @@ export default function RPESlider({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    marginVertical: 16,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: '500',
-    marginBottom: 16,
-    color: colors.text,
-  },
-  sliderContainer: {
-    paddingHorizontal: 4,
-  },
-  slider: {
-    width: '100%',
-    height: 40,
-    marginBottom: 8,
-  },
-  thumb: {
-    width: 20,
-    height: 20,
-    backgroundColor: colors.primary,
-  },
-  labelsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-    paddingHorizontal: 10,
-  },
-  label: {
-    fontSize: 12,
-    color: colors.darkGray,
-    textAlign: 'center',
-  },
-  valueContainer: {
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  currentValue: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: colors.primary,
-    textAlign: 'center',
-  },
-});

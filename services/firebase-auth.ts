@@ -57,35 +57,69 @@ class FirebaseAuthService {
   }
 
   /**
-   * Create account with email and password
+   * Create account with email and password with retry logic
    */
   async createAccount(email: string, password: string, displayName?: string): Promise<AuthUser> {
-    try {
-      const result = await createUserWithEmailAndPassword(getFirebaseAuth(), email, password);
-      
-      // Update display name if provided
-      if (displayName && result.user) {
-        await updateProfile(result.user, { displayName });
-      }
+    const maxRetries = 3;
+    let lastError: any;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const result = await createUserWithEmailAndPassword(getFirebaseAuth(), email, password);
+        
+        // Update display name if provided
+        if (displayName && result.user) {
+          await updateProfile(result.user, { displayName });
+        }
 
-      return this.mapFirebaseUser(result.user);
-    } catch (error: any) {
-      console.error('Account creation failed:', error);
-      throw new Error(this.getAuthErrorMessage(error.code));
+        return this.mapFirebaseUser(result.user);
+      } catch (error: any) {
+        lastError = error;
+        console.error(`Account creation attempt ${attempt} failed:`, error);
+        
+        // Only retry on network errors
+        if (error.code === 'auth/network-request-failed' && attempt < maxRetries) {
+          // Wait before retrying (exponential backoff)
+          await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+          continue;
+        }
+        
+        // For other errors or final attempt, throw immediately
+        break;
+      }
     }
+    
+    throw new Error(this.getAuthErrorMessage(lastError.code));
   }
 
   /**
-   * Sign in with email and password
+   * Sign in with email and password with retry logic
    */
   async signIn(email: string, password: string): Promise<AuthUser> {
-    try {
-      const result = await signInWithEmailAndPassword(getFirebaseAuth(), email, password);
-      return this.mapFirebaseUser(result.user);
-    } catch (error: any) {
-      console.error('Sign in failed:', error);
-      throw new Error(this.getAuthErrorMessage(error.code));
+    const maxRetries = 3;
+    let lastError: any;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const result = await signInWithEmailAndPassword(getFirebaseAuth(), email, password);
+        return this.mapFirebaseUser(result.user);
+      } catch (error: any) {
+        lastError = error;
+        console.error(`Sign in attempt ${attempt} failed:`, error);
+        
+        // Only retry on network errors
+        if (error.code === 'auth/network-request-failed' && attempt < maxRetries) {
+          // Wait before retrying (exponential backoff)
+          await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+          continue;
+        }
+        
+        // For other errors or final attempt, throw immediately
+        break;
+      }
     }
+    
+    throw new Error(this.getAuthErrorMessage(lastError.code));
   }
 
   /**
@@ -234,7 +268,7 @@ class FirebaseAuthService {
       case 'auth/too-many-requests':
         return 'Too many failed attempts. Please try again later';
       case 'auth/network-request-failed':
-        return 'Network error. Please check your connection';
+        return 'Network error. Please check your internet connection and try again';
       default:
         return 'Authentication failed. Please try again';
     }
