@@ -109,6 +109,7 @@ interface UserProfile {
   streakGoal?: number;
   primaryFocus?: 'consistency' | 'performance' | 'mindset' | 'recovery';
   motivationType?: 'achievement' | 'progress' | 'community' | 'personal';
+  goals?: string; // User's athletic goals
 }
 
 interface UserPreferences {

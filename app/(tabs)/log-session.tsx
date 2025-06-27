@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, Platform, TouchableOpacity, Modal, Dimensions, NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, Platform, TouchableOpacity, Modal, Dimensions, NativeScrollEvent, NativeSyntheticEvent, ActionSheetIOS, Alert } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { useSessionStore } from '@/store/session-store';
 import { SessionLog, SessionType } from '@/types/session';
 import { mindsetCues } from '@/constants/mindset-cues';
+import { MoreVertical } from 'lucide-react-native';
 import Button from '@/components/Button';
 import Card from '@/components/Card';
 import SelectableTag from '@/components/SelectableTag';
@@ -12,6 +13,14 @@ import StarRating from '@/components/StarRating';
 import SessionTypeIcon from '@/components/SessionTypeIcon';
 import RPESlider from '@/components/RPESlider';
 import SessionHistoryModal from '@/components/SessionHistoryModal';
+
+// Helper function to format duration from seconds to HH:MM:SS
+function formatDuration(seconds: number): string {
+  const hours = Math.floor(seconds / 3600).toString().padStart(2, '0');
+  const minutes = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
+  const secs = (seconds % 60).toString().padStart(2, '0');
+  return `${hours}:${minutes}:${secs}`;
+}
 
 // Step 1: Initial Setup
 function SetupStep({
@@ -240,11 +249,31 @@ function IntentionStep({
   colors: any;
   styles: any;
 }) {
+  const [customCue, setCustomCue] = useState('');
+  const [showCustomCueInput, setShowCustomCueInput] = useState(false);
+
   const toggleCue = (cue: string) => {
-    if (selectedCues.includes(cue)) {
-      onCuesChange(selectedCues.filter((c) => c !== cue));
+    if (cue === 'Other') {
+      setShowCustomCueInput(!showCustomCueInput);
+      if (showCustomCueInput && customCue.trim()) {
+        // Remove the custom cue when hiding input
+        onCuesChange(selectedCues.filter(c => c !== customCue.trim()));
+        setCustomCue('');
+      }
     } else {
-      onCuesChange([...selectedCues, cue]);
+      if (selectedCues.includes(cue)) {
+        onCuesChange(selectedCues.filter((c) => c !== cue));
+      } else {
+        onCuesChange([...selectedCues, cue]);
+      }
+    }
+  };
+
+  const handleCustomCueSubmit = () => {
+    if (customCue.trim() && !selectedCues.includes(customCue.trim())) {
+      // Remove any previous custom cue and add the new one
+      const filteredCues = selectedCues.filter(c => !mindsetCues.includes(c) || c === 'Other');
+      onCuesChange([...filteredCues, customCue.trim()]);
     }
   };
 
@@ -268,11 +297,26 @@ function IntentionStep({
           <SelectableTag
             key={cue}
             label={cue}
-            selected={selectedCues.includes(cue)}
+            selected={cue === 'Other' ? showCustomCueInput : selectedCues.includes(cue)}
             onPress={() => toggleCue(cue)}
           />
         ))}
       </View>
+      
+      {showCustomCueInput && (
+        <View style={styles.customCueContainer}>
+          <TextInput
+            style={styles.customCueInput}
+            value={customCue}
+            onChangeText={setCustomCue}
+            onBlur={handleCustomCueSubmit}
+            placeholder="Enter your custom mindset cue"
+            placeholderTextColor={colors.darkGray}
+            returnKeyType="done"
+            onSubmitEditing={handleCustomCueSubmit}
+          />
+        </View>
+      )}
       
       <Text style={styles.inputLabel}>Quick Notes (Optional)</Text>
       <TextInput
@@ -320,6 +364,8 @@ function SessionUnderwayStep({
   elapsedTime,
   onFinishSession,
   onBack,
+  onRestartTimer,
+  isEditMode,
   colors,
   styles,
 }: {
@@ -327,6 +373,8 @@ function SessionUnderwayStep({
   elapsedTime: string;
   onFinishSession: () => void;
   onBack?: () => void;
+  onRestartTimer?: () => void;
+  isEditMode?: boolean;
   colors: any;
   styles: any;
 }) {
@@ -336,9 +384,52 @@ function SessionUnderwayStep({
   const intention = sessionData.intention || '';
   const mindsetCues = sessionData.mindsetCues || [];
 
+  const handleSessionOptions = () => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Restart Timer'],
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1 && onRestartTimer) {
+            onRestartTimer();
+          }
+        }
+      );
+    } else {
+      Alert.alert(
+        'Session Options',
+        '',
+        [
+          {
+            text: 'Restart Timer',
+            onPress: onRestartTimer,
+          },
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+        ],
+        { cancelable: true }
+      );
+    }
+  };
+
   return (
     <Card>
-      <Text style={styles.stepTitle}>Session Underway</Text>
+      <View style={styles.sessionUnderwayHeader}>
+        <Text style={styles.stepTitle}>Session Underway</Text>
+        {onRestartTimer && !isEditMode && (
+          <TouchableOpacity 
+            style={styles.moreButton} 
+            onPress={handleSessionOptions}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <MoreVertical size={20} color={colors.text} />
+          </TouchableOpacity>
+        )}
+      </View>
       
       <View style={styles.sessionInfoContainer}>
         <View style={styles.sessionTypeIconContainer}>
@@ -374,7 +465,11 @@ function SessionUnderwayStep({
       
       <View style={styles.timerContainer}>
         <Text style={styles.timerLabel}>Session Time</Text>
-        <Text style={styles.timerValue}>{elapsedTime}</Text>
+        <Text style={styles.timerValue}>
+          {isEditMode && sessionData.duration 
+            ? formatDuration(sessionData.duration)
+            : elapsedTime}
+        </Text>
       </View>
       
       <View style={styles.buttonContainer}>
@@ -403,10 +498,15 @@ function ReflectionStep({
   stretchGoal,
   rpe,
   sessionRating,
+  isQuickPost,
+  manualDuration,
+  activity,
   onPositiveChange,
   onStretchGoalChange,
   onRpeChange,
   onSessionRatingChange,
+  onManualDurationChange,
+  onActivityChange,
   onCompleteSession,
   onBack,
   colors,
@@ -416,10 +516,15 @@ function ReflectionStep({
   stretchGoal: string;
   rpe: number;
   sessionRating: number;
+  isQuickPost?: boolean;
+  manualDuration?: string;
+  activity?: string;
   onPositiveChange: (index: number, value: string) => void;
   onStretchGoalChange: (value: string) => void;
   onRpeChange: (value: number) => void;
   onSessionRatingChange: (value: number) => void;
+  onManualDurationChange?: (value: string) => void;
+  onActivityChange?: (value: string) => void;
   onCompleteSession: () => void;
   onBack?: () => void;
   colors: any;
@@ -428,6 +533,33 @@ function ReflectionStep({
   return (
     <Card>
       <Text style={styles.stepTitle}>Session Reflection</Text>
+      
+      {isQuickPost && (
+        <>
+          <Text style={styles.inputLabel}>What did you train?</Text>
+          <TextInput
+            style={styles.input}
+            value={activity}
+            onChangeText={onActivityChange}
+            placeholder="e.g., Morning Run, Gym Session, Practice"
+            placeholderTextColor={colors.darkGray}
+          />
+          
+          {onManualDurationChange && (
+            <>
+              <Text style={styles.inputLabel}>Session Duration (minutes)</Text>
+              <TextInput
+                style={styles.input}
+                value={manualDuration}
+                onChangeText={onManualDurationChange}
+                placeholder="How long was your session?"
+                placeholderTextColor={colors.darkGray}
+                keyboardType="numeric"
+              />
+            </>
+          )}
+        </>
+      )}
       
       <Text style={styles.inputLabel}>3 Positives from this session</Text>
       {[0, 1, 2].map((index) => (
@@ -497,8 +629,9 @@ export default function LogSessionScreen() {
   const colors = useThemeColors();
   const params = useLocalSearchParams();
   const isEditMode = !!params.edit;
+  const isQuickPost = params.quickPost === 'true';
   
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(isQuickPost ? 4 : 1);
   const [startTime, setStartTime] = useState<Date | null>(null);
   
   // Scroll state
@@ -534,6 +667,7 @@ export default function LogSessionScreen() {
   const [stretchGoal, setStretchGoal] = useState('');
   const [rpe, setRpe] = useState(7);
   const [sessionRating, setSessionRating] = useState(3);
+  const [manualDuration, setManualDuration] = useState('');
   
   // Session History Modal state
   const [showSessionHistory, setShowSessionHistory] = useState(false);
@@ -544,8 +678,8 @@ export default function LogSessionScreen() {
     React.useCallback(() => {
       if (!currentSession) {
         // Reset all state for a fresh session
-        setStep(1);
-        setDate(new Date().toISOString().split('T')[0]);
+        const currentDate = new Date().toISOString().split('T')[0];
+        setDate(currentDate);
         setSessionType('training');
         setCustomSessionType('');
         setActivity('');
@@ -558,14 +692,35 @@ export default function LogSessionScreen() {
         setRpe(7);
         setSessionRating(3);
         setStartTime(null);
+        setManualDuration('');
         
-        // Reset step state completely
-        setStep(1);
-      } else if (currentSession.status === 'active' && currentSession.startTime) {
-        // Restart timer if we have an active session when focusing on this screen
-        startSessionTimer();
+        if (isQuickPost) {
+          // For quick post, create a minimal session and go to reflection
+          const sessionId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          updateCurrentSession({
+            id: sessionId,
+            date: currentDate,
+            createdAt: new Date().toISOString(),
+            sessionType: 'training',
+            activity: '',
+            status: 'reflection',
+            // Set empty defaults for skipped fields
+            intention: '',
+            mindsetCues: [],
+            notes: '',
+            readinessRating: 7,
+          });
+          setStep(4);
+        } else {
+          // Regular flow starts at step 1
+          setStep(1);
+        }
+      } else if (currentSession.status === 'active' && currentSession.startTime && !isEditMode) {
+        // Don't restart timer, just update the elapsed time
+        // The timer is already running in the store
+        updateElapsedTime();
       }
-    }, [currentSession, startSessionTimer])
+    }, [currentSession, updateElapsedTime, isEditMode, isQuickPost, updateCurrentSession])
   );
 
   // Simple scroll sync - only for button navigation
@@ -612,23 +767,26 @@ export default function LogSessionScreen() {
         if (currentSession.startTime) {
           const start = new Date(currentSession.startTime);
           setStartTime(start);
-          // Use the store timer instead of local timer
-          startSessionTimer();
+          // Don't restart the timer here - it's already running
+          // Just update the elapsed time
+          updateElapsedTime();
         }
       }
     }
     
     // No cleanup needed here since timer is managed in store
-  }, [isEditMode, startSessionTimer]);
+  }, [isEditMode, updateElapsedTime]);
   
   
   
   const handleFinishSession = () => {
     console.log('📋 Finish session - moving to step 4');
     
-    // Stop the global timer
-    console.log('⏱️ Stopping session timer');
-    stopSessionTimer();
+    // Stop the global timer only if not in edit mode
+    if (!isEditMode) {
+      console.log('⏱️ Stopping session timer');
+      stopSessionTimer();
+    }
     
     const endTime = new Date().toISOString();
     const duration = startTime 
@@ -691,24 +849,45 @@ export default function LogSessionScreen() {
       
       // Clear current session and navigate back
       setTimeout(() => {
-        stopSessionTimer(); // Stop timer when editing session
+        // Don't stop timer when editing - it's already stopped for completed sessions
         resetCurrentSession();
         router.replace('/');
       }, 150);
     } else {
       // Regular flow: Update current session with final reflection data, then complete it
-      updateCurrentSession({
+      const updateData: any = {
         positives,
         stretchGoal,
         rpe,
         sessionRating,
         status: 'completed',
-      });
+      };
+      
+      // For quick post sessions, add activity and manual duration
+      if (isQuickPost) {
+        updateData.activity = activity;
+        
+        if (manualDuration) {
+          const durationMinutes = parseInt(manualDuration, 10);
+          if (!isNaN(durationMinutes)) {
+            updateData.duration = durationMinutes * 60; // Convert to seconds
+            updateData.endTime = new Date().toISOString();
+            // Set a start time based on duration
+            const endDate = new Date();
+            const startDate = new Date(endDate.getTime() - (durationMinutes * 60 * 1000));
+            updateData.startTime = startDate.toISOString();
+          }
+        }
+      }
+      
+      updateCurrentSession(updateData);
       
       // Complete the session and navigate back to home
       // Using setTimeout to ensure the state update completes first
       setTimeout(async () => {
-        stopSessionTimer(); // Stop timer when completing session
+        if (!isQuickPost) {
+          stopSessionTimer(); // Stop timer when completing session (not needed for quick post)
+        }
         
         // Complete session and check for milestones
         try {
@@ -753,7 +932,11 @@ export default function LogSessionScreen() {
   };
 
   const handleBack = () => {
-    if (step > 1) {
+    if (isQuickPost && step === 4) {
+      // For quick post at reflection step, go back to home
+      resetCurrentSession();
+      router.back();
+    } else if (step > 1) {
       navigateToStep(step - 1);
     } else {
       // If backing out from the first step, check if any data has been entered
@@ -773,24 +956,49 @@ export default function LogSessionScreen() {
 
   // Simplified button handlers with direct timer management
   const handleContinueFromSetup = () => {
-    console.log('📋 Continue from setup - moving to step 2');
-    
-    // Only create/update session when user has entered meaningful data
-    const sessionId = currentSession?.id || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
-    // Update session data
-    updateCurrentSession({
-      id: sessionId,
-      date,
-      createdAt: currentSession?.createdAt || new Date().toISOString(),
-      sessionType,
-      customSessionType: sessionType === 'other' ? customSessionType : undefined,
-      activity,
-      status: 'intention',
-    });
-    
-    // Navigate to step 2
-    navigateToStep(2);
+    if (isQuickPost) {
+      console.log('📋 Quick post-training - skipping to reflection');
+      
+      // Create session and jump directly to reflection
+      const sessionId = currentSession?.id || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      updateCurrentSession({
+        id: sessionId,
+        date,
+        createdAt: currentSession?.createdAt || new Date().toISOString(),
+        sessionType,
+        customSessionType: sessionType === 'other' ? customSessionType : undefined,
+        activity,
+        status: 'reflection',
+        // Set empty defaults for skipped fields
+        intention: '',
+        mindsetCues: [],
+        notes: '',
+        readinessRating: 7,
+      });
+      
+      // Navigate directly to step 4 (reflection)
+      navigateToStep(4);
+    } else {
+      console.log('📋 Continue from setup - moving to step 2');
+      
+      // Only create/update session when user has entered meaningful data
+      const sessionId = currentSession?.id || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Update session data
+      updateCurrentSession({
+        id: sessionId,
+        date,
+        createdAt: currentSession?.createdAt || new Date().toISOString(),
+        sessionType,
+        customSessionType: sessionType === 'other' ? customSessionType : undefined,
+        activity,
+        status: 'intention',
+      });
+      
+      // Navigate to step 2
+      navigateToStep(2);
+    }
   };
 
   const handleStartSession = () => {
@@ -809,12 +1017,39 @@ export default function LogSessionScreen() {
       status: 'active',
     });
     
-    // Start the timer
-    console.log('⏱️ Starting session timer');
-    startSessionTimer();
+    // Start the timer only if not in edit mode
+    if (!isEditMode) {
+      console.log('⏱️ Starting session timer');
+      startSessionTimer();
+    }
     
     // Navigate to step 3
     navigateToStep(3);
+  };
+
+  const handleRestartTimer = () => {
+    // Don't allow timer restart in edit mode
+    if (isEditMode) {
+      console.log('⚠️ Cannot restart timer in edit mode');
+      return;
+    }
+    
+    console.log('🔄 Restarting session timer');
+    
+    // Stop the current timer
+    stopSessionTimer();
+    
+    // Update the start time to now
+    const now = new Date();
+    setStartTime(now);
+    
+    // Update the session with new start time
+    updateCurrentSession({
+      startTime: now.toISOString(),
+    });
+    
+    // Start the timer again
+    startSessionTimer();
   };
 
   // Simple swipe detection using momentum end
@@ -901,6 +1136,8 @@ export default function LogSessionScreen() {
             elapsedTime={elapsedTime}
             onFinishSession={handleFinishSession}
             onBack={handleBack}
+            onRestartTimer={handleRestartTimer}
+            isEditMode={isEditMode}
             colors={colors}
             styles={styles}
           />
@@ -912,10 +1149,15 @@ export default function LogSessionScreen() {
             stretchGoal={stretchGoal}
             rpe={rpe}
             sessionRating={sessionRating}
+            isQuickPost={isQuickPost}
+            manualDuration={manualDuration}
+            activity={activity}
             onPositiveChange={handlePositiveChange}
             onStretchGoalChange={setStretchGoal}
             onRpeChange={setRpe}
             onSessionRatingChange={setSessionRating}
+            onManualDurationChange={setManualDuration}
+            onActivityChange={setActivity}
             onCompleteSession={handleCompleteSession}
             onBack={handleBack}
             colors={colors}
@@ -1016,6 +1258,19 @@ export default function LogSessionScreen() {
       flexWrap: 'wrap',
       marginTop: 8,
     },
+    customCueContainer: {
+      marginBottom: 16,
+      marginTop: 8,
+    },
+    customCueInput: {
+      backgroundColor: colors.background,
+      borderRadius: 8,
+      padding: 12,
+      fontSize: 16,
+      color: colors.text,
+      borderWidth: 1,
+      borderColor: colors.primary,
+    },
     actionButton: {
       flex: 1,
     },
@@ -1112,6 +1367,15 @@ export default function LogSessionScreen() {
       fontWeight: '700',
       color: colors.primary,
       fontVariant: ['tabular-nums'],
+    },
+    sessionUnderwayHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    moreButton: {
+      padding: 4,
     },
     ratingContainer: {
       alignItems: 'center',

@@ -3,10 +3,9 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert 
 import { Stack, useLocalSearchParams, router } from 'expo-router';
 import { Heart, Zap, Target, Edit2, Save, X } from 'lucide-react-native';
 import { useThemeColors } from '@/hooks/useThemeColors';
-import { useMindsetStore, BodyPainArea } from '@/store/mindset-store';
+import { useMindsetStore } from '@/store/mindset-store';
 import Card from '@/components/Card';
 import Button from '@/components/Button';
-import BodyPainSelector from '@/components/BodyPainSelector';
 import { format } from 'date-fns';
 
 export default function CheckinDetailScreen() {
@@ -21,8 +20,7 @@ export default function CheckinDetailScreen() {
   const [energy, setEnergy] = useState(checkin?.energy || 5);
   const [motivation, setMotivation] = useState(checkin?.motivation || 5);
   const [selfDescription, setSelfDescription] = useState(checkin?.selfDescription || '');
-  const [bodyPainAreas, setBodyPainAreas] = useState<BodyPainArea[]>(checkin?.bodyPainAreas || []);
-  const [overallPainLevel, setOverallPainLevel] = useState<'none' | 'minor' | 'moderate' | 'significant'>(checkin?.overallPainLevel || 'none');
+  const [painDescription, setPainDescription] = useState(checkin?.painDescription || '');
   const [isSaving, setIsSaving] = useState(false);
 
   const styles = StyleSheet.create({
@@ -213,8 +211,7 @@ export default function CheckinDetailScreen() {
       setEnergy(checkin.energy);
       setMotivation(checkin.motivation);
       setSelfDescription(checkin.selfDescription || '');
-      setBodyPainAreas(checkin.bodyPainAreas || []);
-      setOverallPainLevel(checkin.overallPainLevel || 'none');
+      setPainDescription(checkin.painDescription || '');
     }
   }, [checkin]);
 
@@ -237,8 +234,7 @@ export default function CheckinDetailScreen() {
         energy,
         motivation,
         selfDescription: selfDescription.trim() || undefined,
-        bodyPainAreas: bodyPainAreas.length > 0 ? bodyPainAreas : undefined,
-        overallPainLevel: overallPainLevel || undefined,
+        painDescription: painDescription.trim() || undefined,
       });
       setIsEditing(false);
       // Navigate back to history tab with check-ins selected
@@ -258,8 +254,7 @@ export default function CheckinDetailScreen() {
     setEnergy(checkin.energy);
     setMotivation(checkin.motivation);
     setSelfDescription(checkin.selfDescription || '');
-    setBodyPainAreas(checkin.bodyPainAreas || []);
-    setOverallPainLevel(checkin.overallPainLevel || 'none');
+    setPainDescription(checkin.painDescription || '');
     setIsEditing(false);
   };
 
@@ -415,30 +410,43 @@ export default function CheckinDetailScreen() {
 
       {isEditing ? (
         <Card style={styles.card}>
-          <Text style={styles.sectionTitle}>Body Pain Areas</Text>
-          <BodyPainSelector
-            selectedAreas={bodyPainAreas}
-            onAreasChange={setBodyPainAreas}
-            overallPainLevel={overallPainLevel}
-            onOverallPainChange={setOverallPainLevel}
-          />
+          <Text style={styles.sectionTitle}>Physical Status</Text>
+          <View style={styles.textInputContainer}>
+            <TextInput
+              style={styles.textInput}
+              value={painDescription}
+              onChangeText={(text) => {
+                if (text.length <= 200) {
+                  setPainDescription(text);
+                }
+              }}
+              placeholder="Any pain or discomfort to note?"
+              placeholderTextColor={colors.darkGray}
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+            />
+            <Text style={styles.charCount}>{painDescription.length}/200</Text>
+          </View>
         </Card>
       ) : (
-        (checkin.bodyPainAreas && checkin.bodyPainAreas.length > 0) && (
+        (checkin.painDescription || (checkin.bodyPainAreas && checkin.bodyPainAreas.length > 0)) && (
           <Card style={styles.card}>
-            <Text style={styles.sectionTitle}>Body Pain Areas</Text>
-            <View style={styles.painAreas}>
-              {checkin.bodyPainAreas.map((area, index) => (
-                <View key={index} style={styles.painTag}>
-                  <Text style={styles.painTagText}>{area.location}</Text>
-                  <Text style={styles.painSeverity}>({area.severity})</Text>
-                </View>
-              ))}
-            </View>
-            {checkin.overallPainLevel && (
-              <Text style={styles.overallPain}>
-                Overall pain level: {checkin.overallPainLevel}
+            <Text style={styles.sectionTitle}>Physical Status</Text>
+            {checkin.painDescription ? (
+              <Text style={styles.description}>
+                {checkin.painDescription}
               </Text>
+            ) : (
+              // Legacy support for old body pain data
+              <View style={styles.painAreas}>
+                {checkin.bodyPainAreas?.map((area, index) => (
+                  <View key={index} style={styles.painTag}>
+                    <Text style={styles.painTagText}>{area.location}</Text>
+                    <Text style={styles.painSeverity}>({area.severity})</Text>
+                  </View>
+                ))}
+              </View>
             )}
           </Card>
         )

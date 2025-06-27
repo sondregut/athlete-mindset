@@ -31,15 +31,7 @@ export default function HistoryScreen() {
 
   return (
     <View style={styles.container}>
-      {logs.length > 0 ? (
-        <ActivityHistoryTabs sessions={logs} defaultView={defaultView} />
-      ) : (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>
-            No activity logs yet. Start by logging your first session!
-          </Text>
-        </View>
-      )}
+      <ActivityHistoryTabs sessions={logs} defaultView={defaultView} />
     </View>
   );
 }

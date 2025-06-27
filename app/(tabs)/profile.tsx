@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { Play, Clock, ArrowRight } from 'lucide-react-native';
+import { Play, Clock, ArrowRight, Settings } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { useSessionStore } from '@/store/session-store';
@@ -10,18 +10,18 @@ import ProfileStats from '@/components/ProfileStats';
 import AnalyticsDashboard from '@/components/AnalyticsDashboard';
 import SessionTypeBreakdown from '@/components/SessionTypeBreakdown';
 import MindsetSummary from '@/components/MindsetSummary';
-import SettingsSection from '@/components/SettingsSection';
 import ErrorMessage from '@/components/ErrorMessage';
-import FirebaseDebugPanel from '@/components/FirebaseDebugPanel';
 import GoalsDisplay from '@/components/GoalsDisplay';
-import ProfilePreferences from '@/components/ProfilePreferences';
-import ThemeSettings from '@/components/ThemeSettings';
 import AchievementsSection from '@/components/AchievementsSection';
+import SettingsModal from '@/components/SettingsModal';
+import EditProfileModal from '@/components/EditProfileModal';
 
 export default function ProfileScreen() {
   const colors = useThemeColors();
   const { currentSession, elapsedTime, error: sessionError, clearError: clearSessionError } = useSessionStore();
   const { error: userError, clearError: clearUserError } = useUserStore();
+  const [showSettings, setShowSettings] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
 
   const handleContinueSession = () => {
     router.push('/log-session');
@@ -108,10 +108,33 @@ export default function ProfileScreen() {
       backgroundColor: colors.activeSession,
       shadowColor: colors.activeSession,
     },
+    headerContainer: {
+      position: 'relative',
+    },
+    settingsButton: {
+      position: 'absolute',
+      top: 16,
+      right: 16,
+      padding: 8,
+      backgroundColor: colors.cardBackground,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
   });
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+    <View style={styles.container}>
+      <View style={styles.headerContainer}>
+        <TouchableOpacity 
+          style={styles.settingsButton} 
+          onPress={() => setShowSettings(true)}
+        >
+          <Settings size={24} color={colors.text} />
+        </TouchableOpacity>
+      </View>
+      
+      <ScrollView contentContainerStyle={styles.contentContainer}>
       {/* Error Messages */}
       {sessionError && (
         <ErrorMessage 
@@ -161,7 +184,7 @@ export default function ProfileScreen() {
       )}
 
       {/* Profile Header */}
-      <ProfileHeader />
+      <ProfileHeader onEditPress={() => setShowEditProfile(true)} />
       
       {/* Profile Stats */}
       <ProfileStats />
@@ -181,17 +204,19 @@ export default function ProfileScreen() {
       {/* Mindset Summary */}
       <MindsetSummary />
       
-      {/* Profile Preferences */}
-      <ProfilePreferences />
-      
-      {/* Theme Settings */}
-      <ThemeSettings />
-
-      {/* Settings */}
-      <SettingsSection />
-
-      {/* Firebase Debug Panel (Dev Only) */}
-      <FirebaseDebugPanel />
     </ScrollView>
+    
+    {/* Settings Modal */}
+    <SettingsModal 
+      visible={showSettings} 
+      onClose={() => setShowSettings(false)} 
+    />
+    
+    {/* Edit Profile Modal */}
+    <EditProfileModal 
+      visible={showEditProfile} 
+      onClose={() => setShowEditProfile(false)} 
+    />
+  </View>
   );
 }

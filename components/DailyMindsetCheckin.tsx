@@ -2,10 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Modal, KeyboardAvoidingView, Platform } from 'react-native';
 import { CheckCircle, X, Calendar, Heart, Zap, Target } from 'lucide-react-native';
 import { useThemeColors } from '@/hooks/useThemeColors';
-import { useMindsetStore, BodyPainArea } from '@/store/mindset-store';
+import { useMindsetStore } from '@/store/mindset-store';
 import Card from './Card';
 import Button from './Button';
-import BodyPainSelector from './BodyPainSelector';
 
 interface DailyMindsetCheckinProps {
   compact?: boolean;
@@ -27,8 +26,7 @@ export default function DailyMindsetCheckin({ compact = false }: DailyMindsetChe
   const [energy, setEnergy] = useState(7);
   const [motivation, setMotivation] = useState(7);
   const [selfDescription, setSelfDescription] = useState('');
-  const [bodyPainAreas, setBodyPainAreas] = useState<BodyPainArea[]>([]);
-  const [overallPainLevel, setOverallPainLevel] = useState<'none' | 'minor' | 'moderate' | 'significant'>('none');
+  const [painDescription, setPainDescription] = useState('');
   const [descriptionY, setDescriptionY] = useState(0);
   const [isNewCheckin, setIsNewCheckin] = useState(false);
 
@@ -44,8 +42,7 @@ export default function DailyMindsetCheckin({ compact = false }: DailyMindsetChe
       setEnergy(todaysCheckin.energy);
       setMotivation(todaysCheckin.motivation);
       setSelfDescription(todaysCheckin.selfDescription || '');
-      setBodyPainAreas(todaysCheckin.bodyPainAreas || []);
-      setOverallPainLevel(todaysCheckin.overallPainLevel || 'none');
+      setPainDescription(todaysCheckin.painDescription || '');
     }
   }, [todaysCheckin]);
 
@@ -56,8 +53,7 @@ export default function DailyMindsetCheckin({ compact = false }: DailyMindsetChe
         energy,
         motivation,
         selfDescription: selfDescription.trim() || undefined,
-        bodyPainAreas: bodyPainAreas.length > 0 ? bodyPainAreas : undefined,
-        overallPainLevel: overallPainLevel || undefined,
+        painDescription: painDescription.trim() || undefined,
       });
       setShowModal(false);
     } catch (error) {
@@ -76,8 +72,7 @@ export default function DailyMindsetCheckin({ compact = false }: DailyMindsetChe
     setEnergy(7);
     setMotivation(7);
     setSelfDescription('');
-    setBodyPainAreas([]);
-    setOverallPainLevel('none');
+    setPainDescription('');
     clearError();
   };
 
@@ -118,7 +113,7 @@ export default function DailyMindsetCheckin({ compact = false }: DailyMindsetChe
               activeOpacity={0.7}
               style={styles.logAnotherButton}
             >
-              <Text style={styles.logAnotherButtonText}>Log Another</Text>
+              <Text style={styles.logAnotherButtonText}>Edit Today's Check-in</Text>
             </TouchableOpacity>
           </View>
         </Card>
@@ -253,6 +248,12 @@ export default function DailyMindsetCheckin({ compact = false }: DailyMindsetChe
     fontWeight: '600',
     color: colors.text,
     marginLeft: 8,
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    color: colors.darkGray,
+    marginBottom: 12,
+    marginTop: -8,
   },
   emojiIndicator: {
     fontSize: 24,
@@ -530,13 +531,31 @@ export default function DailyMindsetCheckin({ compact = false }: DailyMindsetChe
               </View>
             </View>
 
-            {/* Body Pain Selector */}
-            <BodyPainSelector
-              selectedAreas={bodyPainAreas}
-              onAreasChange={setBodyPainAreas}
-              overallPainLevel={overallPainLevel}
-              onOverallPainChange={setOverallPainLevel}
-            />
+            {/* Pain/Discomfort Description */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Physical Status</Text>
+              </View>
+              <Text style={styles.sectionDescription}>Any pain or discomfort to note?</Text>
+              <View style={styles.textInputContainer}>
+                <TextInput
+                  style={styles.textInput}
+                  value={painDescription}
+                  onChangeText={(text) => {
+                    if (text.length <= 200) {
+                      setPainDescription(text);
+                    }
+                  }}
+                  placeholder="Describe any physical pain or discomfort (optional)"
+                  placeholderTextColor={colors.darkGray}
+                  multiline
+                  numberOfLines={3}
+                  textAlignVertical="top"
+                  maxLength={200}
+                />
+                <Text style={styles.charCount}>{painDescription.length}/200</Text>
+              </View>
+            </View>
           </ScrollView>
 
           <View style={styles.modalActions}>

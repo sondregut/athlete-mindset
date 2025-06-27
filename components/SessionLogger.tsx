@@ -23,6 +23,10 @@ export default function SessionLogger({ compact = false }: SessionLoggerProps) {
     router.push('/log-session');
   };
 
+  const handleQuickPostTraining = () => {
+    router.push('/log-session?quickPost=true');
+  };
+
   const getSessionStatusText = () => {
     if (!currentSession) return '';
     
@@ -76,20 +80,38 @@ export default function SessionLogger({ compact = false }: SessionLoggerProps) {
     }
 
     return (
-      <Card style={styles.compactCard}>
-        <View style={styles.compactHeader}>
-          <Play size={24} color={colors.primary} />
-          <View style={styles.compactInfo}>
-            <Text style={styles.compactTitle}>Training Session</Text>
-            <Text style={styles.compactSubtitle}>Log your pre-training intentions</Text>
+      <View>
+        <Card style={styles.compactCard}>
+          <View style={styles.compactHeader}>
+            <Play size={24} color={colors.primary} />
+            <View style={styles.compactInfo}>
+              <Text style={styles.compactTitle}>Full Training Session</Text>
+              <Text style={styles.compactSubtitle}>Log pre-training intentions first</Text>
+            </View>
+            <Button
+              title="Start"
+              onPress={handleStartSession}
+              style={styles.compactActionButton}
+            />
           </View>
-          <Button
-            title="Start"
-            onPress={handleStartSession}
-            style={styles.compactActionButton}
-          />
-        </View>
-      </Card>
+        </Card>
+        
+        <Card style={[styles.compactCard, styles.quickPostCard]}>
+          <View style={styles.compactHeader}>
+            <CheckCircle size={24} color={colors.success} />
+            <View style={styles.compactInfo}>
+              <Text style={styles.compactTitle}>Quick Post-Training</Text>
+              <Text style={styles.compactSubtitle}>Already finished? Log reflection only</Text>
+            </View>
+            <Button
+              title="Log"
+              onPress={handleQuickPostTraining}
+              style={styles.compactActionButton}
+              variant="outline"
+            />
+          </View>
+        </Card>
+      </View>
     );
   };
 
@@ -119,6 +141,14 @@ export default function SessionLogger({ compact = false }: SessionLoggerProps) {
     compactActionButton: {
       paddingHorizontal: 20,
       paddingVertical: 8,
+    },
+    quickPostCard: {
+      marginTop: 0,
+    },
+    quickPostButton: {
+      backgroundColor: 'transparent',
+      borderColor: colors.success,
+      borderWidth: 1,
     },
   });
 

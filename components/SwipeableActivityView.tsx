@@ -59,14 +59,14 @@ export default function SwipeableActivityView({ sessions, checkins, initialViewT
                 "{checkin.selfDescription}"
               </Text>
             )}
-            {(checkin.bodyPainAreas && checkin.bodyPainAreas.length > 0) && (
+            {(checkin.bodyPainAreas && checkin.bodyPainAreas.length > 0) ? (
               <View style={styles.painIndicator}>
                 <AlertCircle size={16} color={colors.warning} />
                 <Text style={styles.painText}>
                   {checkin.bodyPainAreas.length} pain area{checkin.bodyPainAreas.length > 1 ? 's' : ''} • {checkin.overallPainLevel || 'minor'}
                 </Text>
               </View>
-            )}
+            ) : null}
           </View>
         </View>
       </Card>

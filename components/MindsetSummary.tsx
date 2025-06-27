@@ -15,7 +15,10 @@ export default function MindsetSummary() {
   const recentCheckins = getRecentCheckins(7);
   
   const handleViewHistory = () => {
-    router.push('/(tabs)/history?defaultView=checkins');
+    router.navigate({
+      pathname: '/(tabs)/history',
+      params: { defaultView: 'checkins' }
+    });
   };
   
   const styles = StyleSheet.create({

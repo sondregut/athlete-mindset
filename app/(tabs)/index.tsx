@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActionSheetIOS, Platform } from 'react-native';
 import { router } from 'expo-router';
-import { Flame, Calendar, ArrowRight, Play, Clock } from 'lucide-react-native';
+import { Flame, ArrowRight, Play, Clock, Trophy, MoreVertical } from 'lucide-react-native';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { getRandomQuote } from '@/constants/quotes';
 import { useSessionStore } from '@/store/session-store';
@@ -11,6 +11,7 @@ import { ActivityItem, ActivityType } from '@/types/activity';
 import { Milestone } from '@/constants/milestones';
 import Card from '@/components/Card';
 import StatCard from '@/components/StatCard';
+import SmallStatCard from '@/components/SmallStatCard';
 import SessionLogItem from '@/components/SessionLogItem';
 import MindsetCheckinCard from '@/components/MindsetCheckinCard';
 import DailyMindsetCheckin from '@/components/DailyMindsetCheckin';
@@ -20,7 +21,7 @@ import StreakCelebration from '@/components/StreakCelebration';
 export default function HomeScreen() {
   const [quote, setQuote] = useState('');
   const [celebrationMilestone, setCelebrationMilestone] = useState<Milestone | null>(null);
-  const { getStreak, getWeeklyLogs, getRecentLogs, clearDuplicateSessions, currentSession, initializeTimer, elapsedTime } = useSessionStore();
+  const { getStreak, getWeeklyLogs, getRecentLogs, clearDuplicateSessions, currentSession, initializeTimer, elapsedTime, getTotalSessions, resetCurrentSession, stopSessionTimer } = useSessionStore();
   const { getRecentCheckins } = useMindsetStore();
   const { markMilestoneCelebrated } = useAchievementStore();
   const colors = useThemeColors();
@@ -53,6 +54,68 @@ export default function HomeScreen() {
 
   const handleContinueSession = () => {
     router.push('/log-session');
+  };
+
+  const handleDeleteSession = () => {
+    Alert.alert(
+      'Delete Session',
+      'Are you sure you want to delete this session in progress? This action cannot be undone.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            stopSessionTimer();
+            resetCurrentSession();
+          },
+        },
+      ],
+    );
+  };
+
+  const handleSessionOptions = () => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Continue Session', 'Delete Session'],
+          destructiveButtonIndex: 2,
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) {
+            handleContinueSession();
+          } else if (buttonIndex === 2) {
+            handleDeleteSession();
+          }
+        }
+      );
+    } else {
+      // For Android, we'll use Alert with custom buttons
+      Alert.alert(
+        'Session Options',
+        '',
+        [
+          {
+            text: 'Continue Session',
+            onPress: handleContinueSession,
+          },
+          {
+            text: 'Delete Session',
+            style: 'destructive',
+            onPress: handleDeleteSession,
+          },
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+        ],
+        { cancelable: true }
+      );
+    }
   };
   
   // Get recent activities (both sessions and check-ins)
@@ -143,6 +206,17 @@ export default function HomeScreen() {
       flexDirection: 'row',
       marginHorizontal: -6,
     },
+    statsGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      marginHorizontal: -4,
+      marginBottom: 8,
+    },
+    smallStatCard: {
+      width: '50%',
+      paddingHorizontal: 4,
+      marginBottom: 8,
+    },
     activityHeaderContainer: {
       flexDirection: 'row',
       justifyContent: 'space-between',
@@ -167,12 +241,26 @@ export default function HomeScreen() {
     sessionProgressCard: {
       backgroundColor: colors.activeSession,
       marginBottom: 16,
+      overflow: 'hidden',
+    },
+    sessionProgressContainer: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+    },
+    sessionProgressContent: {
+      flex: 1,
+      paddingRight: 8,
     },
     sessionProgressHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       marginBottom: 8,
+    },
+    moreButton: {
+      padding: 4,
+      marginTop: -4,
+      marginRight: -4,
     },
     sessionProgressTitle: {
       fontSize: 16,
@@ -222,54 +310,68 @@ export default function HomeScreen() {
       
       {/* Session Progress Card */}
       {currentSession && (
-        <TouchableOpacity onPress={handleContinueSession} activeOpacity={0.8}>
-          <Card style={styles.sessionProgressCard}>
-            <View style={styles.sessionProgressHeader}>
-              <Text style={styles.sessionProgressTitle}>Session in Progress</Text>
-              {currentSession.status === 'active' && elapsedTime && elapsedTime !== '0:00' && (
-                <Text style={styles.sessionProgressTime}>
-                  {formatElapsedTime(elapsedTime)}
-                </Text>
-              )}
-            </View>
+        <Card style={styles.sessionProgressCard}>
+          <View style={styles.sessionProgressContainer}>
+            <TouchableOpacity 
+              style={styles.sessionProgressContent} 
+              onPress={handleContinueSession} 
+              activeOpacity={0.8}
+            >
+              <View style={styles.sessionProgressHeader}>
+                <Text style={styles.sessionProgressTitle}>Session in Progress</Text>
+                {currentSession.status === 'active' && elapsedTime && elapsedTime !== '0:00' ? (
+                  <Text style={styles.sessionProgressTime}>
+                    {formatElapsedTime(elapsedTime)}
+                  </Text>
+                ) : null}
+              </View>
+              
+              <Text style={styles.sessionProgressActivity}>
+                {getSessionTitle()}
+              </Text>
+              
+              <Text style={styles.sessionProgressStatus}>
+                {getSessionStatusText()}
+              </Text>
+              
+              <View style={styles.continueButton}>
+                <Text style={styles.continueButtonText}>Continue Session</Text>
+                {currentSession.status === 'active' ? (
+                  <Clock size={16} color={colors.activeSession} />
+                ) : (
+                  <Play size={16} color={colors.activeSession} />
+                )}
+              </View>
+            </TouchableOpacity>
             
-            <Text style={styles.sessionProgressActivity}>
-              {getSessionTitle()}
-            </Text>
-            
-            <Text style={styles.sessionProgressStatus}>
-              {getSessionStatusText()}
-            </Text>
-            
-            <View style={styles.continueButton}>
-              <Text style={styles.continueButtonText}>Continue Session</Text>
-              {currentSession.status === 'active' ? (
-                <Clock size={16} color={colors.activeSession} />
-              ) : (
-                <Play size={16} color={colors.activeSession} />
-              )}
-            </View>
-          </Card>
-        </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.moreButton} 
+              onPress={handleSessionOptions}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <MoreVertical size={20} color={colors.background} />
+            </TouchableOpacity>
+          </View>
+        </Card>
       )}
       
       {/* Stats Overview */}
       <Text style={styles.sectionTitle}>Your Progress</Text>
-      <View style={styles.statsContainer}>
-        <StatCard 
-          title="Streak" 
-          value={getStreak()} 
-          unit="days"
-          icon={<Flame size={20} color={colors.primary} />}
-          flex={1}
-        />
-        <StatCard 
-          title="This Week" 
-          value={getWeeklyLogs()} 
-          unit="sessions"
-          icon={<Calendar size={20} color={colors.primary} />}
-          flex={1}
-        />
+      <View style={styles.statsGrid}>
+        <View style={styles.smallStatCard}>
+          <SmallStatCard 
+            title="Current Streak" 
+            value={`${getStreak()} days`}
+            icon={<Flame size={20} color={colors.primary} />}
+          />
+        </View>
+        <View style={styles.smallStatCard}>
+          <SmallStatCard 
+            title="Total Sessions" 
+            value={getTotalSessions().toString()}
+            icon={<Trophy size={20} color={colors.primary} />}
+          />
+        </View>
       </View>
       
       {/* Quick Actions */}

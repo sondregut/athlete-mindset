@@ -10,5 +10,6 @@ export const mindsetCues = [
   "Powerful",
   "Present",
   "Disciplined",
-  "Fearless"
+  "Fearless",
+  "Other"
 ];

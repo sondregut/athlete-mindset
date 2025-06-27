@@ -16,9 +16,10 @@ export interface MindsetCheckin {
   energy: number; // 1-10 scale
   motivation: number; // 1-10 scale
   selfDescription?: string; // Max 150 characters
+  painDescription?: string; // Max 200 characters
+  // Legacy fields for backward compatibility
   bodyPainAreas?: BodyPainArea[];
   overallPainLevel?: 'none' | 'minor' | 'moderate' | 'significant';
-  // Legacy fields for backward compatibility
   gratitude?: string;
   reflection?: string;
   tags?: string[]; // e.g., ["stressed", "excited", "focused"]
