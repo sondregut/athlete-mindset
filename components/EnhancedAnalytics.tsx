@@ -135,7 +135,6 @@ export default function EnhancedAnalytics() {
     const typeColors: { [key: string]: string } = {
       training: colors.primary,
       competition: '#FF6B6B',
-      recovery: '#4ECDC4',
       other: '#95E1D3',
     };
 

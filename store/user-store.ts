@@ -101,7 +101,6 @@ interface UserProfile {
   trackFieldEvent?: TrackFieldEvent; // Only used when sport is 'track-and-field'
   experienceLevel?: ExperienceLevel;
   joinDate: string;
-  preferredUnits?: 'metric' | 'imperial';
   notificationsEnabled: boolean;
   reminderTime?: string; // HH:MM format
   // Goals from onboarding

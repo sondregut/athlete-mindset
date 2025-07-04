@@ -28,7 +28,6 @@ export const lightColors = {
   sessionTypes: {
     training: '#4A90E2',
     competition: '#FF6B6B',
-    recovery: '#4CAF50',
     other: '#9A9A9A'
   }
 };
@@ -63,7 +62,6 @@ export const darkColors = {
   sessionTypes: {
     training: '#4a90e2',
     competition: '#FF6B6B',
-    recovery: '#66BB6A',
     other: '#B0B0B0'
   }
 };

@@ -20,7 +20,6 @@ export const colors = {
   sessionTypes: {
     training: "#4A90E2", // Updated to match new primary
     competition: "#FF6B6B",
-    recovery: "#4CAF50",
     other: "#9A9A9A"
   }
 };

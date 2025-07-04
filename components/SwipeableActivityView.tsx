@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
-import { Heart, Activity, AlertCircle } from 'lucide-react-native';
+import { Heart, Activity } from 'lucide-react-native';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { SessionLog } from '@/types/session';
 import { MindsetCheckin } from '@/store/mindset-store';
@@ -59,14 +59,6 @@ export default function SwipeableActivityView({ sessions, checkins, initialViewT
                 "{checkin.selfDescription}"
               </Text>
             )}
-            {(checkin.bodyPainAreas && checkin.bodyPainAreas.length > 0) ? (
-              <View style={styles.painIndicator}>
-                <AlertCircle size={16} color={colors.warning} />
-                <Text style={styles.painText}>
-                  {checkin.bodyPainAreas.length} pain area{checkin.bodyPainAreas.length > 1 ? 's' : ''} • {checkin.overallPainLevel || 'minor'}
-                </Text>
-              </View>
-            ) : null}
           </View>
         </View>
       </Card>

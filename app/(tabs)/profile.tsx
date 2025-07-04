@@ -188,12 +188,6 @@ export default function ProfileScreen() {
       
       {/* Profile Stats */}
       <ProfileStats />
-      
-      {/* Goals Display */}
-      <GoalsDisplay />
-      
-      {/* Achievements */}
-      <AchievementsSection />
 
       {/* Analytics Dashboard */}
       <AnalyticsDashboard />

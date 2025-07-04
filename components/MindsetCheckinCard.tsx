@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { formatDistanceToNow, format } from 'date-fns';
+import { formatDistanceToNow, format, differenceInHours } from 'date-fns';
 import { router } from 'expo-router';
-import { Heart, AlertCircle } from 'lucide-react-native';
+import { Heart } from 'lucide-react-native';
 import { MindsetCheckin } from '@/store/mindset-store';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import Card from './Card';
@@ -18,15 +18,21 @@ export default function MindsetCheckinCard({ checkin, onPress }: MindsetCheckinC
   const formatTime = (dateString: string) => {
     try {
       const date = new Date(dateString);
-      const now = new Date();
-      const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+      const hoursAgo = differenceInHours(new Date(), date);
       
-      // If it's from today, show time distance
-      if (diffInHours < 24 && date.toDateString() === now.toDateString()) {
+      if (hoursAgo < 24) {
         return formatDistanceToNow(date, { addSuffix: true });
+      } else {
+        // For dates older than 24 hours, show the actual date
+        const now = new Date();
+        const isCurrentYear = date.getFullYear() === now.getFullYear();
+        
+        if (isCurrentYear) {
+          return format(date, 'MMM d'); // e.g., "Dec 15"
+        } else {
+          return format(date, 'MMM d, yyyy'); // e.g., "Dec 15, 2023"
+        }
       }
-      // Otherwise show the date
-      return format(date, 'MMM d');
     } catch {
       return 'Recently';
     }
@@ -175,15 +181,6 @@ export default function MindsetCheckinCard({ checkin, onPress }: MindsetCheckinC
           </View>
         )}
         
-        {/* Pain Indicator */}
-        {checkin.bodyPainAreas && checkin.bodyPainAreas.length > 0 && (
-          <View style={styles.painIndicator}>
-            <AlertCircle size={14} color={colors.warning} />
-            <Text style={styles.painText}>
-              {checkin.bodyPainAreas.length} pain area{checkin.bodyPainAreas.length > 1 ? 's' : ''} • {checkin.overallPainLevel || 'minor'}
-            </Text>
-          </View>
-        )}
       </Card>
     </TouchableOpacity>
   );

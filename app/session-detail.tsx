@@ -1,8 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { formatDistanceToNow } from 'date-fns';
-import { Edit3, Calendar, Clock, Target, Star, Zap } from 'lucide-react-native';
+import { MoreVertical, Calendar, Clock, Target, Star, Zap } from 'lucide-react-native';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { useSessionStore } from '@/store/session-store';
 import Card from '@/components/Card';
@@ -14,7 +14,7 @@ export default function SessionDetailScreen() {
   const colors = useThemeColors();
   const params = useLocalSearchParams();
   const sessionId = params.sessionId as string;
-  const { getSessionById, setCurrentSessionForEdit } = useSessionStore();
+  const { getSessionById, setCurrentSessionForEdit, deleteSession } = useSessionStore();
   
   const session = getSessionById(sessionId);
 
@@ -23,6 +23,54 @@ export default function SessionDetailScreen() {
       setCurrentSessionForEdit(session.id);
       router.push('/log-session?edit=true');
     }
+  };
+
+  const handleDelete = async () => {
+    Alert.alert(
+      'Delete Session',
+      'Are you sure you want to delete this session? This action cannot be undone.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteSession(sessionId);
+              router.back();
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete session. Please try again.');
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleMenuPress = () => {
+    Alert.alert(
+      'Session Options',
+      undefined,
+      [
+        {
+          text: 'Edit Session',
+          onPress: handleEdit,
+        },
+        {
+          text: 'Delete Session',
+          onPress: handleDelete,
+          style: 'destructive',
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ],
+      { cancelable: true }
+    );
   };
 
   const formatDate = (dateString: string) => {
@@ -64,7 +112,7 @@ export default function SessionDetailScreen() {
       case 'active':
         return 'Session In Progress';
       case 'completed':
-        return 'Completed Session';
+        return '';
       default:
         return 'Unknown Status';
     }
@@ -259,8 +307,8 @@ export default function SessionDetailScreen() {
         options={{ 
           title: "Session Details",
           headerRight: () => (
-            <TouchableOpacity onPress={handleEdit} style={styles.editButton}>
-              <Edit3 size={20} color={colors.primary} />
+            <TouchableOpacity onPress={handleMenuPress} style={styles.editButton}>
+              <MoreVertical size={20} color={colors.primary} />
             </TouchableOpacity>
           )
         }} 
@@ -274,7 +322,9 @@ export default function SessionDetailScreen() {
           </View>
           <View style={styles.headerText}>
             <Text style={styles.sessionTitle}>{getSessionTitle()}</Text>
-            <Text style={styles.statusText}>{getStatusText()}</Text>
+            {getStatusText() !== '' && (
+              <Text style={styles.statusText}>{getStatusText()}</Text>
+            )}
             <Text style={styles.timeText}>
               {formatDistanceToNow(new Date(session.createdAt), { addSuffix: true })}
             </Text>

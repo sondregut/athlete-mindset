@@ -28,7 +28,6 @@ export default function OnboardingProfile({ step, onNext, onBack }: OnboardingPr
     sport: profile.sport as SportType | undefined,
     trackFieldEvent: profile.trackFieldEvent,
     experienceLevel: profile.experienceLevel as ExperienceLevel | undefined,
-    preferredUnits: profile.preferredUnits as ('metric' | 'imperial') | undefined,
   });
 
   const [errors, setErrors] = useState({
@@ -84,10 +83,6 @@ export default function OnboardingProfile({ step, onNext, onBack }: OnboardingPr
 
       if (formData.experienceLevel) {
         profileUpdate.experienceLevel = formData.experienceLevel;
-      }
-
-      if (formData.preferredUnits) {
-        profileUpdate.preferredUnits = formData.preferredUnits;
       }
 
       if (formData.age && formData.age.trim()) {
@@ -266,40 +261,6 @@ export default function OnboardingProfile({ step, onNext, onBack }: OnboardingPr
           </View>
         </View>
 
-        {/* Preferred Units */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Preferred Units</Text>
-          <View style={styles.unitsContainer}>
-            <TouchableOpacity
-              style={[
-                styles.unitOption,
-                formData.preferredUnits === 'metric' && styles.selectedUnitOption
-              ]}
-              onPress={() => updateFormData({ preferredUnits: 'metric' })}
-            >
-              <Text style={[
-                styles.unitText,
-                formData.preferredUnits === 'metric' && styles.selectedUnitText
-              ]}>
-                Metric (kg, km)
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.unitOption,
-                formData.preferredUnits === 'imperial' && styles.selectedUnitOption
-              ]}
-              onPress={() => updateFormData({ preferredUnits: 'imperial' })}
-            >
-              <Text style={[
-                styles.unitText,
-                formData.preferredUnits === 'imperial' && styles.selectedUnitText
-              ]}>
-                Imperial (lbs, miles)
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
       </ScrollView>
 
       {/* Actions */}
@@ -511,32 +472,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.darkGray,
     lineHeight: 20,
-  },
-  unitsContainer: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  unitOption: {
-    flex: 1,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: colors.mediumGray,
-    backgroundColor: colors.background,
-    alignItems: 'center',
-  },
-  selectedUnitOption: {
-    borderColor: colors.primary,
-    backgroundColor: `${colors.primary}08`,
-  },
-  unitText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.text,
-  },
-  selectedUnitText: {
-    color: colors.primary,
   },
   actions: {
     gap: 12,

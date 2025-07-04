@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, differenceInHours, format } from 'date-fns';
 import { router } from 'expo-router';
-import { Clock, Zap, Target, Brain } from 'lucide-react-native';
+import { Clock, Zap, Target, Brain, CheckCircle } from 'lucide-react-native';
 import { SessionLog } from '@/types/session';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { useSessionStore } from '@/store/session-store';
@@ -22,7 +22,22 @@ export default function SessionLogItem({ log, onPress, showEditButton = true }: 
   
   const formatTime = (dateString: string) => {
     try {
-      return formatDistanceToNow(new Date(dateString), { addSuffix: true });
+      const date = new Date(dateString);
+      const hoursAgo = differenceInHours(new Date(), date);
+      
+      if (hoursAgo < 24) {
+        return formatDistanceToNow(date, { addSuffix: true });
+      } else {
+        // For dates older than 24 hours, show the actual date
+        const now = new Date();
+        const isCurrentYear = date.getFullYear() === now.getFullYear();
+        
+        if (isCurrentYear) {
+          return format(date, 'MMM d'); // e.g., "Dec 15"
+        } else {
+          return format(date, 'MMM d, yyyy'); // e.g., "Dec 15, 2023"
+        }
+      }
     } catch {
       return 'Recently';
     }
@@ -149,6 +164,61 @@ export default function SessionLogItem({ log, onPress, showEditButton = true }: 
       flex: 1,
       marginRight: 8,
     },
+    intentionContainer: {
+      backgroundColor: colors.primary + '10',
+      padding: 12,
+      borderRadius: 8,
+      marginBottom: 12,
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 8,
+    },
+    intentionText: {
+      fontSize: 14,
+      color: colors.text,
+      fontStyle: 'italic',
+      flex: 1,
+    },
+    notesContainer: {
+      backgroundColor: colors.lightGray,
+      padding: 12,
+      borderRadius: 8,
+      marginTop: 12,
+    },
+    notesText: {
+      fontSize: 14,
+      color: colors.text,
+      lineHeight: 20,
+    },
+    positivesContainer: {
+      marginTop: 12,
+    },
+    positiveItem: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 8,
+      marginBottom: 6,
+    },
+    positiveText: {
+      fontSize: 13,
+      color: colors.text,
+      flex: 1,
+    },
+    stretchGoalContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginTop: 12,
+      backgroundColor: colors.warning + '15',
+      padding: 10,
+      borderRadius: 8,
+    },
+    stretchGoalText: {
+      fontSize: 13,
+      color: colors.text,
+      fontWeight: '500',
+      flex: 1,
+    },
   });
 
   return (
@@ -174,6 +244,14 @@ export default function SessionLogItem({ log, onPress, showEditButton = true }: 
             <Text style={styles.timeText}>{formatTime(log.createdAt)}</Text>
           </View>
         </View>
+        
+        {/* Pre-Training Intention */}
+        {log.intention && (
+          <View style={styles.intentionContainer}>
+            <Brain size={16} color={colors.primary} />
+            <Text style={styles.intentionText}>{log.intention}</Text>
+          </View>
+        )}
         
         {/* Metrics Row */}
         {log.status === 'completed' && (log.rpe || log.readinessRating) && (
@@ -216,22 +294,39 @@ export default function SessionLogItem({ log, onPress, showEditButton = true }: 
           </View>
         )}
         
-        {/* Bottom Section */}
-        {log.status === 'completed' && (
-          <View style={styles.bottomSection}>
-            {/* First Positive Preview */}
-            {log.positives && log.positives[0] && (
-              <Text style={styles.positivePreview} numberOfLines={1}>
-                "{truncateText(log.positives[0], 40)}"
-              </Text>
-            )}
-            
-            {/* Session Rating */}
-            {log.sessionRating && (
-              <View style={styles.ratingContainer}>
-                <Text style={styles.ratingText}>{getRatingStars(log.sessionRating)}</Text>
+        {/* Post-Session Notes */}
+        {log.notes && log.status === 'completed' && (
+          <View style={styles.notesContainer}>
+            <Text style={styles.notesText}>{log.notes}</Text>
+          </View>
+        )}
+        
+        {/* All Positives */}
+        {log.positives && log.positives.length > 0 && log.status === 'completed' && (
+          <View style={styles.positivesContainer}>
+            {log.positives.map((positive, index) => (
+              <View key={index} style={styles.positiveItem}>
+                <CheckCircle size={14} color={colors.success} />
+                <Text style={styles.positiveText}>{positive}</Text>
               </View>
-            )}
+            ))}
+          </View>
+        )}
+        
+        {/* Stretch Goal */}
+        {log.stretchGoal && log.status === 'completed' && (
+          <View style={styles.stretchGoalContainer}>
+            <Target size={16} color={colors.warning} />
+            <Text style={styles.stretchGoalText}>{log.stretchGoal}</Text>
+          </View>
+        )}
+        
+        {/* Bottom Section - Session Rating */}
+        {log.status === 'completed' && log.sessionRating && (
+          <View style={styles.bottomSection}>
+            <View style={styles.ratingContainer}>
+              <Text style={styles.ratingText}>{getRatingStars(log.sessionRating)}</Text>
+            </View>
           </View>
         )}
       </Card>

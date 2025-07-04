@@ -23,41 +23,41 @@ function StatCard({ title, value, subtitle, icon, color, loading = false }: Stat
   const styles = StyleSheet.create({
     statCard: {
       flex: 1,
-      padding: 16,
+      padding: 12,
     },
     statHeader: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginBottom: 8,
+      marginBottom: 6,
     },
     statIcon: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
+      width: 24,
+      height: 24,
+      borderRadius: 12,
       justifyContent: 'center',
       alignItems: 'center',
-      marginRight: 8,
+      marginRight: 6,
     },
     statTitle: {
-      fontSize: 12,
+      fontSize: 11,
       color: colors.darkGray,
       fontWeight: '500',
       flex: 1,
     },
     statValue: {
-      fontSize: 24,
+      fontSize: 18,
       fontWeight: '700',
-      marginBottom: 4,
+      marginBottom: 2,
     },
     statSubtitle: {
-      fontSize: 11,
+      fontSize: 10,
       color: colors.darkGray,
     },
     loadingCard: {
       opacity: 0.6,
     },
     loadingContainer: {
-      height: 40,
+      height: 30,
       justifyContent: 'center',
     },
   });
@@ -225,25 +225,25 @@ export default function AnalyticsDashboard() {
       color: colors.darkGray,
     },
     summaryCard: {
-      padding: 16,
+      padding: 12,
       marginBottom: 12,
     },
     summaryContent: {
-      gap: 4,
+      gap: 2,
     },
     summaryTitle: {
-      fontSize: 14,
+      fontSize: 12,
       color: colors.darkGray,
-      marginBottom: 4,
+      marginBottom: 2,
     },
     summaryValue: {
-      fontSize: 18,
+      fontSize: 16,
       fontWeight: '600',
       color: colors.primary,
-      marginBottom: 4,
+      marginBottom: 2,
     },
     summarySubtitle: {
-      fontSize: 14,
+      fontSize: 12,
       color: colors.darkGray,
     },
     loadingCard: {
@@ -268,55 +268,36 @@ export default function AnalyticsDashboard() {
         </TouchableOpacity>
       </View>
       
-      {/* Top Row - Weekly Performance */}
+      {/* Top Row - Performance Achievements */}
       <View style={styles.row}>
-        <StatCard
-          title="This Week"
-          value={weeklyLogs}
-          subtitle={weeklyLogs === 1 ? 'session' : 'sessions'}
-          icon={<Calendar size={20} color={colors.primary} />}
-          loading={isCalculatingAnalytics}
-        />
         <StatCard
           title="Best Streak"
           value={longestStreak}
           subtitle={longestStreak === 1 ? 'day' : 'days'}
-          icon={<Trophy size={20} color='#FFD700' />}
+          icon={<Trophy size={16} color='#FFD700' />}
           color='#FFD700'
           loading={isCalculatingAnalytics}
         />
-      </View>
-
-      {/* Second Row - Monthly Performance */}
-      <View style={styles.row}>
         <StatCard
           title="This Month"
           value={monthlyStats.thisMonth}
           subtitle={monthlyStats.lastMonth > 0 
-            ? `${monthlyStats.thisMonth > monthlyStats.lastMonth ? '+' : ''}${monthlyStats.thisMonth - monthlyStats.lastMonth} vs last month`
-            : 'sessions logged'
+            ? `${monthlyStats.thisMonth > monthlyStats.lastMonth ? '+' : ''}${monthlyStats.thisMonth - monthlyStats.lastMonth} vs last`
+            : 'sessions'
           }
-          icon={<TrendingUp size={20} color={colors.secondary} />}
+          icon={<TrendingUp size={16} color={colors.secondary} />}
           color={colors.secondary}
-          loading={isCalculatingAnalytics}
-        />
-        <StatCard
-          title="Avg RPE"
-          value={formatAverage(performanceTrends.avgRPE)}
-          subtitle="last 30 days"
-          icon={<Target size={20} color='#9C27B0' />}
-          color='#9C27B0'
           loading={isCalculatingAnalytics}
         />
       </View>
 
-      {/* Third Row - Performance Insights */}
+      {/* Second Row - Performance Metrics */}
       <View style={styles.row}>
         <StatCard
-          title="Avg Readiness"
-          value={formatAverage(mindsetInsights.avgReadiness)}
-          subtitle="out of 10"
-          icon={<Target size={20} color='#9C27B0' />}
+          title="Avg RPE"
+          value={formatAverage(performanceTrends.avgRPE)}
+          subtitle="last 30 days"
+          icon={<Target size={16} color='#9C27B0' />}
           color='#9C27B0'
           loading={isCalculatingAnalytics}
         />
@@ -324,31 +305,32 @@ export default function AnalyticsDashboard() {
           title="Avg Rating"
           value={formatAverage(performanceTrends.avgRating)}
           subtitle="out of 5 stars"
-          icon={<Star size={20} color='#FF9800' />}
+          icon={<Star size={16} color='#FF9800' />}
           color='#FF9800'
           loading={isCalculatingAnalytics}
         />
       </View>
 
-      {/* Fourth Row - Mindset Insights */}
+      {/* Third Row - Mindset Insights */}
       <View style={styles.row}>
+        <StatCard
+          title="Avg Readiness"
+          value={formatAverage(mindsetInsights.avgReadiness)}
+          subtitle="out of 10"
+          icon={<Zap size={16} color='#3F51B5' />}
+          color='#3F51B5'
+          loading={isCalculatingAnalytics}
+        />
         <StatCard
           title="Mindset Streak"
           value={mindsetStreak}
           subtitle={mindsetStreak === 1 ? 'day' : 'days'}
-          icon={<Heart size={20} color='#E91E63' />}
+          icon={<Heart size={16} color='#E91E63' />}
           color='#E91E63'
           loading={isCalculatingAnalytics}
         />
-        <StatCard
-          title="Avg Energy"
-          value={formatAverage(mindsetAverages.energy)}
-          subtitle="last 30 days"
-          icon={<Zap size={20} color='#3F51B5' />}
-          color='#3F51B5'
-          loading={isCalculatingAnalytics}
-        />
       </View>
+
 
       {/* Mindset Insights Summary */}
       {mindsetInsights.topCues.length > 0 && (

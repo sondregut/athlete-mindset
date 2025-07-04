@@ -25,25 +25,18 @@ const features = [
     number: '1',
   },
   {
-    icon: <Clock size={20} color={colors.background} />,
-    title: 'Session Tracking',
-    description: 'Time your training with our persistent timer system',
-    color: '#FF8C42',
-    number: '2',
-  },
-  {
     icon: <PlayCircle size={20} color={colors.background} />,
     title: 'Post-Training Reflection',
     description: 'Record what went well, rate your session, and set stretch goals',
     color: colors.secondary,
-    number: '3',
+    number: '2',
   },
   {
     icon: <TrendingUp size={20} color={colors.background} />,
     title: 'Progress Analytics',
     description: 'Track streaks, analyze trends, and celebrate achievements',
     color: colors.success,
-    number: '4',
+    number: '3',
   },
 ];
 

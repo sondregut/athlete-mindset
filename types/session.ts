@@ -1,4 +1,4 @@
-export type SessionType = 'training' | 'competition' | 'recovery' | 'other';
+export type SessionType = 'training' | 'competition' | 'other';
 
 export interface SessionLog {
   id: string;

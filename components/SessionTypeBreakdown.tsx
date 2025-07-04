@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
-import { Dumbbell, Trophy, Heart, HelpCircle } from 'lucide-react-native';
+import { Dumbbell, Trophy, HelpCircle } from 'lucide-react-native';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { useSessionStore } from '@/store/session-store';
 import { SessionType } from '@/types/session';
@@ -117,8 +117,6 @@ export default function SessionTypeBreakdown() {
       return <Dumbbell size={16} color={colors.sessionTypes.training} />;
     } else if (lowerType.includes('competition')) {
       return <Trophy size={16} color={colors.sessionTypes.competition} />;
-    } else if (lowerType.includes('recovery')) {
-      return <Heart size={16} color={colors.sessionTypes.recovery} />;
     } else {
       return <HelpCircle size={16} color={colors.sessionTypes.other} />;
     }
@@ -130,8 +128,6 @@ export default function SessionTypeBreakdown() {
       return colors.sessionTypes.training;
     } else if (lowerType.includes('competition')) {
       return colors.sessionTypes.competition;
-    } else if (lowerType.includes('recovery')) {
-      return colors.sessionTypes.recovery;
     } else {
       return colors.sessionTypes.other;
     }

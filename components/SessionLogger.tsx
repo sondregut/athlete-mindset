@@ -19,6 +19,10 @@ export default function SessionLogger({ compact = false }: SessionLoggerProps) {
     router.push('/log-session');
   };
 
+  const handleLogPastSession = () => {
+    router.push('/log-session?postOnly=true');
+  };
+
   const handleContinueSession = () => {
     router.push('/log-session');
   };
@@ -53,65 +57,64 @@ export default function SessionLogger({ compact = false }: SessionLoggerProps) {
   const renderCompactView = () => {
     if (currentSession) {
       return (
-        <Card style={styles.compactCard}>
-          <View style={styles.compactHeader}>
-            {currentSession.status === 'active' ? (
-              <Clock size={24} color={colors.primary} />
-            ) : currentSession.status === 'completed' ? (
-              <CheckCircle size={24} color={colors.success} />
-            ) : (
-              <Play size={24} color={colors.primary} />
-            )}
-            <View style={styles.compactInfo}>
-              <Text style={styles.compactTitle}>{getSessionStatusText()}</Text>
-              <Text style={styles.compactSubtitle}>
-                {getSessionTitle()}
-                {currentSession.status === 'active' ? ` • ${elapsedTime}` : ''}
-              </Text>
+        <TouchableOpacity
+          onPress={handleContinueSession}
+          activeOpacity={0.7}
+        >
+          <Card style={styles.compactCard}>
+            <View style={styles.compactHeader}>
+              {currentSession.status === 'active' ? (
+                <Clock size={24} color={colors.primary} />
+              ) : currentSession.status === 'completed' ? (
+                <CheckCircle size={24} color={colors.success} />
+              ) : (
+                <Play size={24} color={colors.primary} />
+              )}
+              <View style={styles.compactInfo}>
+                <Text style={styles.compactTitle}>{getSessionStatusText()}</Text>
+                <Text style={styles.compactSubtitle}>
+                  {getSessionTitle()}
+                  {currentSession.status === 'active' ? ` • ${elapsedTime}` : ''}
+                </Text>
+              </View>
             </View>
-            <Button
-              title="Continue"
-              onPress={handleContinueSession}
-              style={styles.compactActionButton}
-            />
-          </View>
-        </Card>
+          </Card>
+        </TouchableOpacity>
       );
     }
 
     return (
-      <View>
-        <Card style={styles.compactCard}>
-          <View style={styles.compactHeader}>
-            <Play size={24} color={colors.primary} />
-            <View style={styles.compactInfo}>
-              <Text style={styles.compactTitle}>Full Training Session</Text>
-              <Text style={styles.compactSubtitle}>Log pre-training intentions first</Text>
+      <>
+        <TouchableOpacity
+          onPress={handleStartSession}
+          activeOpacity={0.7}
+        >
+          <Card style={styles.compactCard}>
+            <View style={styles.compactHeader}>
+              <Play size={24} color={colors.primary} />
+              <View style={styles.compactInfo}>
+                <Text style={styles.compactTitle}>Start Training</Text>
+                <Text style={styles.compactSubtitle}>Set your intentions and begin session</Text>
+              </View>
             </View>
-            <Button
-              title="Start"
-              onPress={handleStartSession}
-              style={styles.compactActionButton}
-            />
-          </View>
-        </Card>
+          </Card>
+        </TouchableOpacity>
         
-        <Card style={[styles.compactCard, styles.quickPostCard]}>
-          <View style={styles.compactHeader}>
-            <CheckCircle size={24} color={colors.success} />
-            <View style={styles.compactInfo}>
-              <Text style={styles.compactTitle}>Quick Post-Training</Text>
-              <Text style={styles.compactSubtitle}>Already finished? Log reflection only</Text>
+        <TouchableOpacity
+          onPress={handleLogPastSession}
+          activeOpacity={0.7}
+        >
+          <Card style={styles.compactCard}>
+            <View style={styles.compactHeader}>
+              <Clock size={24} color={colors.secondary} />
+              <View style={styles.compactInfo}>
+                <Text style={styles.compactTitle}>Log Post Session Notes</Text>
+                <Text style={styles.compactSubtitle}>Add reflection for completed session</Text>
+              </View>
             </View>
-            <Button
-              title="Log"
-              onPress={handleQuickPostTraining}
-              style={styles.compactActionButton}
-              variant="outline"
-            />
-          </View>
-        </Card>
-      </View>
+          </Card>
+        </TouchableOpacity>
+      </>
     );
   };
 
@@ -137,18 +140,6 @@ export default function SessionLogger({ compact = false }: SessionLoggerProps) {
     compactSubtitle: {
       fontSize: 14,
       color: colors.darkGray,
-    },
-    compactActionButton: {
-      paddingHorizontal: 20,
-      paddingVertical: 8,
-    },
-    quickPostCard: {
-      marginTop: 0,
-    },
-    quickPostButton: {
-      backgroundColor: 'transparent',
-      borderColor: colors.success,
-      borderWidth: 1,
     },
   });
 

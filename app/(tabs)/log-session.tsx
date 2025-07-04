@@ -28,10 +28,13 @@ function SetupStep({
   sessionType,
   customSessionType,
   activity,
+  duration,
+  isPostOnly,
   onDateChange,
   onSessionTypeChange,
   onCustomSessionTypeChange,
   onActivityChange,
+  onDurationChange,
   onContinue,
   onBack,
   onShowHistory,
@@ -42,10 +45,13 @@ function SetupStep({
   sessionType: SessionType;
   customSessionType: string;
   activity: string;
+  duration?: number;
+  isPostOnly?: boolean;
   onDateChange: (date: string) => void;
   onSessionTypeChange: (type: SessionType) => void;
   onCustomSessionTypeChange: (value: string) => void;
   onActivityChange: (value: string) => void;
+  onDurationChange?: (value: number) => void;
   onContinue: () => void;
   onBack?: () => void;
   onShowHistory?: () => void;
@@ -55,7 +61,6 @@ function SetupStep({
   const sessionTypes: { value: SessionType; label: string }[] = [
     { value: 'training', label: 'Training' },
     { value: 'competition', label: 'Competition' },
-    { value: 'recovery', label: 'Recovery' },
     { value: 'other', label: 'Other' },
   ];
 
@@ -66,20 +71,20 @@ function SetupStep({
     const today = new Date();
     const options = [];
     
-    // Add past 7 days and future 7 days
-    for (let i = -7; i <= 7; i++) {
+    // Add today and past 30 days (no future dates)
+    for (let i = -30; i <= 0; i++) {
       const date = new Date(today);
       date.setDate(today.getDate() + i);
       options.push({
         date: date.toISOString().split('T')[0],
         label: i === 0 ? 'Today' : 
                i === -1 ? 'Yesterday' :
-               i === 1 ? 'Tomorrow' :
                date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
         isToday: i === 0
       });
     }
-    return options;
+    // Reverse to show most recent dates first (Today at top)
+    return options.reverse();
   };
 
   const dateOptions = getDateOptions();
@@ -87,30 +92,19 @@ function SetupStep({
 
   // Set today as default when opening the modal
   const handleOpenDateModal = () => {
-    if (date === new Date().toISOString().split('T')[0]) {
-      // If current date is today, keep it
-      setShowDateModal(true);
-    } else {
-      // If current date is not today, auto-select today when opening
+    // Always default to today when opening the modal if no date is set
+    if (!date || date !== new Date().toISOString().split('T')[0]) {
       const todayDate = new Date().toISOString().split('T')[0];
       onDateChange(todayDate);
-      setShowDateModal(true);
     }
+    setShowDateModal(true);
     
-    // Immediately position scrollview to show today option (no animation)
-    setTimeout(() => {
-      if (scrollViewRef.current && todayIndex >= 0) {
-        scrollViewRef.current.scrollTo({
-          y: todayIndex * 56, // Approximate height of each option
-          animated: false, // No animation - appear instantly
-        });
-      }
-    }, 50); // Shorter delay - just enough for modal to render
+    // No need to scroll since Today is at the top
   };
 
   return (
     <Card>
-      <Text style={styles.stepTitle}>Session Setup</Text>
+      <Text style={styles.stepTitle}>{isPostOnly ? 'Session Details' : 'Session Setup'}</Text>
       
       <Text style={styles.inputLabel}>Date</Text>
       <TouchableOpacity 
@@ -196,11 +190,30 @@ function SetupStep({
         style={styles.input}
         value={activity}
         onChangeText={onActivityChange}
-        placeholder="e.g., Weightlifting - Lower Body"
+        placeholder="e.g., Pole vaulting - long approach"
         placeholderTextColor={colors.darkGray}
       />
       
-
+      {isPostOnly && (
+        <>
+          <Text style={styles.inputLabel}>Session Duration (minutes)</Text>
+          <TextInput
+            style={styles.input}
+            value={duration ? duration.toString() : ''}
+            onChangeText={(text) => {
+              const num = parseInt(text, 10);
+              if (!isNaN(num) && num >= 0) {
+                onDurationChange?.(num);
+              } else if (text === '') {
+                onDurationChange?.(0);
+              }
+            }}
+            placeholder="e.g., 45"
+            placeholderTextColor={colors.darkGray}
+            keyboardType="numeric"
+          />
+        </>
+      )}
       
       <View style={styles.buttonContainer}>
         {onBack && (
@@ -629,9 +642,9 @@ export default function LogSessionScreen() {
   const colors = useThemeColors();
   const params = useLocalSearchParams();
   const isEditMode = !!params.edit;
-  const isQuickPost = params.quickPost === 'true';
+  const isPostOnly = params.postOnly === 'true';
   
-  const [step, setStep] = useState(isQuickPost ? 4 : 1);
+  const [step, setStep] = useState(isPostOnly ? 4 : 1);
   const [startTime, setStartTime] = useState<Date | null>(null);
   
   // Scroll state
@@ -655,6 +668,7 @@ export default function LogSessionScreen() {
   const [sessionType, setSessionType] = useState<SessionType>('training');
   const [customSessionType, setCustomSessionType] = useState('');
   const [activity, setActivity] = useState('');
+  const [duration, setDuration] = useState<number>(0);
   
   // Step 2 state
   const [intention, setIntention] = useState('');
@@ -726,14 +740,21 @@ export default function LogSessionScreen() {
   // Simple scroll sync - only for button navigation
   useEffect(() => {
     if (scrollViewRef.current) {
-      const targetX = (step - 1) * screenWidth;
+      let targetX;
+      if (isPostOnly) {
+        // In post-only mode: step 1 = index 0, step 4 = index 1
+        targetX = step === 1 ? 0 : screenWidth;
+      } else {
+        // Regular mode: step maps directly to index
+        targetX = (step - 1) * screenWidth;
+      }
       console.log('🎯 Syncing scroll to step:', step, 'targetX:', targetX);
       scrollViewRef.current.scrollTo({
         x: targetX,
         animated: true
       });
     }
-  }, [step, screenWidth]);
+  }, [step, screenWidth, isPostOnly]);
 
   useEffect(() => {
     // Initialize with current session data if available
@@ -922,9 +943,17 @@ export default function LogSessionScreen() {
   const navigateToStep = (newStep: number) => {
     console.log('🎬 navigateToStep called with:', newStep);
     
-    if (newStep < 1 || newStep > 4) {
+    const maxStep = isPostOnly ? 4 : 4;
+    if (newStep < 1 || newStep > maxStep) {
       console.log('❌ Invalid step number:', newStep);
       return;
+    }
+    
+    // In post-only mode, we only have steps 1 and 4
+    if (isPostOnly && newStep === 2) {
+      newStep = 4;
+    } else if (isPostOnly && newStep === 3) {
+      return; // Skip step 3 in post-only mode
     }
     
     console.log('📊 Navigating from step', step, 'to step', newStep);
@@ -932,10 +961,9 @@ export default function LogSessionScreen() {
   };
 
   const handleBack = () => {
-    if (isQuickPost && step === 4) {
-      // For quick post at reflection step, go back to home
-      resetCurrentSession();
-      router.back();
+    if (isPostOnly && step === 4) {
+      // In post-only mode, go from step 4 back to step 1
+      navigateToStep(1);
     } else if (step > 1) {
       navigateToStep(step - 1);
     } else {
@@ -956,12 +984,18 @@ export default function LogSessionScreen() {
 
   // Simplified button handlers with direct timer management
   const handleContinueFromSetup = () => {
-    if (isQuickPost) {
-      console.log('📋 Quick post-training - skipping to reflection');
+    console.log('📋 Continue from setup - moving to step', isPostOnly ? 4 : 2);
+    
+    // Only create/update session when user has entered meaningful data
+    const sessionId = currentSession?.id || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    if (isPostOnly) {
+      // For post-only sessions, calculate end time based on duration
+      const sessionDate = new Date(date);
+      const endTime = new Date(sessionDate);
+      endTime.setMinutes(endTime.getMinutes() + duration);
       
-      // Create session and jump directly to reflection
-      const sessionId = currentSession?.id || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      
+      // Update session data for post-only mode
       updateCurrentSession({
         id: sessionId,
         date,
@@ -970,6 +1004,10 @@ export default function LogSessionScreen() {
         customSessionType: sessionType === 'other' ? customSessionType : undefined,
         activity,
         status: 'reflection',
+        // Set times based on duration
+        startTime: sessionDate.toISOString(),
+        endTime: endTime.toISOString(),
+        duration: duration * 60, // Convert minutes to seconds
         // Set empty defaults for skipped fields
         intention: '',
         mindsetCues: [],
@@ -977,15 +1015,10 @@ export default function LogSessionScreen() {
         readinessRating: 7,
       });
       
-      // Navigate directly to step 4 (reflection)
+      // Navigate directly to reflection step
       navigateToStep(4);
     } else {
-      console.log('📋 Continue from setup - moving to step 2');
-      
-      // Only create/update session when user has entered meaningful data
-      const sessionId = currentSession?.id || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      
-      // Update session data
+      // Regular flow
       updateCurrentSession({
         id: sessionId,
         date,
@@ -1056,12 +1089,20 @@ export default function LogSessionScreen() {
   const handleMomentumScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetX = event.nativeEvent.contentOffset.x;
     const newStepIndex = Math.round(offsetX / screenWidth);
-    const newStep = newStepIndex + 1;
+    let newStep;
+    
+    if (isPostOnly) {
+      // In post-only mode, map index to actual step numbers (1 or 4)
+      newStep = newStepIndex === 0 ? 1 : 4;
+    } else {
+      newStep = newStepIndex + 1;
+    }
     
     console.log('🏁 Momentum scroll end - offsetX:', offsetX, 'newStep:', newStep, 'currentStep:', step);
     
     // Only update step if it's valid and different
-    if (newStep !== step && newStep >= 1 && newStep <= 4) {
+    const maxStep = isPostOnly ? 4 : 4;
+    if (newStep !== step && newStep >= 1 && newStep <= maxStep) {
       if (canSwipeToStep(newStep)) {
         console.log('✅ Swipe completed to step', newStep);
         setStep(newStep);
@@ -1069,8 +1110,9 @@ export default function LogSessionScreen() {
         console.log('❌ Swipe blocked - bouncing back to step', step);
         // Bounce back to current step
         if (scrollViewRef.current) {
+          const targetX = isPostOnly ? (step === 1 ? 0 : screenWidth) : (step - 1) * screenWidth;
           scrollViewRef.current.scrollTo({
-            x: (step - 1) * screenWidth,
+            x: targetX,
             animated: true
           });
         }
@@ -1081,6 +1123,11 @@ export default function LogSessionScreen() {
   const canSwipeToStep = (targetStep: number): boolean => {
     // Always allow going backwards via swipe
     if (targetStep < step) return true;
+    
+    if (isPostOnly) {
+      // In post-only mode, allow direct swipe between step 1 and 4
+      return (step === 1 && targetStep === 4) || (step === 4 && targetStep === 1);
+    }
     
     // Block swiping forward from step 3 to step 4 - must use finish button
     if (step === 3 && targetStep === 4) {
@@ -1101,10 +1148,13 @@ export default function LogSessionScreen() {
             sessionType={sessionType}
             customSessionType={customSessionType}
             activity={activity}
+            duration={duration}
+            isPostOnly={isPostOnly}
             onDateChange={setDate}
             onSessionTypeChange={setSessionType}
             onCustomSessionTypeChange={setCustomSessionType}
             onActivityChange={setActivity}
+            onDurationChange={setDuration}
             onContinue={handleContinueFromSetup}
             onBack={handleBack}
             onShowHistory={() => setShowSessionHistory(true)}
@@ -1489,16 +1539,19 @@ export default function LogSessionScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.stepIndicatorContainer}>
-        {[1, 2, 3, 4].map((s) => (
-          <View 
-            key={s} 
-            style={[
-              styles.stepIndicator, 
-              s === step && styles.activeStepIndicator,
-              s < step && styles.completedStepIndicator,
-            ]}
-          />
-        ))}
+        {(isPostOnly ? [1, 2] : [1, 2, 3, 4]).map((s, index) => {
+          const actualStep = isPostOnly && s === 2 ? 4 : s;
+          return (
+            <View 
+              key={s} 
+              style={[
+                styles.stepIndicator, 
+                actualStep === step && styles.activeStepIndicator,
+                actualStep < step && styles.completedStepIndicator,
+              ]}
+            />
+          );
+        })}
       </View>
       
       <ScrollView
@@ -1511,7 +1564,7 @@ export default function LogSessionScreen() {
         contentContainerStyle={styles.horizontalContentContainer}
         keyboardShouldPersistTaps="handled"
       >
-        {[1, 2, 3, 4].map((stepNumber) => (
+        {(isPostOnly ? [1, 4] : [1, 2, 3, 4]).map((stepNumber) => (
           <View key={stepNumber} style={[styles.stepContainer, { width: screenWidth }]}>
             <ScrollView 
               style={styles.verticalScrollView} 

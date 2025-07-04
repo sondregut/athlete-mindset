@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Switch, TouchableOpacity } from 'react-native';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import Card from './Card';
-import { Bell, Moon, Globe, Shield } from 'lucide-react-native';
+import { Bell, Globe, Shield } from 'lucide-react-native';
 import { useUserStore } from '@/store/user-store';
 
 export default function ProfilePreferences() {
@@ -15,12 +15,6 @@ export default function ProfilePreferences() {
       title: 'Push Notifications',
       description: 'Receive reminders and updates',
       key: 'pushNotifications' as const,
-    },
-    {
-      icon: Moon,
-      title: 'Dark Mode',
-      description: 'Easier on the eyes at night',
-      key: 'darkMode' as const,
     },
     {
       icon: Globe,

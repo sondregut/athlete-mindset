@@ -15,6 +15,7 @@ import {
   isFuture
 } from 'date-fns';
 import Card from './Card';
+import MonthlyCalendarView from './MonthlyCalendarView';
 
 interface WeekCalendarViewProps {
   sessions: SessionLog[];
@@ -25,6 +26,7 @@ interface WeekCalendarViewProps {
 export default function WeekCalendarView({ sessions, onDateSelect, selectedDate }: WeekCalendarViewProps) {
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [weekDays, setWeekDays] = useState<Date[]>([]);
+  const [showMonthlyCalendar, setShowMonthlyCalendar] = useState(false);
   const colors = useThemeColors();
 
   useEffect(() => {
@@ -69,8 +71,9 @@ export default function WeekCalendarView({ sessions, onDateSelect, selectedDate 
 
   const styles = StyleSheet.create({
     container: {
-      padding: 16,
-      marginVertical: 16,
+      paddingVertical: 16,
+      marginHorizontal: 16,
+      marginBottom: 8,
     },
     header: {
       flexDirection: 'row',
@@ -90,6 +93,9 @@ export default function WeekCalendarView({ sessions, onDateSelect, selectedDate 
       fontSize: 18,
       fontWeight: '600',
       color: colors.text,
+      textDecorationLine: 'underline',
+      textDecorationStyle: 'dotted',
+      textDecorationColor: colors.primary,
     },
     weekRange: {
       fontSize: 14,
@@ -219,14 +225,18 @@ export default function WeekCalendarView({ sessions, onDateSelect, selectedDate 
           <ChevronLeft size={20} color={colors.primary} />
         </TouchableOpacity>
         
-        <View style={styles.weekInfo}>
+        <TouchableOpacity 
+          style={styles.weekInfo}
+          onPress={() => setShowMonthlyCalendar(true)}
+          activeOpacity={0.7}
+        >
           <Text style={styles.monthYear}>
             {format(currentWeek, 'MMMM yyyy')}
           </Text>
           <Text style={styles.weekRange}>
             Week {format(startOfWeek(currentWeek, { weekStartsOn: 1 }), 'w')}
           </Text>
-        </View>
+        </TouchableOpacity>
         
         <TouchableOpacity 
           onPress={() => navigateWeek('next')}
@@ -333,6 +343,18 @@ export default function WeekCalendarView({ sessions, onDateSelect, selectedDate 
           <Text style={styles.legendText}>Recovery</Text>
         </View>
       </View>
+      
+      <MonthlyCalendarView
+        sessions={sessions}
+        visible={showMonthlyCalendar}
+        onClose={() => setShowMonthlyCalendar(false)}
+        selectedDate={selectedDate}
+        onDateSelect={(date) => {
+          onDateSelect?.(date);
+          setCurrentWeek(date);
+        }}
+        currentMonth={currentWeek}
+      />
     </Card>
   );
 }

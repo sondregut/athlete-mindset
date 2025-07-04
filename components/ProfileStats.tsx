@@ -1,15 +1,16 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Flame, CheckCircle } from 'lucide-react-native';
+import { Flame, CheckCircle, Calendar } from 'lucide-react-native';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { useSessionStore } from '@/store/session-store';
 
 export default function ProfileStats() {
   const colors = useThemeColors();
-  const { getStreak, getTotalSessions } = useSessionStore();
+  const { getStreak, getTotalSessions, getWeeklyLogs } = useSessionStore();
   
   const currentStreak = getStreak();
   const totalSessions = getTotalSessions();
+  const weeklyLogs = getWeeklyLogs();
   
   const getStreakColor = () => {
     if (currentStreak >= 7) return colors.success; // Green for week+
@@ -20,47 +21,110 @@ export default function ProfileStats() {
   const styles = StyleSheet.create({
     container: {
       marginBottom: 16,
-      flexDirection: 'row',
-      justifyContent: 'space-around',
+    },
+    compactCard: {
+      paddingVertical: 20,
       paddingHorizontal: 16,
+    },
+    statsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
     },
     statItem: {
       alignItems: 'center',
+      flex: 1,
     },
-    statRow: {
-      flexDirection: 'row',
+    iconWrapper: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      justifyContent: 'center',
       alignItems: 'center',
+      marginBottom: 8,
       gap: 6,
     },
     statValue: {
       fontSize: 18,
       fontWeight: '600',
       color: colors.text,
+=======
+    },
+    compactCard: {
+      padding: 16,
+    },
+    statsRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+      alignItems: 'center',
+    },
+    statItem: {
+      alignItems: 'center',
+      flex: 1,
+    },
+    iconWrapper: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 6,
+    },
+    statValue: {
+      fontSize: 18,
+      fontWeight: '700',
+      marginBottom: 2,
     },
     statLabel: {
-      fontSize: 12,
+      fontSize: 11,
       color: colors.darkGray,
-      marginTop: 2,
+      fontWeight: '500',
+      textAlign: 'center',
+    },
+    divider: {
+      width: 1,
+      height: 40,
+      backgroundColor: colors.border,
+      marginHorizontal: 8,
     },
   });
 
   return (
     <View style={styles.container}>
-      <View style={styles.statItem}>
-        <View style={styles.statRow}>
-          <Flame size={16} color={getStreakColor()} />
-          <Text style={[styles.statValue, { color: getStreakColor() }]}>{currentStreak}</Text>
+      <Card style={styles.compactCard}>
+        <View style={styles.statsRow}>
+          {/* Current Streak */}
+          <View style={styles.statItem}>
+            <View style={[styles.iconWrapper, { backgroundColor: `${getStreakColor()}15` }]}>
+              <Flame size={16} color={getStreakColor()} />
+            </View>
+            <Text style={[styles.statValue, { color: getStreakColor() }]}>{currentStreak}</Text>
+            <Text style={styles.statLabel}>Day Streak</Text>
+          </View>
+          
+          <View style={styles.divider} />
+          
+          {/* Weekly Sessions */}
+          <View style={styles.statItem}>
+            <View style={[styles.iconWrapper, { backgroundColor: `${colors.secondary}15` }]}>
+              <Calendar size={16} color={colors.secondary} />
+            </View>
+            <Text style={[styles.statValue, { color: colors.secondary }]}>{weeklyLogs}</Text>
+            <Text style={styles.statLabel}>This Week</Text>
+          </View>
+          
+          <View style={styles.divider} />
+          
+          {/* Total Sessions */}
+          <View style={styles.statItem}>
+            <View style={[styles.iconWrapper, { backgroundColor: `${colors.primary}15` }]}>
+              <CheckCircle size={16} color={colors.primary} />
+            </View>
+            <Text style={[styles.statValue, { color: colors.primary }]}>{totalSessions}</Text>
+            <Text style={styles.statLabel}>Total Sessions</Text>
+          </View>
         </View>
-        <Text style={styles.statLabel}>Day Streak</Text>
-      </View>
-      
-      <View style={styles.statItem}>
-        <View style={styles.statRow}>
-          <CheckCircle size={16} color={colors.primary} />
-          <Text style={[styles.statValue, { color: colors.primary }]}>{totalSessions}</Text>
-        </View>
-        <Text style={styles.statLabel}>Total Sessions</Text>
-      </View>
+      </Card>
     </View>
   );
 }

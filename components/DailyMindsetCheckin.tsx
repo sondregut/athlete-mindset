@@ -26,7 +26,6 @@ export default function DailyMindsetCheckin({ compact = false }: DailyMindsetChe
   const [energy, setEnergy] = useState(7);
   const [motivation, setMotivation] = useState(7);
   const [selfDescription, setSelfDescription] = useState('');
-  const [painDescription, setPainDescription] = useState('');
   const [descriptionY, setDescriptionY] = useState(0);
   const [isNewCheckin, setIsNewCheckin] = useState(false);
 
@@ -42,7 +41,6 @@ export default function DailyMindsetCheckin({ compact = false }: DailyMindsetChe
       setEnergy(todaysCheckin.energy);
       setMotivation(todaysCheckin.motivation);
       setSelfDescription(todaysCheckin.selfDescription || '');
-      setPainDescription(todaysCheckin.painDescription || '');
     }
   }, [todaysCheckin]);
 
@@ -53,7 +51,6 @@ export default function DailyMindsetCheckin({ compact = false }: DailyMindsetChe
         energy,
         motivation,
         selfDescription: selfDescription.trim() || undefined,
-        painDescription: painDescription.trim() || undefined,
       });
       setShowModal(false);
     } catch (error) {
@@ -72,7 +69,6 @@ export default function DailyMindsetCheckin({ compact = false }: DailyMindsetChe
     setEnergy(7);
     setMotivation(7);
     setSelfDescription('');
-    setPainDescription('');
     clearError();
   };
 
@@ -97,40 +93,36 @@ export default function DailyMindsetCheckin({ compact = false }: DailyMindsetChe
   const renderCompactView = () => {
     if (todaysCheckin) {
       return (
-        <Card style={styles.compactCard}>
-          <View style={styles.compactCompleteContainer}>
+        <TouchableOpacity 
+          onPress={() => handleOpenModal(true)} 
+          activeOpacity={0.7}
+        >
+          <Card style={styles.compactCard}>
             <View style={styles.compactHeader}>
               <CheckCircle size={24} color={colors.success} />
               <View style={styles.compactInfo}>
-                <Text style={styles.compactTitle}>Daily Check-in Complete</Text>
+                <Text style={styles.compactTitle}>Daily check-in complete</Text>
                 <Text style={styles.compactSubtitle}>
                   {streak} day{streak !== 1 ? 's' : ''} streak
                 </Text>
               </View>
             </View>
-            <TouchableOpacity 
-              onPress={() => handleOpenModal(true)} 
-              activeOpacity={0.7}
-              style={styles.logAnotherButton}
-            >
-              <Text style={styles.logAnotherButtonText}>Edit Today's Check-in</Text>
-            </TouchableOpacity>
-          </View>
-        </Card>
+          </Card>
+        </TouchableOpacity>
       );
     }
 
     return (
-      <TouchableOpacity onPress={() => handleOpenModal()} activeOpacity={0.7}>
+      <TouchableOpacity 
+        onPress={() => handleOpenModal()} 
+        activeOpacity={0.7}
+      >
         <Card style={styles.compactCard}>
           <View style={styles.compactHeader}>
             <Calendar size={24} color={colors.primary} />
             <View style={styles.compactInfo}>
-              <Text style={styles.compactTitle}>Daily Mindset Check-in</Text>
+              <Text style={styles.compactTitle}>Log daily check-in</Text>
               <Text style={styles.compactSubtitle}>How are you feeling today?</Text>
-            </View>
-            <View style={styles.compactActionButton}>
-              <Text style={styles.compactActionButtonText}>Start</Text>
             </View>
           </View>
         </Card>
@@ -171,32 +163,6 @@ export default function DailyMindsetCheckin({ compact = false }: DailyMindsetChe
     fontSize: 14,
     fontWeight: '500',
     color: colors.primary,
-  },
-  compactActionButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-  },
-  compactActionButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.background,
-  },
-  compactCompleteContainer: {
-    gap: 12,
-  },
-  logAnotherButton: {
-    alignSelf: 'flex-start',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    backgroundColor: colors.lightGray,
-    borderRadius: 6,
-  },
-  logAnotherButtonText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: colors.darkGray,
   },
   modalContainer: {
     flex: 1,
@@ -531,31 +497,6 @@ export default function DailyMindsetCheckin({ compact = false }: DailyMindsetChe
               </View>
             </View>
 
-            {/* Pain/Discomfort Description */}
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Physical Status</Text>
-              </View>
-              <Text style={styles.sectionDescription}>Any pain or discomfort to note?</Text>
-              <View style={styles.textInputContainer}>
-                <TextInput
-                  style={styles.textInput}
-                  value={painDescription}
-                  onChangeText={(text) => {
-                    if (text.length <= 200) {
-                      setPainDescription(text);
-                    }
-                  }}
-                  placeholder="Describe any physical pain or discomfort (optional)"
-                  placeholderTextColor={colors.darkGray}
-                  multiline
-                  numberOfLines={3}
-                  textAlignVertical="top"
-                  maxLength={200}
-                />
-                <Text style={styles.charCount}>{painDescription.length}/200</Text>
-              </View>
-            </View>
           </ScrollView>
 
           <View style={styles.modalActions}>
