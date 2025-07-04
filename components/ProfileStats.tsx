@@ -46,32 +46,6 @@ export default function ProfileStats() {
     },
     statValue: {
       fontSize: 18,
-      fontWeight: '600',
-      color: colors.text,
-=======
-    },
-    compactCard: {
-      padding: 16,
-    },
-    statsRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-around',
-      alignItems: 'center',
-    },
-    statItem: {
-      alignItems: 'center',
-      flex: 1,
-    },
-    iconWrapper: {
-      width: 28,
-      height: 28,
-      borderRadius: 14,
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginBottom: 6,
-    },
-    statValue: {
-      fontSize: 18,
       fontWeight: '700',
       marginBottom: 2,
     },
