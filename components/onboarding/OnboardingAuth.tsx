@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
-import { Mail, Lock, User, Globe } from 'lucide-react-native';
+import { Mail, Lock } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 import { useAuthStore } from '@/store/auth-store';
 import OnboardingButton from './OnboardingButton';
@@ -9,6 +9,8 @@ import { useGoogleAuth, getGoogleIdToken } from '@/config/google-oauth';
 import { useUserStore } from '@/store/user-store';
 import { router } from 'expo-router';
 import { checkNetworkConnection } from '@/utils/network';
+import AppleLogo from '@/components/icons/AppleLogo';
+import GoogleLogo from '@/components/icons/GoogleLogo';
 
 interface OnboardingAuthProps {
   step?: {
@@ -21,10 +23,10 @@ interface OnboardingAuthProps {
 }
 
 export default function OnboardingAuth({ step }: OnboardingAuthProps) {
-  const [mode, setMode] = useState<'choice' | 'signin' | 'signup'>('choice');
+  const { loginIntent, setLoginIntent } = useOnboardingStore();
+  const [mode, setMode] = useState<'choice' | 'signin' | 'signup'>(loginIntent ? 'signin' : 'choice');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -33,6 +35,15 @@ export default function OnboardingAuth({ step }: OnboardingAuthProps) {
   const { completeOnboarding } = useOnboardingStore();
   const { updateProfile } = useUserStore();
   const { request, response, promptAsync } = useGoogleAuth();
+
+  // Clear login intent when component unmounts or mode changes
+  useEffect(() => {
+    return () => {
+      if (loginIntent) {
+        setLoginIntent(false);
+      }
+    };
+  }, []);
 
   const handleComplete = async () => {
     console.log('✅ Onboarding complete, syncing data and navigating to main app...');
@@ -107,7 +118,7 @@ export default function OnboardingAuth({ step }: OnboardingAuthProps) {
     }
 
     try {
-      await createAccount(email, password, displayName || undefined);
+      await createAccount(email, password);
       handleComplete();
     } catch (err: any) {
       setError(err.message || 'Failed to create account');
@@ -198,6 +209,13 @@ export default function OnboardingAuth({ step }: OnboardingAuthProps) {
           </View>
 
           <View style={styles.authButtons}>
+          {Platform.OS === 'ios' && (
+            <TouchableOpacity style={styles.appleButton}>
+              <AppleLogo size={20} color={colors.text} />
+              <Text style={styles.appleButtonText}>Continue with Apple</Text>
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity 
             style={[styles.googleButton, isGoogleLoading && styles.disabledButton]} 
             onPress={handleGoogleSignIn}
@@ -207,7 +225,7 @@ export default function OnboardingAuth({ step }: OnboardingAuthProps) {
               <Text style={styles.googleButtonText}>Connecting...</Text>
             ) : (
               <>
-                <Globe size={24} color={colors.text} />
+                <GoogleLogo size={20} />
                 <Text style={styles.googleButtonText}>Continue with Google</Text>
               </>
             )}
@@ -215,18 +233,14 @@ export default function OnboardingAuth({ step }: OnboardingAuthProps) {
 
           <TouchableOpacity style={styles.emailButton} onPress={() => setMode('signup')}>
             <Mail size={24} color={colors.background} />
-            <Text style={styles.emailButtonText}>Sign up with Email</Text>
+            <Text style={styles.emailButtonText}>Continue with Email</Text>
           </TouchableOpacity>
 
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>Already have an account?</Text>
-            <View style={styles.dividerLine} />
+          <View style={styles.loginPrompt}>
+            <Text style={styles.loginPromptText}>
+              Have an account? <Text style={styles.loginLink} onPress={() => setMode('signin')}>Log in</Text>
+            </Text>
           </View>
-
-          <TouchableOpacity style={styles.signInButton} onPress={() => setMode('signin')}>
-            <Text style={styles.signInButtonText}>Sign In</Text>
-          </TouchableOpacity>
 
           {/* Development only - Skip Login */}
           {__DEV__ && (
@@ -251,13 +265,13 @@ export default function OnboardingAuth({ step }: OnboardingAuthProps) {
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Text style={styles.title}>
-            {mode === 'signin' ? 'Welcome Back!' : 'Create Account'}
+            {mode === 'signin' ? 'Log into your Mental Athlete account' : 'Create Account'}
           </Text>
-          <Text style={styles.subtitle}>
-            {mode === 'signin' 
-              ? 'Sign in to access your data' 
-              : 'Sign up to start tracking your mindset'}
-          </Text>
+          {mode !== 'signin' && (
+            <Text style={styles.subtitle}>
+              Sign up to start tracking your mindset
+            </Text>
+          )}
         </View>
 
         {error ? (
@@ -267,19 +281,6 @@ export default function OnboardingAuth({ step }: OnboardingAuthProps) {
         ) : null}
 
         <View style={styles.form}>
-          {mode === 'signup' && (
-            <View style={styles.inputContainer}>
-              <User size={20} color={colors.darkGray} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Display Name (optional)"
-                placeholderTextColor={colors.darkGray}
-                value={displayName}
-                onChangeText={setDisplayName}
-                autoCapitalize="words"
-              />
-            </View>
-          )}
 
           <View style={styles.inputContainer}>
             <Mail size={20} color={colors.darkGray} style={styles.inputIcon} />
@@ -329,6 +330,48 @@ export default function OnboardingAuth({ step }: OnboardingAuthProps) {
             loading={isLoading}
             style={styles.submitButton}
           />
+
+          {mode === 'signin' && (
+            <>
+              <TouchableOpacity style={styles.forgotPasswordButton}>
+                <Text style={styles.forgotPasswordText}>Forgot password?</Text>
+              </TouchableOpacity>
+
+              <View style={styles.orDivider}>
+                <View style={styles.orLine} />
+                <Text style={styles.orText}>OR</Text>
+                <View style={styles.orLine} />
+              </View>
+
+              {Platform.OS === 'ios' && (
+                <TouchableOpacity style={styles.socialButton}>
+                  <AppleLogo size={20} color={colors.text} />
+                  <Text style={styles.socialButtonText}>Sign in with Apple</Text>
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity 
+                style={[styles.socialButton, isGoogleLoading && styles.disabledButton]} 
+                onPress={handleGoogleSignIn}
+                disabled={isGoogleLoading || isLoading}
+              >
+                {isGoogleLoading ? (
+                  <Text style={styles.socialButtonText}>Connecting...</Text>
+                ) : (
+                  <>
+                    <GoogleLogo size={20} />
+                    <Text style={styles.socialButtonText}>Sign in with Google</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              <View style={styles.signupPrompt}>
+                <Text style={styles.signupPromptText}>
+                  Need an account? <Text style={styles.signupLink} onPress={() => setMode('signup')}>Sign up</Text>
+                </Text>
+              </View>
+            </>
+          )}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -425,35 +468,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.background,
   },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 24,
-    gap: 12,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: colors.mediumGray,
-  },
-  dividerText: {
-    fontSize: 14,
-    color: colors.darkGray,
-  },
-  signInButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: colors.primary,
-  },
-  signInButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.primary,
-  },
   skipButton: {
     alignItems: 'center',
     paddingVertical: 16,
@@ -508,5 +522,92 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     opacity: 0.6,
+  },
+  appleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.cardBackground,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.mediumGray,
+    gap: 12,
+  },
+  appleButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  loginPrompt: {
+    alignItems: 'center',
+    marginTop: 24,
+  },
+  loginPromptText: {
+    fontSize: 16,
+    color: colors.text,
+  },
+  loginLink: {
+    color: colors.primary,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+  },
+  forgotPasswordButton: {
+    alignItems: 'center',
+    marginTop: 12,
+    marginBottom: 24,
+  },
+  forgotPasswordText: {
+    fontSize: 16,
+    color: colors.primary,
+    textDecorationLine: 'underline',
+  },
+  orDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 24,
+    gap: 12,
+  },
+  orLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.mediumGray,
+  },
+  orText: {
+    fontSize: 14,
+    color: colors.darkGray,
+    fontWeight: '500',
+  },
+  socialButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.cardBackground,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.mediumGray,
+    gap: 12,
+    marginBottom: 12,
+  },
+  socialButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  signupPrompt: {
+    alignItems: 'center',
+    marginTop: 24,
+  },
+  signupPromptText: {
+    fontSize: 16,
+    color: colors.text,
+  },
+  signupLink: {
+    color: colors.primary,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
 });

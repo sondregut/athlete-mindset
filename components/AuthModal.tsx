@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, Modal, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { X, Mail, Lock, User } from 'lucide-react-native';
+import { X, Mail, Lock } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 import { useAuthStore } from '@/store/auth-store';
 import OnboardingButton from './onboarding/OnboardingButton';
@@ -17,7 +17,6 @@ interface AuthModalProps {
 export default function AuthModal({ visible, onClose, mode }: AuthModalProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPasswordReset, setShowPasswordReset] = useState(false);
   const { signIn, createAccount, linkAccount, resetPassword, isLoading, error, clearError } = useAuthStore();
@@ -25,7 +24,6 @@ export default function AuthModal({ visible, onClose, mode }: AuthModalProps) {
   const resetForm = () => {
     setEmail('');
     setPassword('');
-    setDisplayName('');
     setConfirmPassword('');
     clearError();
   };
@@ -81,10 +79,10 @@ export default function AuthModal({ visible, onClose, mode }: AuthModalProps) {
           await signIn(email, password);
           break;
         case 'signup':
-          await createAccount(email, password, displayName.trim() || undefined);
+          await createAccount(email, password);
           break;
         case 'link':
-          await linkAccount(email, password, displayName.trim() || undefined);
+          await linkAccount(email, password);
           break;
       }
       handleClose();
@@ -152,19 +150,6 @@ export default function AuthModal({ visible, onClose, mode }: AuthModalProps) {
               </View>
             )}
 
-            {(mode === 'signup' || mode === 'link') && (
-              <View style={styles.inputContainer}>
-                <User size={20} color={colors.darkGray} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Display Name (optional)"
-                  placeholderTextColor={colors.darkGray}
-                  value={displayName}
-                  onChangeText={setDisplayName}
-                  autoCapitalize="words"
-                />
-              </View>
-            )}
 
             <View style={styles.inputContainer}>
               <Mail size={20} color={colors.darkGray} style={styles.inputIcon} />
