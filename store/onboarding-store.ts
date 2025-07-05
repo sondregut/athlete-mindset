@@ -13,6 +13,7 @@ interface OnboardingState {
   hasCompletedOnboarding: boolean;
   currentStep: number;
   goals: OnboardingGoals;
+  loginIntent: boolean; // Track if user wants to login vs signup
   
   // Hydration state
   isHydrated: boolean;
@@ -24,6 +25,7 @@ interface OnboardingState {
   updateGoals: (goals: Partial<OnboardingGoals>) => void;
   resetOnboarding: () => void; // For development/testing
   setHydrated: (hydrated: boolean) => void;
+  setLoginIntent: (intent: boolean) => void;
 }
 
 const defaultGoals: OnboardingGoals = {};
@@ -34,6 +36,7 @@ export const useOnboardingStore = create<OnboardingState>()(
       hasCompletedOnboarding: false,
       currentStep: 0,
       goals: defaultGoals,
+      loginIntent: false,
       isHydrated: false,
       
       setOnboardingStep: (step) => set({ currentStep: step }),
@@ -56,11 +59,13 @@ export const useOnboardingStore = create<OnboardingState>()(
         set({
           hasCompletedOnboarding: false,
           currentStep: 0,
-          goals: defaultGoals
+          goals: defaultGoals,
+          loginIntent: false
         });
       },
       
       setHydrated: (hydrated) => set({ isHydrated: hydrated }),
+      setLoginIntent: (intent) => set({ loginIntent: intent }),
     }),
     {
       name: 'onboarding-storage',

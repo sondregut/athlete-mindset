@@ -17,7 +17,7 @@ import OnboardingGoals from '@/components/onboarding/OnboardingGoals';
 const { width, height } = Dimensions.get('window');
 
 export default function OnboardingScreen() {
-  const { currentStep, setOnboardingStep, completeOnboarding } = useOnboardingStore();
+  const { currentStep, setOnboardingStep, completeOnboarding, setLoginIntent } = useOnboardingStore();
   const { updateProfile } = useUserStore();
   const [isTransitioning, setIsTransitioning] = useState(false);
 
@@ -71,8 +71,9 @@ export default function OnboardingScreen() {
     }
   };
 
-  const handleSkip = () => {
-    // Skip to the authentication screen (last step)
+  const handleLogin = () => {
+    // Set login intent and navigate to the authentication screen
+    setLoginIntent(true);
     setOnboardingStep(5);
   };
 
@@ -86,7 +87,7 @@ export default function OnboardingScreen() {
             <OnboardingWelcome
               step={onboardingSteps[0]}
               onNext={handleNext}
-              onSkip={handleSkip}
+              onLogin={handleLogin}
             />
           );
         case 1:

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Dimensions, Platform, Animated } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, Platform, Animated, TouchableOpacity } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { colors } from '@/constants/colors';
 import OnboardingButton from './OnboardingButton';
@@ -15,10 +15,10 @@ interface OnboardingWelcomeProps {
     icon: string;
   };
   onNext: () => void;
-  onSkip: () => void;
+  onLogin: () => void;
 }
 
-export default function OnboardingWelcome({ step, onNext, onSkip }: OnboardingWelcomeProps) {
+export default function OnboardingWelcome({ step, onNext, onLogin }: OnboardingWelcomeProps) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const translateYAnim = useRef(new Animated.Value(30)).current;
 
@@ -46,12 +46,12 @@ export default function OnboardingWelcome({ step, onNext, onSkip }: OnboardingWe
     onNext();
   };
 
-  const handleSkip = () => {
-    // Light haptic feedback for skip action
+  const handleLogin = () => {
+    // Light haptic feedback for login action
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-    onSkip();
+    onLogin();
   };
 
   const styles = StyleSheet.create({
@@ -111,6 +111,19 @@ export default function OnboardingWelcome({ step, onNext, onSkip }: OnboardingWe
     secondaryButton: {
       marginBottom: 0,
     },
+    loginPrompt: {
+      alignItems: 'center',
+      marginTop: 16,
+    },
+    loginPromptText: {
+      fontSize: 16,
+      color: colors.text,
+    },
+    loginLink: {
+      color: colors.primary,
+      fontWeight: '600',
+      textDecorationLine: 'underline',
+    },
   });
 
   return (
@@ -146,12 +159,12 @@ export default function OnboardingWelcome({ step, onNext, onSkip }: OnboardingWe
           onPress={handleGetStarted}
           style={styles.primaryButton}
         />
-        <OnboardingButton
-          title="Skip Introduction"
-          onPress={handleSkip}
-          variant="outline"
-          style={styles.secondaryButton}
-        />
+        
+        <TouchableOpacity style={styles.loginPrompt} onPress={handleLogin}>
+          <Text style={styles.loginPromptText}>
+            Have an account? <Text style={styles.loginLink}>Login</Text>
+          </Text>
+        </TouchableOpacity>
       </View>
     </View>
   );

@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Flame, CheckCircle, Calendar } from 'lucide-react-native';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { useSessionStore } from '@/store/session-store';
+import Card from './Card';
 
 export default function ProfileStats() {
   const colors = useThemeColors();
