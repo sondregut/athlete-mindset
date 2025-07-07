@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Dimensions, TouchableOpacity } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, Dimensions, TouchableOpacity, PanResponder, Animated } from 'react-native';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ChevronLeft } from 'lucide-react-native';
@@ -20,6 +20,7 @@ export default function OnboardingScreen() {
   const { currentStep, setOnboardingStep, completeOnboarding, setLoginIntent } = useOnboardingStore();
   const { updateProfile } = useUserStore();
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const pan = useRef(new Animated.ValueXY()).current;
 
   console.log('📋 OnboardingScreen render:', {
     currentStep,
@@ -46,7 +47,15 @@ export default function OnboardingScreen() {
     setIsTransitioning(true);
     
     setTimeout(() => {
-      setOnboardingStep(currentStep - 1);
+      // Special case: if we're on auth screen (step 5) and came from login intent
+      // return to welcome screen (step 0) instead of goals screen (step 4)
+      const { loginIntent } = useOnboardingStore.getState();
+      if (currentStep === 5 && loginIntent) {
+        setOnboardingStep(0);
+        setLoginIntent(false); // Clear the login intent
+      } else {
+        setOnboardingStep(currentStep - 1);
+      }
       setIsTransitioning(false);
     }, 150);
   };
@@ -76,6 +85,49 @@ export default function OnboardingScreen() {
     setLoginIntent(true);
     setOnboardingStep(5);
   };
+
+  // Create PanResponder for swipe gestures
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Only activate pan responder on horizontal swipes, not vertical
+        // This allows vertical scrolling to work properly
+        return Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 2 && Math.abs(gestureState.dx) > 30;
+      },
+      onPanResponderMove: (_, gestureState) => {
+        // Only allow right swipe (positive dx) for going back
+        if (gestureState.dx > 0 && currentStep > 0) {
+          pan.x.setValue(gestureState.dx);
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        const swipeThreshold = width * 0.25; // 25% of screen width
+        
+        // Check if swipe right is sufficient and we're not on first step
+        if (gestureState.dx > swipeThreshold && currentStep > 0 && !isTransitioning) {
+          // Animate out and go back
+          Animated.timing(pan.x, {
+            toValue: width,
+            duration: 200,
+            useNativeDriver: true,
+          }).start(() => {
+            handleBack();
+            // Reset position for next screen
+            pan.x.setValue(0);
+          });
+        } else {
+          // Snap back to original position
+          Animated.spring(pan.x, {
+            toValue: 0,
+            useNativeDriver: true,
+            tension: 50,
+            friction: 9,
+          }).start();
+        }
+      },
+    })
+  ).current;
 
   const renderStep = () => {
     console.log('🎬 Rendering step:', currentStep);
@@ -196,9 +248,17 @@ export default function OnboardingScreen() {
       </View>
 
       {/* Step Content */}
-      <View style={styles.contentContainer}>
+      <Animated.View 
+        style={[
+          styles.contentContainer,
+          {
+            transform: [{ translateX: pan.x }]
+          }
+        ]}
+        {...panResponder.panHandlers}
+      >
         {renderStep()}
-      </View>
+      </Animated.View>
     </SafeAreaView>
   );
 }

@@ -5,6 +5,7 @@ import {
   linkWithCredential,
   EmailAuthProvider,
   GoogleAuthProvider,
+  OAuthProvider,
   signInWithCredential,
   signOut,
   deleteUser,
@@ -151,6 +152,45 @@ class FirebaseAuthService {
       }
     } catch (error: any) {
       console.error('Google sign-in failed:', error);
+      throw new Error(this.getAuthErrorMessage(error.code));
+    }
+  }
+
+  /**
+   * Sign in with Apple ID token
+   */
+  async signInWithApple(identityToken: string, nonce?: string): Promise<AuthUser> {
+    try {
+      const auth = getFirebaseAuth();
+      
+      // Create Apple provider
+      const provider = new OAuthProvider('apple.com');
+      
+      // Create credential with identity token
+      const credential = provider.credential({
+        idToken: identityToken,
+        rawNonce: nonce, // optional nonce for security
+      });
+
+      // Check if we have an anonymous user to link
+      if (auth.currentUser && auth.currentUser.isAnonymous) {
+        console.log('Linking Apple account to anonymous user...');
+        const result = await linkWithCredential(auth.currentUser, credential);
+        return this.mapFirebaseUser(result.user);
+      } else {
+        console.log('Signing in with Apple credential...');
+        const result = await signInWithCredential(auth, credential);
+        return this.mapFirebaseUser(result.user);
+      }
+    } catch (error: any) {
+      console.error('Apple sign-in failed:', error);
+      if (error.code === 'auth/account-exists-with-different-credential') {
+        throw new Error('An account already exists with this email address. Please use a different sign-in method.');
+      } else if (error.code === 'auth/credential-already-in-use') {
+        throw new Error('This Apple ID is already linked to another account.');
+      } else if (error.code === 'auth/invalid-credential') {
+        throw new Error('Invalid Apple credentials. Please try signing in again.');
+      }
       throw new Error(this.getAuthErrorMessage(error.code));
     }
   }

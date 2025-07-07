@@ -17,6 +17,7 @@ import MindsetCheckinCard from '@/components/MindsetCheckinCard';
 import DailyMindsetCheckin from '@/components/DailyMindsetCheckin';
 import SessionLogger from '@/components/SessionLogger';
 import StreakCelebration from '@/components/StreakCelebration';
+import BrainHealthIndicator from '@/components/BrainHealthIndicator';
 
 export default function HomeScreen() {
   const [quote, setQuote] = useState('');
@@ -221,7 +222,7 @@ export default function HomeScreen() {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginTop: 16,
+      marginTop: 12,
       marginBottom: 12,
     },
     viewAllButton: {
@@ -380,6 +381,9 @@ export default function HomeScreen() {
         
         {/* Daily Mindset Check-in */}
         <DailyMindsetCheckin compact={true} />
+        
+        {/* Brain Health Indicator */}
+        <BrainHealthIndicator />
       </View>
       
       {/* Recent Activity */}

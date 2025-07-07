@@ -13,6 +13,7 @@ export interface AuthState {
   createAccount: (email: string, password: string, displayName?: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signInWithGoogle: (idToken: string) => Promise<void>;
+  signInWithApple: (identityToken: string, nonce?: string) => Promise<void>;
   linkAccount: (email: string, password: string, displayName?: string) => Promise<void>;
   signOut: () => Promise<void>;
   deleteAccount: () => Promise<void>;
@@ -69,6 +70,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       set({ isLoading: true, error: null });
       const user = await firebaseAuth.signInWithGoogle(idToken);
+      set({ user, isLoading: false });
+    } catch (error: any) {
+      set({ error: error.message, isLoading: false });
+      throw error;
+    }
+  },
+
+  signInWithApple: async (identityToken: string, nonce?: string) => {
+    try {
+      set({ isLoading: true, error: null });
+      const user = await firebaseAuth.signInWithApple(identityToken, nonce);
       set({ user, isLoading: false });
     } catch (error: any) {
       set({ error: error.message, isLoading: false });

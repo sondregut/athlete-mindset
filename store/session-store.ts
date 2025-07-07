@@ -51,6 +51,7 @@ interface SessionState {
   getWeeklyLogs: () => number;
   getRecentLogs: (count: number) => SessionLog[];
   getSessionById: (sessionId: string) => SessionLog | undefined;
+  getBrainHealth: () => number;
   
   // Analytics (with loading states)
   getMonthlyStats: () => Promise<{ thisMonth: number; lastMonth: number }>;
@@ -262,6 +263,37 @@ export const useSessionStore = create<SessionState>()(
       getSessionById: (sessionId) => {
         const { logs } = get();
         return logs.find(log => log.id === sessionId);
+      },
+      
+      getBrainHealth: () => {
+        const { logs } = get();
+        const currentStreak = get().getStreak();
+        const weeklyLogs = get().getWeeklyLogs();
+        
+        // Check days since last log
+        let daysSinceLastLog = 0;
+        if (logs.length > 0) {
+          const lastLogDate = new Date(logs[0].date);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          lastLogDate.setHours(0, 0, 0, 0);
+          daysSinceLastLog = Math.floor((today.getTime() - lastLogDate.getTime()) / (1000 * 60 * 60 * 24));
+        } else {
+          daysSinceLastLog = 999; // No logs ever
+        }
+        
+        // Calculate brain health score (1-5)
+        if (currentStreak >= 7 || weeklyLogs >= 6) {
+          return 5; // Very Healthy - Super fit brain
+        } else if (currentStreak >= 3 || weeklyLogs >= 4) {
+          return 4; // Healthy - Fit brain
+        } else if (currentStreak >= 1 || weeklyLogs >= 2) {
+          return 3; // Normal - Average brain
+        } else if (daysSinceLastLog <= 3) {
+          return 2; // Unhealthy - Weak brain
+        } else {
+          return 1; // Very Unhealthy - Very weak brain
+        }
       },
       
       clearDuplicateSessions: () => set((state) => {

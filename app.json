@@ -43,7 +43,8 @@
         {
           "origin": "https://rork.com/"
         }
-      ]
+      ],
+      "expo-apple-authentication"
     ],
     "experiments": {
       "typedRoutes": true

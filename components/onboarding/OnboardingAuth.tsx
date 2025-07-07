@@ -11,6 +11,7 @@ import { router } from 'expo-router';
 import { checkNetworkConnection } from '@/utils/network';
 import AppleLogo from '@/components/icons/AppleLogo';
 import GoogleLogo from '@/components/icons/GoogleLogo';
+import { useAppleAuth, getAppleDisplayName } from '@/config/apple-auth';
 
 interface OnboardingAuthProps {
   step?: {
@@ -24,17 +25,20 @@ interface OnboardingAuthProps {
 
 export default function OnboardingAuth({ step }: OnboardingAuthProps) {
   const { loginIntent, setLoginIntent } = useOnboardingStore();
+  // If coming from login modal, go directly to signin mode
   const [mode, setMode] = useState<'choice' | 'signin' | 'signup'>(loginIntent ? 'signin' : 'choice');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isAppleLoading, setIsAppleLoading] = useState(false);
   
-  const { signIn, createAccount, signInWithGoogle, isLoading } = useAuthStore();
+  const { signIn, createAccount, signInWithGoogle, signInWithApple, isLoading } = useAuthStore();
   const { completeOnboarding } = useOnboardingStore();
   const { updateProfile } = useUserStore();
   const { request, response, promptAsync } = useGoogleAuth();
+  const { signInWithApple: appleSignIn, isAvailable: isAppleAvailable } = useAppleAuth();
 
   // Clear login intent when component unmounts or mode changes
   useEffect(() => {
@@ -185,6 +189,37 @@ export default function OnboardingAuth({ step }: OnboardingAuthProps) {
     }
   };
 
+  const handleAppleSignIn = async () => {
+    setError('');
+    setIsAppleLoading(true);
+    
+    if (!isAppleAvailable) {
+      setError('Apple Sign-In is not available on this device');
+      setIsAppleLoading(false);
+      return;
+    }
+
+    try {
+      const result = await appleSignIn();
+      
+      if (!result.identityToken) {
+        throw new Error('No identity token received from Apple');
+      }
+
+      await signInWithApple(result.identityToken);
+      setIsAppleLoading(false);
+      handleComplete();
+    } catch (err: any) {
+      if (err.message === 'Apple Sign-In was canceled') {
+        // User canceled, don't show error
+        setIsAppleLoading(false);
+        return;
+      }
+      setError(err.message || 'Failed to sign in with Apple');
+      setIsAppleLoading(false);
+    }
+  };
+
 
 
   const stepData = step || {
@@ -209,10 +244,20 @@ export default function OnboardingAuth({ step }: OnboardingAuthProps) {
           </View>
 
           <View style={styles.authButtons}>
-          {Platform.OS === 'ios' && (
-            <TouchableOpacity style={styles.appleButton}>
-              <AppleLogo size={20} color={colors.text} />
-              <Text style={styles.appleButtonText}>Continue with Apple</Text>
+          {Platform.OS === 'ios' && isAppleAvailable && (
+            <TouchableOpacity 
+              style={[styles.appleButton, isAppleLoading && styles.disabledButton]} 
+              onPress={handleAppleSignIn}
+              disabled={isAppleLoading || isLoading}
+            >
+              {isAppleLoading ? (
+                <Text style={styles.appleButtonText}>Connecting...</Text>
+              ) : (
+                <>
+                  <AppleLogo size={20} color={colors.text} />
+                  <Text style={styles.appleButtonText}>Continue with Apple</Text>
+                </>
+              )}
             </TouchableOpacity>
           )}
 
@@ -337,39 +382,69 @@ export default function OnboardingAuth({ step }: OnboardingAuthProps) {
                 <Text style={styles.forgotPasswordText}>Forgot password?</Text>
               </TouchableOpacity>
 
-              <View style={styles.orDivider}>
-                <View style={styles.orLine} />
-                <Text style={styles.orText}>OR</Text>
-                <View style={styles.orLine} />
-              </View>
+              {/* Only show social login options if NOT coming from login modal */}
+              {!loginIntent && (
+                <>
+                  <View style={styles.orDivider}>
+                    <View style={styles.orLine} />
+                    <Text style={styles.orText}>OR</Text>
+                    <View style={styles.orLine} />
+                  </View>
 
-              {Platform.OS === 'ios' && (
-                <TouchableOpacity style={styles.socialButton}>
-                  <AppleLogo size={20} color={colors.text} />
-                  <Text style={styles.socialButtonText}>Sign in with Apple</Text>
-                </TouchableOpacity>
+                  {Platform.OS === 'ios' && isAppleAvailable && (
+                    <TouchableOpacity 
+                      style={[styles.socialButton, isAppleLoading && styles.disabledButton]} 
+                      onPress={handleAppleSignIn}
+                      disabled={isAppleLoading || isLoading}
+                    >
+                      {isAppleLoading ? (
+                        <Text style={styles.socialButtonText}>Connecting...</Text>
+                      ) : (
+                        <>
+                          <AppleLogo size={20} color={colors.text} />
+                          <Text style={styles.socialButtonText}>Sign in with Apple</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  )}
+
+                  <TouchableOpacity 
+                    style={[styles.socialButton, isGoogleLoading && styles.disabledButton]} 
+                    onPress={handleGoogleSignIn}
+                    disabled={isGoogleLoading || isLoading}
+                  >
+                    {isGoogleLoading ? (
+                      <Text style={styles.socialButtonText}>Connecting...</Text>
+                    ) : (
+                      <>
+                        <GoogleLogo size={20} />
+                        <Text style={styles.socialButtonText}>Sign in with Google</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </>
               )}
-
-              <TouchableOpacity 
-                style={[styles.socialButton, isGoogleLoading && styles.disabledButton]} 
-                onPress={handleGoogleSignIn}
-                disabled={isGoogleLoading || isLoading}
-              >
-                {isGoogleLoading ? (
-                  <Text style={styles.socialButtonText}>Connecting...</Text>
-                ) : (
-                  <>
-                    <GoogleLogo size={20} />
-                    <Text style={styles.socialButtonText}>Sign in with Google</Text>
-                  </>
-                )}
-              </TouchableOpacity>
 
               <View style={styles.signupPrompt}>
                 <Text style={styles.signupPromptText}>
-                  Need an account? <Text style={styles.signupLink} onPress={() => setMode('signup')}>Sign up</Text>
+                  Need an account? <Text style={styles.signupLink} onPress={() => {
+                    // Clear login intent and go back to welcome screen
+                    setLoginIntent(false);
+                    const { setOnboardingStep } = useOnboardingStore.getState();
+                    setOnboardingStep(0); // Go to welcome screen
+                  }}>Sign up</Text>
                 </Text>
               </View>
+
+              {/* Development only - Skip Login */}
+              {__DEV__ && (
+                <TouchableOpacity 
+                  style={styles.devSkipButton} 
+                  onPress={handleComplete}
+                >
+                  <Text style={styles.devSkipButtonText}>Skip Login (Dev Only)</Text>
+                </TouchableOpacity>
+              )}
             </>
           )}
         </View>
@@ -608,6 +683,16 @@ const styles = StyleSheet.create({
   signupLink: {
     color: colors.primary,
     fontWeight: '600',
+    textDecorationLine: 'underline',
+  },
+  devSkipButton: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    marginTop: 12,
+  },
+  devSkipButtonText: {
+    fontSize: 16,
+    color: colors.darkGray,
     textDecorationLine: 'underline',
   },
 });

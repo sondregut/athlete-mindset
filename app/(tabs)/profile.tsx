@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { Play, Clock, ArrowRight, Settings } from 'lucide-react-native';
+import { Play, Clock, ArrowRight } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { useSessionStore } from '@/store/session-store';
@@ -108,32 +108,10 @@ export default function ProfileScreen() {
       backgroundColor: colors.activeSession,
       shadowColor: colors.activeSession,
     },
-    headerContainer: {
-      position: 'relative',
-    },
-    settingsButton: {
-      position: 'absolute',
-      top: 16,
-      right: 16,
-      padding: 8,
-      backgroundColor: colors.cardBackground,
-      borderRadius: 8,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
   });
 
   return (
     <View style={styles.container}>
-      <View style={styles.headerContainer}>
-        <TouchableOpacity 
-          style={styles.settingsButton} 
-          onPress={() => setShowSettings(true)}
-        >
-          <Settings size={24} color={colors.text} />
-        </TouchableOpacity>
-      </View>
-      
       <ScrollView contentContainerStyle={styles.contentContainer}>
       {/* Error Messages */}
       {sessionError && (

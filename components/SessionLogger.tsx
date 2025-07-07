@@ -84,17 +84,18 @@ export default function SessionLogger({ compact = false }: SessionLoggerProps) {
     }
 
     return (
-      <>
+      <View style={styles.buttonsContainer}>
         <TouchableOpacity
           onPress={handleStartSession}
           activeOpacity={0.7}
+          style={styles.halfWidthButton}
         >
-          <Card style={styles.compactCard}>
-            <View style={styles.compactHeader}>
-              <Play size={24} color={colors.primary} />
-              <View style={styles.compactInfo}>
-                <Text style={styles.compactTitle}>Start Training</Text>
-                <Text style={styles.compactSubtitle}>Set your intentions and begin session</Text>
+          <Card style={styles.halfWidthCard}>
+            <View style={styles.halfWidthHeader}>
+              <Play size={20} color={colors.primary} />
+              <View style={styles.halfWidthInfo}>
+                <Text style={styles.halfWidthTitle}>Start Training</Text>
+                <Text style={styles.halfWidthSubtitle}>Set intentions</Text>
               </View>
             </View>
           </Card>
@@ -103,18 +104,19 @@ export default function SessionLogger({ compact = false }: SessionLoggerProps) {
         <TouchableOpacity
           onPress={handleLogPastSession}
           activeOpacity={0.7}
+          style={styles.halfWidthButton}
         >
-          <Card style={styles.compactCard}>
-            <View style={styles.compactHeader}>
-              <Clock size={24} color={colors.secondary} />
-              <View style={styles.compactInfo}>
-                <Text style={styles.compactTitle}>Log Post Session Notes</Text>
-                <Text style={styles.compactSubtitle}>Add reflection for completed session</Text>
+          <Card style={styles.halfWidthCard}>
+            <View style={styles.halfWidthHeader}>
+              <Clock size={20} color={colors.secondary} />
+              <View style={styles.halfWidthInfo}>
+                <Text style={styles.halfWidthTitle}>Log Post Notes</Text>
+                <Text style={styles.halfWidthSubtitle}>Add reflection</Text>
               </View>
             </View>
           </Card>
         </TouchableOpacity>
-      </>
+      </View>
     );
   };
 
@@ -139,6 +141,38 @@ export default function SessionLogger({ compact = false }: SessionLoggerProps) {
     },
     compactSubtitle: {
       fontSize: 14,
+      color: colors.darkGray,
+    },
+    buttonsContainer: {
+      flexDirection: 'row',
+      gap: 8,
+      marginVertical: 8,
+    },
+    halfWidthButton: {
+      flex: 1,
+    },
+    halfWidthCard: {
+      marginHorizontal: 0,
+      marginVertical: 0,
+      paddingHorizontal: 12,
+      paddingVertical: 16,
+    },
+    halfWidthHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    halfWidthInfo: {
+      flex: 1,
+      marginLeft: 8,
+    },
+    halfWidthTitle: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 2,
+    },
+    halfWidthSubtitle: {
+      fontSize: 12,
       color: colors.darkGray,
     },
   });

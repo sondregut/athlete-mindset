@@ -296,12 +296,14 @@ function IntentionStep({
       
       <Text style={styles.inputLabel}>Main Focus/Intention</Text>
       <TextInput
-        style={styles.input}
+        style={[styles.input, styles.intentionInput]}
         value={intention}
         onChangeText={onIntentionChange}
         placeholder="What's your main focus for this session?"
         placeholderTextColor={colors.darkGray}
         multiline
+        numberOfLines={2}
+        textAlignVertical="top"
       />
       
       <Text style={styles.inputLabel}>Mindset Cues</Text>
@@ -643,6 +645,7 @@ export default function LogSessionScreen() {
   const params = useLocalSearchParams();
   const isEditMode = !!params.edit;
   const isPostOnly = params.postOnly === 'true';
+  const isQuickPost = params.quickPost === 'true';
   
   const [step, setStep] = useState(isPostOnly ? 4 : 1);
   const [startTime, setStartTime] = useState<Date | null>(null);
@@ -680,7 +683,7 @@ export default function LogSessionScreen() {
   const [positives, setPositives] = useState<string[]>(['', '', '']);
   const [stretchGoal, setStretchGoal] = useState('');
   const [rpe, setRpe] = useState(7);
-  const [sessionRating, setSessionRating] = useState(3);
+  const [sessionRating, setSessionRating] = useState(0);
   const [manualDuration, setManualDuration] = useState('');
   
   // Session History Modal state
@@ -704,7 +707,7 @@ export default function LogSessionScreen() {
         setPositives(['', '', '']);
         setStretchGoal('');
         setRpe(7);
-        setSessionRating(3);
+        setSessionRating(0);
         setStartTime(null);
         setManualDuration('');
         
@@ -927,7 +930,7 @@ export default function LogSessionScreen() {
           setPositives(['', '', '']);
           setStretchGoal('');
           setRpe(7);
-          setSessionRating(3);
+          setSessionRating(0);
           
           // Navigate to home - milestone celebration will be shown there
           router.replace('/');
@@ -1296,6 +1299,10 @@ export default function LogSessionScreen() {
       minHeight: 80,
       maxHeight: 120,
       textAlignVertical: 'top',
+      paddingTop: 12,
+    },
+    intentionInput: {
+      minHeight: 60,
       paddingTop: 12,
     },
     sessionTypeContainer: {

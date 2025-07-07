@@ -1,8 +1,9 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Dimensions, Platform, Animated, TouchableOpacity } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, Dimensions, Platform, Animated, TouchableOpacity, ScrollView } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { colors } from '@/constants/colors';
 import OnboardingButton from './OnboardingButton';
+import LoginModal from '@/components/LoginModal';
 
 const { width, height } = Dimensions.get('window');
 
@@ -21,6 +22,7 @@ interface OnboardingWelcomeProps {
 export default function OnboardingWelcome({ step, onNext, onLogin }: OnboardingWelcomeProps) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const translateYAnim = useRef(new Animated.Value(30)).current;
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   useEffect(() => {
     // Animate content on mount
@@ -51,20 +53,24 @@ export default function OnboardingWelcome({ step, onNext, onLogin }: OnboardingW
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-    onLogin();
+    setShowLoginModal(true);
   };
 
   const styles = StyleSheet.create({
     container: {
       flex: 1,
-      justifyContent: 'space-between',
+    },
+    scrollContainer: {
+      flex: 1,
+    },
+    scrollContent: {
+      flexGrow: 1,
       paddingHorizontal: 24,
       paddingTop: 40,
-      paddingBottom: 40,
+      paddingBottom: 20,
+      justifyContent: 'center',
     },
     content: {
-      flex: 1,
-      justifyContent: 'center',
       alignItems: 'center',
     },
     iconContainer: {
@@ -104,6 +110,9 @@ export default function OnboardingWelcome({ step, onNext, onLogin }: OnboardingW
     },
     actions: {
       gap: 12,
+      paddingHorizontal: 24,
+      paddingBottom: 40,
+      paddingTop: 20,
     },
     primaryButton: {
       marginBottom: 0,
@@ -128,31 +137,37 @@ export default function OnboardingWelcome({ step, onNext, onLogin }: OnboardingW
 
   return (
     <View style={styles.container}>
-      <Animated.View 
-        style={[
-          styles.content,
-          {
-            opacity: fadeAnim,
-            transform: [{ translateY: translateYAnim }],
-          },
-        ]}
+      <ScrollView 
+        style={styles.scrollContainer}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
-        {/* Icon */}
-        <View style={styles.iconContainer}>
-          <Text style={styles.icon}>{step.icon}</Text>
-        </View>
+        <Animated.View 
+          style={[
+            styles.content,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: translateYAnim }],
+            },
+          ]}
+        >
+          {/* Icon */}
+          <View style={styles.iconContainer}>
+            <Text style={styles.icon}>{step.icon}</Text>
+          </View>
 
-        {/* Title */}
-        <Text style={styles.title}>{step.title}</Text>
+          {/* Title */}
+          <Text style={styles.title}>{step.title}</Text>
 
-        {/* Subtitle */}
-        <Text style={styles.subtitle}>{step.subtitle}</Text>
+          {/* Subtitle */}
+          <Text style={styles.subtitle}>{step.subtitle}</Text>
 
-        {/* Description */}
-        <Text style={styles.description}>{step.description}</Text>
-      </Animated.View>
+          {/* Description */}
+          <Text style={styles.description}>{step.description}</Text>
+        </Animated.View>
+      </ScrollView>
 
-      {/* Actions */}
+      {/* Actions - Fixed at bottom */}
       <View style={styles.actions}>
         <OnboardingButton
           title="Get Started"
@@ -166,6 +181,12 @@ export default function OnboardingWelcome({ step, onNext, onLogin }: OnboardingW
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* Login Modal */}
+      <LoginModal 
+        visible={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+      />
     </View>
   );
 }
