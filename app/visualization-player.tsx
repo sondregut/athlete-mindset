@@ -17,7 +17,11 @@ const { height, width } = Dimensions.get('window');
 export default function VisualizationPlayerScreen() {
   useKeepAwake(); // Prevent screen from sleeping during visualization
   
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, preloadedAudio: preloadedAudioParam, disableAudio } = useLocalSearchParams<{ 
+    id: string; 
+    preloadedAudio?: string;
+    disableAudio?: string;
+  }>();
   const colors = useThemeColors();
   const { 
     currentSession, 
@@ -38,9 +42,23 @@ export default function VisualizationPlayerScreen() {
   const [audioError, setAudioError] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [preloadedAudio, setPreloadedAudio] = useState<Map<number, string>>(new Map());
-  const [isPreloading, setIsPreloading] = useState(false);
   const ttsService = useRef(SimpleTTSService.getInstance()).current;
+  
+  // Parse preloaded audio from route params
+  const preloadedAudioMap = useRef<Map<number, string>>(new Map());
+  useEffect(() => {
+    if (preloadedAudioParam) {
+      try {
+        const parsed = JSON.parse(preloadedAudioParam);
+        Object.entries(parsed).forEach(([stepId, uri]) => {
+          preloadedAudioMap.current.set(parseInt(stepId), uri as string);
+        });
+        console.log(`Received ${preloadedAudioMap.current.size} preloaded audio files`);
+      } catch (error) {
+        console.error('Failed to parse preloaded audio:', error);
+      }
+    }
+  }, [preloadedAudioParam]);
 
   // Animation values
   const progressAnim = useRef(new Animated.Value(0)).current;
@@ -117,66 +135,10 @@ export default function VisualizationPlayerScreen() {
 
   // Handle TTS audio when step changes
   useEffect(() => {
-    if (currentSession && visualization && (preferences.ttsEnabled ?? true)) {
+    if (currentSession && visualization && (preferences.ttsEnabled ?? true) && !disableAudio) {
       loadTTSAudio();
     }
   }, [currentStep, preferences.ttsEnabled]);
-
-  // Background preloading of remaining steps
-  useEffect(() => {
-    if (currentSession && visualization && (preferences.ttsEnabled ?? true) && 
-        currentStep === 0 && !isLoadingAudio && !isPreloading) {
-      preloadRemainingSteps();
-    }
-  }, [currentStep, isLoadingAudio, preferences.ttsEnabled]);
-
-  const preloadRemainingSteps = async () => {
-    if (!visualization || isPreloading) return;
-    
-    setIsPreloading(true);
-    console.log('Starting background preload of visualization steps...');
-    
-    try {
-      // Preload steps 1 through end (skip step 0 as it's already loading)
-      for (let i = 1; i < visualization.steps.length; i++) {
-        // Check if we should continue preloading
-        if (!currentSession || !(preferences.ttsEnabled ?? true)) {
-          break;
-        }
-        
-        // Skip if already preloaded
-        if (preloadedAudio.has(i)) {
-          continue;
-        }
-        
-        const step = visualization.steps[i];
-        try {
-          console.log(`Preloading step ${i + 1}/${visualization.steps.length}...`);
-          const audioUri = await ttsService.synthesizeSpeech(step.content, {
-            voice: preferences.ttsVoice ?? 'nova',
-            model: preferences.ttsModel ?? 'tts-1',
-            speed: preferences.ttsSpeed ?? 1.0,
-          });
-          
-          // Store the preloaded audio URI
-          setPreloadedAudio(prev => new Map(prev).set(i, audioUri));
-          console.log(`Successfully preloaded step ${i + 1}`);
-          
-          // Small delay between preloads to avoid overwhelming the API
-          await new Promise(resolve => setTimeout(resolve, 500));
-        } catch (error) {
-          console.error(`Failed to preload step ${i}:`, error);
-          // Continue with next steps even if one fails
-        }
-      }
-      
-      console.log('Background preloading complete');
-    } catch (error) {
-      console.error('Background preloading failed:', error);
-    } finally {
-      setIsPreloading(false);
-    }
-  };
 
   const loadTTSAudio = async () => {
     setIsLoadingAudio(true);
@@ -193,12 +155,12 @@ export default function VisualizationPlayerScreen() {
       let audioUri: string;
       
       // Check if audio is already preloaded
-      if (preloadedAudio.has(currentStep)) {
-        audioUri = preloadedAudio.get(currentStep)!;
+      if (preloadedAudioMap.current.has(currentStep)) {
+        audioUri = preloadedAudioMap.current.get(currentStep)!;
         console.log(`Using preloaded audio for step ${currentStep + 1}`);
       } else {
-        // Synthesize speech for current step
-        console.log(`Loading audio on-demand for step ${currentStep + 1}`);
+        // Synthesize speech for current step (fallback)
+        console.log(`Loading audio on-demand for step ${currentStep + 1} (fallback)`);
         audioUri = await ttsService.synthesizeSpeech(currentStepData.content, {
           voice: preferences.ttsVoice ?? 'nova',
           model: preferences.ttsModel ?? 'tts-1',
@@ -587,7 +549,7 @@ export default function VisualizationPlayerScreen() {
           </Text>
           
           {/* Audio Status */}
-          {(preferences.ttsEnabled ?? true) && (
+          {(preferences.ttsEnabled ?? true) && !disableAudio && (
             <View>
               {isLoadingAudio ? (
                 <View style={styles.audioStatus}>
@@ -615,11 +577,6 @@ export default function VisualizationPlayerScreen() {
                     <TouchableOpacity style={styles.replayButton} onPress={replayAudio}>
                       <Text style={{ color: colors.primary }}>Replay Audio</Text>
                     </TouchableOpacity>
-                  )}
-                  {isPreloading && (
-                    <Text style={[styles.audioNote, { marginTop: 8 }]}>
-                      Preparing upcoming steps...
-                    </Text>
                   )}
                 </View>
               )}
