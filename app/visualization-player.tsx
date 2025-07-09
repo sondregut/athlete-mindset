@@ -228,24 +228,33 @@ export default function VisualizationPlayerScreen() {
 
   const handleExit = () => {
     Alert.alert(
-      'Exit Visualization',
-      'Are you sure you want to exit? Your progress will be lost.',
+      'Stop Visualization?',
+      'Are you sure you want to stop? Your progress will be lost.',
       [
         { text: 'Cancel', style: 'cancel' },
         { 
-          text: 'Exit', 
+          text: 'Stop', 
           style: 'destructive',
           onPress: async () => {
+            // Clean up audio
             if (ttsSound) {
-              await ttsSound.unloadAsync();
+              try {
+                await ttsSound.unloadAsync();
+              } catch (error) {
+                console.error('Error unloading sound:', error);
+              }
             }
-            await ttsService.stopCurrentAudio();
+            try {
+              await ttsService.stopCurrentAudio();
+            } catch (error) {
+              console.error('Error stopping current audio:', error);
+            }
+            
+            // Abandon session
             abandonSession();
-            if (router.canGoBack()) {
-              router.back();
-            } else {
-              router.replace('/(tabs)/mental-training');
-            }
+            
+            // Navigate back to mental training tab
+            router.replace('/(tabs)/mental-training');
           }
         },
       ]
@@ -272,31 +281,42 @@ export default function VisualizationPlayerScreen() {
   };
 
   const handleComplete = async () => {
+    // Clean up audio
     if (ttsSound) {
-      await ttsSound.unloadAsync();
+      try {
+        await ttsSound.unloadAsync();
+      } catch (error) {
+        console.error('Error unloading sound:', error);
+      }
     }
-    await ttsService.stopCurrentAudio();
+    try {
+      await ttsService.stopCurrentAudio();
+    } catch (error) {
+      console.error('Error stopping current audio:', error);
+    }
     
+    // Haptic feedback
     if (Platform.OS !== 'web') {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
     
-    // Navigate to home screen
-    router.replace('/(tabs)');
+    // Complete the session
+    completeSession();
     
-    // Complete session after navigation
-    setTimeout(() => {
-      completeSession();
-    }, 100);
-    
-    // Show success message after a short delay
-    setTimeout(() => {
-      Alert.alert(
-        'Visualization Complete! 🎉',
-        `Great job completing "${visualization.title}". Keep up the great work!`,
-        [{ text: 'OK' }]
-      );
-    }, 500);
+    // Show success message
+    Alert.alert(
+      'Visualization Complete! 🎉',
+      `Great job completing "${visualization.title}". Keep up the great work!`,
+      [
+        { 
+          text: 'OK',
+          onPress: () => {
+            // Navigate back to mental training tab after user acknowledges
+            router.replace('/(tabs)/mental-training');
+          }
+        }
+      ]
+    );
   };
 
   const toggleAudio = () => {
