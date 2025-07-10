@@ -1,28 +1,26 @@
-import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { getVisualizationById } from '@/constants/visualizations';
 import { useVisualizationStore } from '@/store/visualization-store';
-import { Clock, Play, Trophy, Brain, ChevronLeft } from 'lucide-react-native';
+import { Clock, Play, Trophy, Brain, ChevronLeft, Volume2, FastForward, Mic } from 'lucide-react-native';
 import Card from '@/components/Card';
+import VoiceSelectionModal from '@/components/VoiceSelectionModal';
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
-import PreloadingModal from '@/components/PreloadingModal';
-import { SimpleTTSService } from '@/services/simple-tts-service';
+import { TTSVoice } from '@/services/tts-firebase-cache';
 
 export default function VisualizationDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const colors = useThemeColors();
-  const { getVisualizationStats, startSession, preferences } = useVisualizationStore();
+  const { getVisualizationStats, startSession, preferences, updatePreferences } = useVisualizationStore();
+  const [isStarting, setIsStarting] = useState(false);
+  const [showVoiceModal, setShowVoiceModal] = useState(false);
   
   const visualization = getVisualizationById(id);
   const stats = getVisualizationStats(id);
   
-  const [isPreloading, setIsPreloading] = useState(false);
-  const [preloadProgress, setPreloadProgress] = useState(0);
-  const ttsService = useRef(SimpleTTSService.getInstance()).current;
-  const abortControllerRef = useRef<AbortController | null>(null);
 
   if (!visualization) {
     return (
@@ -36,96 +34,41 @@ export default function VisualizationDetailScreen() {
   }
 
   const handleStartVisualization = async () => {
+    if (isStarting) return;
+    
+    setIsStarting(true);
+    
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
     
-    // Check if TTS is enabled
-    if (!(preferences.ttsEnabled ?? true)) {
-      // If TTS is disabled, start directly without preloading
-      startSession(visualization.id);
+    // Start session first
+    startSession(visualization.id);
+    
+    // Small delay to ensure smooth transition
+    setTimeout(() => {
       router.push({
         pathname: '/visualization-player',
         params: { id: visualization.id }
       });
-      return;
-    }
-    
-    // Start preloading
-    setIsPreloading(true);
-    setPreloadProgress(0);
-    abortControllerRef.current = new AbortController();
-    
-    try {
-      const preloadedAudio = await ttsService.preloadVisualization(
-        visualization.steps,
-        {
-          voice: preferences.ttsVoice ?? 'nova',
-          model: preferences.ttsModel ?? 'tts-1',
-          speed: preferences.ttsSpeed ?? 1.0,
-        },
-        (progress) => {
-          setPreloadProgress(progress);
-        }
-      );
-      
-      // Convert Map to object for passing via route params
-      const preloadedData: Record<string, string> = {};
-      preloadedAudio.forEach((uri, stepId) => {
-        preloadedData[stepId.toString()] = uri;
-      });
-      
-      // Start session and navigate with preloaded data
-      startSession(visualization.id);
-      router.push({
-        pathname: '/visualization-player',
-        params: { 
-          id: visualization.id,
-          preloadedAudio: JSON.stringify(preloadedData)
-        }
-      });
-    } catch (error: any) {
-      console.error('Preloading failed:', error);
-      
-      // Show error alert
-      Alert.alert(
-        'Loading Failed',
-        'Unable to prepare the visualization audio. Would you like to continue without narration?',
-        [
-          { 
-            text: 'Cancel', 
-            style: 'cancel',
-            onPress: () => {
-              setIsPreloading(false);
-            }
-          },
-          { 
-            text: 'Continue Without Audio', 
-            onPress: () => {
-              startSession(visualization.id);
-              router.push({
-                pathname: '/visualization-player',
-                params: { 
-                  id: visualization.id,
-                  disableAudio: 'true'
-                }
-              });
-            }
-          },
-        ]
-      );
-    } finally {
-      setIsPreloading(false);
-      abortControllerRef.current = null;
-    }
+    }, 100);
   };
-  
-  const handleCancelPreload = () => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    setIsPreloading(false);
-    setPreloadProgress(0);
+
+  const handleVoiceSelect = (voice: TTSVoice) => {
+    updatePreferences({ ttsVoice: voice });
+    setShowVoiceModal(false);
+  };
+
+  const getVoiceLabel = (voice: TTSVoice) => {
+    const voiceLabels = {
+      'nova': 'Nova',
+      'alloy': 'Alloy', 
+      'echo': 'Echo',
+      'fable': 'Fable',
+      'onyx': 'Onyx',
+      'shimmer': 'Shimmer'
+    };
+    return voiceLabels[voice] || 'Nova';
   };
 
   const getCategoryIcon = () => {
@@ -258,6 +201,48 @@ export default function VisualizationDetailScreen() {
       color: colors.darkGray,
       lineHeight: 20,
     },
+    voiceCard: {
+      marginBottom: 20,
+    },
+    voiceTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 12,
+    },
+    voiceSelector: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 8,
+    },
+    voiceSelectorLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+    },
+    voiceIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: `${colors.primary}15`,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 12,
+    },
+    voiceInfo: {
+      flex: 1,
+    },
+    voiceLabel: {
+      fontSize: 16,
+      color: colors.text,
+      marginBottom: 2,
+    },
+    voiceValue: {
+      fontSize: 14,
+      color: colors.primary,
+      fontWeight: '500',
+    },
     startButton: {
       backgroundColor: colors.primary,
       paddingVertical: 18,
@@ -284,7 +269,7 @@ export default function VisualizationDetailScreen() {
     <View style={styles.container}>
       <Stack.Screen 
         options={{ 
-          title: '',
+          title: visualization?.title || 'Visualization',
           headerLeft: () => (
             <TouchableOpacity 
               onPress={() => router.back()}
@@ -293,6 +278,7 @@ export default function VisualizationDetailScreen() {
               <ChevronLeft size={24} color={colors.text} />
             </TouchableOpacity>
           ),
+          animation: 'slide_from_right',
         }} 
       />
       
@@ -351,6 +337,28 @@ export default function VisualizationDetailScreen() {
           </View>
         </Card>
 
+        {/* Voice Selection Card */}
+        <Card style={styles.voiceCard}>
+          <Text style={styles.voiceTitle}>Voice Settings</Text>
+          <TouchableOpacity 
+            style={styles.voiceSelector}
+            onPress={() => setShowVoiceModal(true)}
+          >
+            <View style={styles.voiceSelectorLeft}>
+              <View style={styles.voiceIcon}>
+                <Mic size={20} color={colors.primary} />
+              </View>
+              <View style={styles.voiceInfo}>
+                <Text style={styles.voiceLabel}>Narration Voice</Text>
+                <Text style={styles.voiceValue}>
+                  {getVoiceLabel(preferences.ttsVoice ?? 'nova')}
+                </Text>
+              </View>
+            </View>
+            <Volume2 size={20} color={colors.darkGray} />
+          </TouchableOpacity>
+        </Card>
+
         <Card style={styles.stepsCard}>
           <Text style={styles.stepsTitle}>What You'll Experience</Text>
           {visualization.steps.slice(0, 3).map((step) => (
@@ -373,19 +381,30 @@ export default function VisualizationDetailScreen() {
         </Card>
 
         <TouchableOpacity 
-          style={styles.startButton}
+          style={[styles.startButton, isStarting && { opacity: 0.7 }]}
           onPress={handleStartVisualization}
+          disabled={isStarting}
         >
-          <Play size={24} color={colors.background} />
-          <Text style={styles.startButtonText}>Start Visualization</Text>
+          {isStarting ? (
+            <>
+              <ActivityIndicator size="small" color={colors.background} />
+              <Text style={styles.startButtonText}>Starting...</Text>
+            </>
+          ) : (
+            <>
+              <Play size={24} color={colors.background} />
+              <Text style={styles.startButtonText}>Start Visualization</Text>
+            </>
+          )}
         </TouchableOpacity>
       </ScrollView>
-      
-      {/* Preloading Modal */}
-      <PreloadingModal
-        visible={isPreloading}
-        progress={preloadProgress}
-        onCancel={handleCancelPreload}
+
+      {/* Voice Selection Modal */}
+      <VoiceSelectionModal
+        visible={showVoiceModal}
+        onClose={() => setShowVoiceModal(false)}
+        currentVoice={preferences.ttsVoice ?? 'nova'}
+        onVoiceSelect={handleVoiceSelect}
       />
     </View>
   );

@@ -108,12 +108,27 @@ export default function VisualizationPlayerScreen() {
   // Cleanup audio on unmount
   useEffect(() => {
     return () => {
-      if (ttsSound) {
-        ttsSound.unloadAsync();
-      }
-      ttsService.stopCurrentAudio();
+      // Use async cleanup
+      (async () => {
+        if (ttsSound) {
+          try {
+            const status = await ttsSound.getStatusAsync();
+            if (status.isLoaded) {
+              await ttsSound.stopAsync();
+              await ttsSound.unloadAsync();
+            }
+          } catch (error) {
+            console.error('Error cleaning up sound on unmount:', error);
+          }
+        }
+        try {
+          await ttsService.stopCurrentAudio();
+        } catch (error) {
+          console.error('Error stopping TTS service on unmount:', error);
+        }
+      })();
     };
-  }, []);
+  }, [ttsSound]);
 
   // Configure audio session on mount
   useEffect(() => {
@@ -239,7 +254,11 @@ export default function VisualizationPlayerScreen() {
             // Clean up audio
             if (ttsSound) {
               try {
-                await ttsSound.unloadAsync();
+                const status = await ttsSound.getStatusAsync();
+                if (status.isLoaded) {
+                  await ttsSound.stopAsync();
+                  await ttsSound.unloadAsync();
+                }
               } catch (error) {
                 console.error('Error unloading sound:', error);
               }
@@ -254,7 +273,8 @@ export default function VisualizationPlayerScreen() {
             abandonSession();
             
             // Navigate back to mental training tab
-            router.replace('/(tabs)/mental-training');
+            // Use push to avoid navigation stack issues
+            router.push('/(tabs)/mental-training');
           }
         },
       ]
@@ -284,7 +304,11 @@ export default function VisualizationPlayerScreen() {
     // Clean up audio
     if (ttsSound) {
       try {
-        await ttsSound.unloadAsync();
+        const status = await ttsSound.getStatusAsync();
+        if (status.isLoaded) {
+          await ttsSound.stopAsync();
+          await ttsSound.unloadAsync();
+        }
       } catch (error) {
         console.error('Error unloading sound:', error);
       }
@@ -312,20 +336,27 @@ export default function VisualizationPlayerScreen() {
           text: 'OK',
           onPress: () => {
             // Navigate back to mental training tab after user acknowledges
-            router.replace('/(tabs)/mental-training');
+            router.push('/(tabs)/mental-training');
           }
         }
       ]
     );
   };
 
-  const toggleAudio = () => {
+  const toggleAudio = async () => {
     const currentValue = preferences.ttsEnabled ?? true;
     const newValue = !currentValue;
     updatePreferences({ ttsEnabled: newValue });
     
     if (!newValue && ttsSound) {
-      ttsSound.stopAsync();
+      try {
+        const status = await ttsSound.getStatusAsync();
+        if (status.isLoaded) {
+          await ttsSound.stopAsync();
+        }
+      } catch (error) {
+        console.error('Error stopping audio on toggle:', error);
+      }
       setIsPlaying(false);
     }
   };

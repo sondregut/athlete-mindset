@@ -60,6 +60,9 @@ export default function SessionLogItem({ log, onPress, showEditButton = true }: 
     return '⭐'.repeat(rating);
   };
 
+  // Check if this is a mental training/visualization session
+  const isMentalTraining = log.sessionType === 'visualization' || log.activity === 'Mental Training';
+
   const getSessionStatusColor = () => {
     if (log.status !== 'completed') return colors.warning;
     return colors.text;
@@ -223,16 +226,18 @@ export default function SessionLogItem({ log, onPress, showEditButton = true }: 
 
   return (
     <TouchableOpacity onPress={handlePress} activeOpacity={0.7}>
-      <Card>
+      <Card style={isMentalTraining ? { paddingVertical: 12, paddingHorizontal: 16 } : undefined}>
         {/* Header Section */}
-        <View style={styles.header}>
+        <View style={[styles.header, isMentalTraining && { marginBottom: 0 }]}>
           <View style={styles.iconContainer}>
             <SessionTypeIcon type={log.sessionType} size={20} />
           </View>
           <View style={styles.headerTextContainer}>
             <View style={styles.titleRow}>
               <Text style={[styles.statusText, { color: getSessionStatusColor() }]}>
-                {log.activity || log.sessionType.charAt(0).toUpperCase() + log.sessionType.slice(1)}
+                {isMentalTraining && log.visualizationTitle 
+                  ? log.visualizationTitle 
+                  : log.activity || log.sessionType.charAt(0).toUpperCase() + log.sessionType.slice(1)}
                 {log.status !== 'completed' && ' (In Progress)'}
               </Text>
               {log.duration && (
@@ -245,16 +250,16 @@ export default function SessionLogItem({ log, onPress, showEditButton = true }: 
           </View>
         </View>
         
-        {/* Pre-Training Intention */}
-        {log.intention && (
+        {/* Pre-Training Intention (not shown for mental training) */}
+        {log.intention && !isMentalTraining && (
           <View style={styles.intentionContainer}>
             <Brain size={16} color={colors.primary} />
             <Text style={styles.intentionText}>{log.intention}</Text>
           </View>
         )}
         
-        {/* Metrics Row */}
-        {log.status === 'completed' && (log.rpe || log.readinessRating) && (
+        {/* Metrics Row (not shown for mental training) */}
+        {log.status === 'completed' && (log.rpe || log.readinessRating) && !isMentalTraining && (
           <View style={styles.metricsContainer}>
             {log.readinessRating && (
               <View style={styles.metricItem}>
@@ -277,8 +282,8 @@ export default function SessionLogItem({ log, onPress, showEditButton = true }: 
           </View>
         )}
         
-        {/* Mindset Cues */}
-        {log.mindsetCues && log.mindsetCues.length > 0 && (
+        {/* Mindset Cues (not shown for mental training) */}
+        {log.mindsetCues && log.mindsetCues.length > 0 && !isMentalTraining && (
           <View style={styles.mindsetCuesContainer}>
             <Brain size={12} color={colors.primary} />
             {log.mindsetCues.slice(0, 3).map((cue, index) => (
@@ -294,15 +299,15 @@ export default function SessionLogItem({ log, onPress, showEditButton = true }: 
           </View>
         )}
         
-        {/* Post-Session Notes */}
-        {log.notes && log.status === 'completed' && (
+        {/* Post-Session Notes (not shown for mental training) */}
+        {log.notes && log.status === 'completed' && !isMentalTraining && (
           <View style={styles.notesContainer}>
             <Text style={styles.notesText}>{log.notes}</Text>
           </View>
         )}
         
-        {/* All Positives */}
-        {log.positives && log.positives.length > 0 && log.status === 'completed' && (
+        {/* All Positives (not shown for mental training) */}
+        {log.positives && log.positives.length > 0 && log.status === 'completed' && !isMentalTraining && (
           <View style={styles.positivesContainer}>
             {log.positives.map((positive, index) => (
               <View key={index} style={styles.positiveItem}>
@@ -313,16 +318,16 @@ export default function SessionLogItem({ log, onPress, showEditButton = true }: 
           </View>
         )}
         
-        {/* Stretch Goal */}
-        {log.stretchGoal && log.status === 'completed' && (
+        {/* Stretch Goal (not shown for mental training) */}
+        {log.stretchGoal && log.status === 'completed' && !isMentalTraining && (
           <View style={styles.stretchGoalContainer}>
             <Target size={16} color={colors.warning} />
             <Text style={styles.stretchGoalText}>{log.stretchGoal}</Text>
           </View>
         )}
         
-        {/* Bottom Section - Session Rating */}
-        {log.status === 'completed' && log.sessionRating && (
+        {/* Bottom Section - Session Rating (not shown for mental training) */}
+        {log.status === 'completed' && log.sessionRating && !isMentalTraining && (
           <View style={styles.bottomSection}>
             <View style={styles.ratingContainer}>
               <Text style={styles.ratingText}>{getRatingStars(log.sessionRating)}</Text>
