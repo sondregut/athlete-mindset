@@ -22,7 +22,11 @@
       "Bash(bun run:*)",
       "Bash(bun add:*)",
       "WebFetch(domain:console.firebase.google.com)",
-      "Bash(bun remove:*)"
+      "Bash(bun remove:*)",
+      "Bash(rm:*)",
+      "Bash(node:*)",
+      "Bash(find:*)",
+      "Bash(git push:*)"
     ],
     "deny": []
   }

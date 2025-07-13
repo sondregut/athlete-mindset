@@ -2,8 +2,9 @@ import React from 'react';
 import { View, Text, StyleSheet, Switch, TouchableOpacity } from 'react-native';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import Card from './Card';
-import { Bell, Globe, Shield } from 'lucide-react-native';
+import { Bell, Globe, Shield, Sparkles } from 'lucide-react-native';
 import { useUserStore } from '@/store/user-store';
+import { router } from 'expo-router';
 
 export default function ProfilePreferences() {
   const colors = useThemeColors();
@@ -129,6 +130,15 @@ export default function ProfilePreferences() {
       })}
 
       <View style={styles.dataManagement}>
+        <TouchableOpacity 
+          style={[styles.dataButton, { backgroundColor: `${colors.primary}10`, borderColor: colors.primary }]}
+          onPress={() => router.push('/personalization-setup')}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Sparkles size={20} color={colors.primary} />
+            <Text style={styles.dataButtonText}>Personalization Settings</Text>
+          </View>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.dataButton}>
           <Text style={styles.dataButtonText}>Export My Data</Text>
         </TouchableOpacity>

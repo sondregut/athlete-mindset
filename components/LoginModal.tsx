@@ -179,7 +179,7 @@ export default function LoginModal({ visible, onClose }: LoginModalProps) {
     // Set login intent and navigate to auth screen
     setLoginIntent(true);
     const { setOnboardingStep } = useOnboardingStore.getState();
-    setOnboardingStep(5); // Navigate to auth step
+    setOnboardingStep(6); // Navigate to auth step (updated after adding visualization step)
     onClose();
   };
 

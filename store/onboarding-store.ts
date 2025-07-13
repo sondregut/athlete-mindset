@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface OnboardingGoals {
   weeklySessionTarget?: number;
+  weeklyVisualizationTarget?: number;
   streakGoal?: number;
   primaryFocus?: 'consistency' | 'performance' | 'mindset' | 'recovery';
   motivationType?: 'achievement' | 'progress' | 'community' | 'personal';
@@ -14,6 +15,8 @@ interface OnboardingState {
   currentStep: number;
   goals: OnboardingGoals;
   loginIntent: boolean; // Track if user wants to login vs signup
+  completedTutorial: boolean; // Track if user completed the tutorial
+  selectedVoice?: string; // Store selected TTS voice early
   
   // Hydration state
   isHydrated: boolean;
@@ -26,6 +29,8 @@ interface OnboardingState {
   resetOnboarding: () => void; // For development/testing
   setHydrated: (hydrated: boolean) => void;
   setLoginIntent: (intent: boolean) => void;
+  setCompletedTutorial: (completed: boolean) => void;
+  setSelectedVoice: (voice: string) => void;
 }
 
 const defaultGoals: OnboardingGoals = {};
@@ -37,6 +42,8 @@ export const useOnboardingStore = create<OnboardingState>()(
       currentStep: 0,
       goals: defaultGoals,
       loginIntent: false,
+      completedTutorial: false,
+      selectedVoice: undefined,
       isHydrated: false,
       
       setOnboardingStep: (step) => set({ currentStep: step }),
@@ -60,12 +67,16 @@ export const useOnboardingStore = create<OnboardingState>()(
           hasCompletedOnboarding: false,
           currentStep: 0,
           goals: defaultGoals,
-          loginIntent: false
+          loginIntent: false,
+          completedTutorial: false,
+          selectedVoice: undefined
         });
       },
       
       setHydrated: (hydrated) => set({ isHydrated: hydrated }),
       setLoginIntent: (intent) => set({ loginIntent: intent }),
+      setCompletedTutorial: (completed) => set({ completedTutorial: completed }),
+      setSelectedVoice: (voice) => set({ selectedVoice: voice }),
     }),
     {
       name: 'onboarding-storage',
@@ -92,45 +103,66 @@ export const useOnboardingStore = create<OnboardingState>()(
 export const onboardingSteps = [
   {
     id: 'welcome',
-    title: 'Welcome to Your\nMindset Journey',
-    subtitle: 'Track not just what you do,\nbut how you think and feel',
-    description: 'This app helps athletes develop mental resilience through structured pre and post-training reflection.',
+    title: 'Welcome to Your\nMental Training App',
+    subtitle: 'Build mental excellence for peak performance',
+    description: 'Track your mental game with session intentions and reflections, plus guided AI-powered visualizations. Everything you need to train your mind like a pro.',
     icon: '🧠',
   },
   {
-    id: 'philosophy',
-    title: 'The Power of\nMindful Training',
-    subtitle: 'Mental performance is as important\nas physical performance',
-    description: 'By tracking your intentions, mindset, and reflections, you\'ll build self-awareness and mental toughness.',
+    id: 'mental-tracking',
+    title: 'Track Your\nMental Game',
+    subtitle: 'Pre and post training intentions',
+    description: 'Build self-awareness by setting intentions before training and reflecting on what went well after. See patterns in your mental performance over time.',
+    icon: '📝',
+  },
+  {
+    id: 'ai-visualization',
+    title: 'AI-Powered\nMental Training',
+    subtitle: 'Guided visualization exercises',
+    description: 'Professional mental training exercises with AI narration. Build confidence, improve focus, and visualize success with 6 natural voice options.',
     icon: '🎯',
   },
   {
-    id: 'features',
-    title: 'Your Training\nCompanion',
-    subtitle: 'Log sessions, track progress,\nbuild streaks',
-    description: 'Set intentions before training, track your session, and reflect afterward to maximize growth.',
-    icon: '📈',
+    id: 'visualization-demo',
+    title: 'Train Your Mind\nLike a Pro',
+    subtitle: 'Science-backed mental training',
+    description: 'Professional athletes use visualization to enhance performance. Experience AI-guided sessions that build confidence and focus.',
+    icon: '🎯',
   },
   {
-    id: 'profile',
-    title: 'Tell Us About\nYourself',
-    subtitle: 'Personalize your experience',
-    description: 'Help us customize the app for your training style and preferences.',
-    icon: '👤',
+    id: 'synergy',
+    title: 'Better Together',
+    subtitle: 'Complete mental training system',
+    description: 'Combine training intentions with guided visualizations to develop mental excellence alongside your physical training.',
+    icon: '🚀',
+  },
+  {
+    id: 'personalization',
+    title: 'Make It Yours',
+    subtitle: 'Customize your experience',
+    description: 'Choose your AI narrator voice, set preferences, and personalize the app to match your training style.',
+    icon: '🎨',
   },
   {
     id: 'goals',
-    title: 'Set Your\nTargets',
-    subtitle: 'What would you like to achieve?',
-    description: 'Let\'s set some initial goals to keep you motivated and on track.',
-    icon: '🏆',
+    title: 'Set Your\nMental Training Goals',
+    subtitle: 'Consistency drives excellence',
+    description: 'Set weekly targets for mental journey sessions and visualization practice. Build sustainable habits for long-term success.',
+    icon: '🎯',
   },
   {
     id: 'auth',
     title: 'Create Your\nAccount',
-    subtitle: '',
-    description: '',
+    subtitle: 'Save your progress',
+    description: 'Sign up to track your journey, sync across devices, and unlock all features.',
     icon: '🔐',
+  },
+  {
+    id: 'personalization-setup',
+    title: 'Personalize Your\nMental Training',
+    subtitle: 'Set up AI personalization',
+    description: 'Take 2 minutes to tell us about your sport, experience, and goals. Our AI will create personalized visualizations just for you. You can skip and set up later.',
+    icon: '⚡',
   },
 ];
 

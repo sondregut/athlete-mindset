@@ -42,8 +42,8 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (loaded) {
-      console.log('✅ Fonts loaded, hiding splash screen');
-      SplashScreen.hideAsync();
+      console.log('✅ Fonts loaded, waiting for auth initialization before hiding splash screen');
+      // Don't hide splash screen yet - wait for auth initialization
     }
   }, [loaded]);
 

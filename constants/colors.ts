@@ -12,6 +12,7 @@ export const colors = {
   warning: "#FFC107",
   error: "#F44336",
   info: "#2196F3",
+  gold: "#FFD700", // Gold color for professional level
   orange: "#FFB74D", // Orange accent from brainrot
   // Selection button colors for better visibility
   border: "#b5a082", // Darker tan for unselected borders
@@ -20,6 +21,7 @@ export const colors = {
   sessionTypes: {
     training: "#4A90E2", // Updated to match new primary
     competition: "#FF6B6B",
+    visualization: "#9C27B0", // Purple for mental training
     other: "#9A9A9A"
   }
 };

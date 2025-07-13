@@ -2,6 +2,7 @@
 
 # dependencies
 node_modules/
+scripts/node_modules/
 
 # Expo
 .expo/
@@ -30,8 +31,19 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
 .env*.local
 
 # typescript
 *.tsbuildinfo
 .vercel
+
+# Custom
+patch-expo.js
+start-expo.js
+start.sh
+app.json.backup
+
+# Firebase service account keys - NEVER commit these!
+service-account-key.json
+firebase-service-account.json

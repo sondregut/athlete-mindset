@@ -10,6 +10,7 @@ import {
   inMemoryPersistence
 } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
+import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -28,6 +29,7 @@ const firebaseConfig = {
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
 let firestore: Firestore | null = null;
+let storage: FirebaseStorage | null = null;
 let isInitialized = false;
 
 // Initialize Firebase lazily
@@ -82,6 +84,20 @@ export const markFirebaseInitialized = () => {
 
 // Check if initialized
 export const isFirebaseInitialized = () => isInitialized;
+
+// Get Firebase App instance
+export const getFirebaseApp = (): FirebaseApp => {
+  return initializeFirebase();
+};
+
+// Get Storage instance
+export const getFirebaseStorage = (): FirebaseStorage => {
+  if (!storage) {
+    const firebaseApp = initializeFirebase();
+    storage = getStorage(firebaseApp);
+  }
+  return storage;
+};
 
 // Export default config
 export default firebaseConfig;

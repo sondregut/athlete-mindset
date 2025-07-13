@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import Body from 'react-native-body-highlighter';
+import LazyBodyHighlighter from './LazyBodyHighlighter';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { BodyPainArea } from '@/store/mindset-store';
 
@@ -351,10 +351,10 @@ export default function BodyPainSelector({
         </View>
 
         <View style={styles.bodyDiagram}>
-          <Body
+          <LazyBodyHighlighter
             data={bodyData.filter(item => item !== null) as any}
-            gender="male"
-            side={currentView}
+            frontOnly={currentView === 'front'}
+            backOnly={currentView === 'back'}
             scale={1.0}
           />
         </View>

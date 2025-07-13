@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Tabs, router } from 'expo-router';
-import { Home, Clock, PlusCircle, User, FileText, ClipboardCheck } from 'lucide-react-native';
+import { Home, Clock, PlusCircle, User, FileText, ClipboardCheck, Brain } from 'lucide-react-native';
 import { Modal, View, Text, TouchableOpacity, StyleSheet, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColors } from '@/hooks/useThemeColors';
@@ -127,6 +127,13 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="mental-training"
+        options={{
+          title: "Mental",
+          tabBarIcon: ({ color }) => <Brain size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="log-session"
         options={{
           title: "Log Session",
@@ -150,6 +157,7 @@ export default function TabLayout() {
       visible={showLogOptions}
       transparent={true}
       animationType="fade"
+      presentationStyle="overFullScreen"
       onRequestClose={() => setShowLogOptions(false)}
     >
       <Pressable style={styles.modalOverlay} onPress={() => setShowLogOptions(false)}>

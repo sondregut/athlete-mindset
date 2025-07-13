@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Athlete Mindset Toolkit",
-    "slug": "athlete-mindset-toolkit-jda24fe",
+    "slug": "athlete-mindset-rork",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -48,6 +48,11 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "ab87e8f5-0098-416a-a5c2-e24014d63597"
+      }
     }
   }
 }

@@ -18,6 +18,7 @@ import DailyMindsetCheckin from '@/components/DailyMindsetCheckin';
 import SessionLogger from '@/components/SessionLogger';
 import StreakCelebration from '@/components/StreakCelebration';
 import BrainHealthIndicator from '@/components/BrainHealthIndicator';
+import VisualizationCard from '@/components/visualization/VisualizationCard';
 
 export default function HomeScreen() {
   const [quote, setQuote] = useState('');
@@ -384,6 +385,9 @@ export default function HomeScreen() {
         
         {/* Brain Health Indicator */}
         <BrainHealthIndicator />
+        
+        {/* Mental Training */}
+        <VisualizationCard />
       </View>
       
       {/* Recent Activity */}

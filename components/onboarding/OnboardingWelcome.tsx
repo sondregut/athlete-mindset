@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Dimensions, Platform, Animated, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, Platform, Animated, TouchableOpacity, ScrollView, Image } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { colors } from '@/constants/colors';
 import OnboardingButton from './OnboardingButton';
@@ -25,7 +25,7 @@ export default function OnboardingWelcome({ step, onNext, onLogin }: OnboardingW
   const [showLoginModal, setShowLoginModal] = useState(false);
 
   useEffect(() => {
-    // Animate content on mount
+    // Simple fade in animation for content
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -74,16 +74,14 @@ export default function OnboardingWelcome({ step, onNext, onLogin }: OnboardingW
       alignItems: 'center',
     },
     iconContainer: {
-      width: 120,
-      height: 120,
-      borderRadius: 60,
-      backgroundColor: `${colors.primary}15`,
+      width: 160,
+      height: 160,
       justifyContent: 'center',
       alignItems: 'center',
       marginBottom: 32,
     },
     icon: {
-      fontSize: 64,
+      fontSize: 120,
     },
     title: {
       fontSize: 32,
@@ -153,7 +151,15 @@ export default function OnboardingWelcome({ step, onNext, onLogin }: OnboardingW
         >
           {/* Icon */}
           <View style={styles.iconContainer}>
-            <Text style={styles.icon}>{step.icon}</Text>
+            {step.id === 'welcome' ? (
+              <Image 
+                source={require('@/assets/images/brain-health/brain-5.png')} 
+                style={{ width: 140, height: 140 }}
+                resizeMode="contain"
+              />
+            ) : (
+              <Text style={styles.icon}>{step.icon}</Text>
+            )}
           </View>
 
           {/* Title */}

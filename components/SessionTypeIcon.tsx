@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Dumbbell, Trophy, HelpCircle } from 'lucide-react-native';
+import { Dumbbell, Trophy, HelpCircle, Brain } from 'lucide-react-native';
 import { SessionType } from '@/types/session';
 import { useThemeColors } from '@/hooks/useThemeColors';
 
@@ -21,6 +21,8 @@ export default function SessionTypeIcon({ type, size = 24, color }: SessionTypeI
         return <Dumbbell size={size} color={iconColor} />;
       case 'competition':
         return <Trophy size={size} color={iconColor} />;
+      case 'visualization':
+        return <Brain size={size} color={iconColor} />;
       case 'other':
       default:
         return <HelpCircle size={size} color={iconColor} />;

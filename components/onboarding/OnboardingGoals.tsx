@@ -30,7 +30,8 @@ export default function OnboardingGoals({ step, onNext, onBack }: OnboardingGoal
     setLocalGoals(prev => ({ ...prev, ...updates }));
   };
 
-  const weeklyTargets = [1, 2, 3, 4, 5, 6, 7];
+  const weeklySessionTargets = [1, 2, 3, 4, 5, 6, 7];
+  const weeklyVisualizationTargets = [1, 2, 3, 4, 5, 6, 7];
   const streakGoals = [3, 5, 7, 10, 14, 21, 30];
 
   return (
@@ -46,121 +47,69 @@ export default function OnboardingGoals({ step, onNext, onBack }: OnboardingGoal
           <Text style={styles.description}>{step.description}</Text>
         </View>
 
-        {/* Weekly Session Target */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Weekly Session Goal</Text>
-          <Text style={styles.sectionDescription}>
-            How many training sessions would you like to log per week?
-          </Text>
-          <View style={styles.optionsGrid}>
-            {weeklyTargets.map((target) => (
-              <TouchableOpacity
-                key={target}
-                style={[
-                  styles.numberOption,
-                  localGoals.weeklySessionTarget === target && styles.selectedNumberOption
-                ]}
-                onPress={() => updateLocalGoals({ weeklySessionTarget: target })}
-              >
-                <Text style={[
-                  styles.numberOptionText,
-                  localGoals.weeklySessionTarget === target && styles.selectedNumberOptionText
-                ]}>
-                  {target}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Streak Goal */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Streak Challenge</Text>
-          <Text style={styles.sectionDescription}>
-            What's a realistic consecutive day streak to aim for?
-          </Text>
-          <View style={styles.optionsGrid}>
-            {streakGoals.map((streak) => (
-              <TouchableOpacity
-                key={streak}
-                style={[
-                  styles.numberOption,
-                  localGoals.streakGoal === streak && styles.selectedNumberOption
-                ]}
-                onPress={() => updateLocalGoals({ streakGoal: streak })}
-              >
-                <Text style={[
-                  styles.numberOptionText,
-                  localGoals.streakGoal === streak && styles.selectedNumberOptionText
-                ]}>
-                  {streak}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Primary Focus */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Primary Focus</Text>
-          <Text style={styles.sectionDescription}>
-            What's your main training focus right now?
-          </Text>
-          <View style={styles.focusOptions}>
-            {focusOptions.map((option) => (
-              <TouchableOpacity
-                key={option.value}
-                style={[
-                  styles.focusOption,
-                  localGoals.primaryFocus === option.value && styles.selectedFocusOption
-                ]}
-                onPress={() => updateLocalGoals({ primaryFocus: option.value })}
-              >
-                <Text style={styles.focusIcon}>{option.icon}</Text>
-                <View style={styles.focusContent}>
+        {/* Goals Grid */}
+        <View style={styles.goalsGrid}>
+          {/* Mental Journey Sessions Goal */}
+          <View style={styles.goalCard}>
+            <View style={styles.goalHeader}>
+              <Text style={styles.goalIcon}>📝</Text>
+              <Text style={styles.goalTitle}>Mental Journey Sessions</Text>
+            </View>
+            <Text style={styles.goalDescription}>
+              Sessions per week
+            </Text>
+            <View style={styles.miniOptionsGrid}>
+              {weeklySessionTargets.map((target) => (
+                <TouchableOpacity
+                  key={target}
+                  style={[
+                    styles.miniNumberOption,
+                    localGoals.weeklySessionTarget === target && styles.selectedMiniNumberOption
+                  ]}
+                  onPress={() => updateLocalGoals({ weeklySessionTarget: target })}
+                >
                   <Text style={[
-                    styles.focusTitle,
-                    localGoals.primaryFocus === option.value && styles.selectedFocusTitle
+                    styles.miniNumberOptionText,
+                    localGoals.weeklySessionTarget === target && styles.selectedMiniNumberOptionText
                   ]}>
-                    {option.label}
+                    {target}
                   </Text>
-                  <Text style={styles.focusDescription}>{option.description}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Visualizations Goal */}
+          <View style={styles.goalCard}>
+            <View style={styles.goalHeader}>
+              <Text style={styles.goalIcon}>🧠</Text>
+              <Text style={styles.goalTitle}>Visualizations</Text>
+            </View>
+            <Text style={styles.goalDescription}>
+              Visualizations per week
+            </Text>
+            <View style={styles.miniOptionsGrid}>
+              {weeklyVisualizationTargets.map((target) => (
+                <TouchableOpacity
+                  key={target}
+                  style={[
+                    styles.miniNumberOption,
+                    localGoals.weeklyVisualizationTarget === target && styles.selectedMiniNumberOption
+                  ]}
+                  onPress={() => updateLocalGoals({ weeklyVisualizationTarget: target })}
+                >
+                  <Text style={[
+                    styles.miniNumberOptionText,
+                    localGoals.weeklyVisualizationTarget === target && styles.selectedMiniNumberOptionText
+                  ]}>
+                    {target}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
         </View>
 
-        {/* Motivation Type */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>What Motivates You?</Text>
-          <Text style={styles.sectionDescription}>
-            Understanding your motivation helps us customize your experience.
-          </Text>
-          <View style={styles.focusOptions}>
-            {motivationOptions.map((option) => (
-              <TouchableOpacity
-                key={option.value}
-                style={[
-                  styles.focusOption,
-                  localGoals.motivationType === option.value && styles.selectedFocusOption
-                ]}
-                onPress={() => updateLocalGoals({ motivationType: option.value })}
-              >
-                <Text style={styles.focusIcon}>{option.icon}</Text>
-                <View style={styles.focusContent}>
-                  <Text style={[
-                    styles.focusTitle,
-                    localGoals.motivationType === option.value && styles.selectedFocusTitle
-                  ]}>
-                    {option.label}
-                  </Text>
-                  <Text style={styles.focusDescription}>{option.description}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
       </ScrollView>
 
       {/* Actions */}
@@ -225,6 +174,64 @@ const styles = StyleSheet.create({
   },
   section: {
     marginBottom: 32,
+  },
+  goalsGrid: {
+    gap: 16,
+    marginBottom: 32,
+  },
+  goalCard: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  goalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  goalIcon: {
+    fontSize: 24,
+  },
+  goalTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  goalDescription: {
+    fontSize: 14,
+    color: colors.darkGray,
+    marginBottom: 12,
+  },
+  miniOptionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  miniNumberOption: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+  },
+  selectedMiniNumberOption: {
+    borderColor: colors.primary,
+    backgroundColor: `${colors.primary}15`,
+  },
+  miniNumberOptionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  selectedMiniNumberOptionText: {
+    color: colors.primary,
+    fontWeight: '700',
   },
   sectionTitle: {
     fontSize: 18,

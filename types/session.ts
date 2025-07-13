@@ -1,4 +1,4 @@
-export type SessionType = 'training' | 'competition' | 'other';
+export type SessionType = 'training' | 'competition' | 'visualization' | 'other';
 
 export interface SessionLog {
   id: string;
@@ -27,4 +27,8 @@ export interface SessionLog {
   
   // Status
   status: 'intention' | 'active' | 'reflection' | 'completed';
+  
+  // Visualization specific
+  visualizationId?: string;
+  visualizationTitle?: string;
 }

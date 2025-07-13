@@ -1,0 +1,22 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // TTS Cache files - VERIFIED SETTINGS
+    match /tts-cache/{allPaths=**} {
+      // Anyone can read cached audio files
+      allow read: if true;
+      
+      // Allow authenticated users to upload new cache files
+      // Limit file size to 10MB (TTS files should be much smaller)
+      allow create: if request.auth != null && 
+        request.resource.size < 10 * 1024 * 1024;
+      
+      // Allow updates from authenticated users (for client SDK compatibility)
+      allow update: if request.auth != null && 
+        request.resource.size < 10 * 1024 * 1024;
+      
+      // Only allow deletion by admin (for cleanup)
+      allow delete: if false;
+    }
+  }
+}

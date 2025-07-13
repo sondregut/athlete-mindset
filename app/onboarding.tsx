@@ -6,13 +6,17 @@ import { ChevronLeft } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 import { useOnboardingStore, onboardingSteps } from '@/store/onboarding-store';
 import { useUserStore } from '@/store/user-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import OnboardingButton from '@/components/onboarding/OnboardingButton';
 import OnboardingWelcome from '@/components/onboarding/OnboardingWelcome';
-import OnboardingPhilosophy from '@/components/onboarding/OnboardingPhilosophy';
-import OnboardingFeatures from '@/components/onboarding/OnboardingFeatures';
-import OnboardingAuth from '@/components/onboarding/OnboardingAuth';
-import OnboardingProfile from '@/components/onboarding/OnboardingProfile';
+import OnboardingMentalTracking from '@/components/onboarding/OnboardingMentalTracking';
+import OnboardingAIVisualization from '@/components/onboarding/OnboardingAIVisualization';
+import OnboardingVisualizationDemo from '@/components/onboarding/OnboardingVisualizationDemo';
+import OnboardingSynergy from '@/components/onboarding/OnboardingSynergy';
+import OnboardingPersonalization from '@/components/onboarding/OnboardingPersonalization';
 import OnboardingGoals from '@/components/onboarding/OnboardingGoals';
+import OnboardingAuth from '@/components/onboarding/OnboardingAuth';
+import OnboardingPersonalizationSetup from '@/components/onboarding/OnboardingPersonalizationSetup';
 
 const { width, height } = Dimensions.get('window');
 
@@ -47,10 +51,10 @@ export default function OnboardingScreen() {
     setIsTransitioning(true);
     
     setTimeout(() => {
-      // Special case: if we're on auth screen (step 5) and came from login intent
-      // return to welcome screen (step 0) instead of goals screen (step 4)
+      // Special case: if we're on auth screen (step 7) and came from login intent
+      // return to welcome screen (step 0) instead of goals screen (step 6)
       const { loginIntent } = useOnboardingStore.getState();
-      if (currentStep === 5 && loginIntent) {
+      if (currentStep === 7 && loginIntent) {
         setOnboardingStep(0);
         setLoginIntent(false); // Clear the login intent
       } else {
@@ -60,8 +64,8 @@ export default function OnboardingScreen() {
     }, 150);
   };
 
-  const handleComplete = () => {
-    console.log('✅ Onboarding complete, navigating to main app...');
+  const handleComplete = async () => {
+    console.log('✅ Onboarding complete');
     
     try {
       // Mark onboarding as complete
@@ -74,7 +78,7 @@ export default function OnboardingScreen() {
       
       // Navigate to main app
       router.replace('/(tabs)');
-      console.log('🏠 Navigation to main app initiated');
+      console.log('🎯 Navigation to main app');
     } catch (error) {
       console.error('❌ Error completing onboarding:', error);
     }
@@ -83,7 +87,7 @@ export default function OnboardingScreen() {
   const handleLogin = () => {
     // Set login intent and navigate to the authentication screen
     setLoginIntent(true);
-    setOnboardingStep(5);
+    setOnboardingStep(7); // Auth is now step 7
   };
 
   // Create PanResponder for swipe gestures
@@ -144,7 +148,7 @@ export default function OnboardingScreen() {
           );
         case 1:
           return (
-            <OnboardingPhilosophy
+            <OnboardingMentalTracking
               step={onboardingSteps[1]}
               onNext={handleNext}
               onBack={handleBack}
@@ -152,7 +156,7 @@ export default function OnboardingScreen() {
           );
         case 2:
           return (
-            <OnboardingFeatures
+            <OnboardingAIVisualization
               step={onboardingSteps[2]}
               onNext={handleNext}
               onBack={handleBack}
@@ -160,7 +164,7 @@ export default function OnboardingScreen() {
           );
         case 3:
           return (
-            <OnboardingProfile
+            <OnboardingVisualizationDemo
               step={onboardingSteps[3]}
               onNext={handleNext}
               onBack={handleBack}
@@ -168,7 +172,7 @@ export default function OnboardingScreen() {
           );
         case 4:
           return (
-            <OnboardingGoals
+            <OnboardingSynergy
               step={onboardingSteps[4]}
               onNext={handleNext}
               onBack={handleBack}
@@ -176,8 +180,32 @@ export default function OnboardingScreen() {
           );
         case 5:
           return (
-            <OnboardingAuth 
+            <OnboardingPersonalization
               step={onboardingSteps[5]}
+              onNext={handleNext}
+              onBack={handleBack}
+            />
+          );
+        case 6:
+          return (
+            <OnboardingGoals
+              step={onboardingSteps[6]}
+              onNext={handleNext}
+              onBack={handleBack}
+            />
+          );
+        case 7:
+          return (
+            <OnboardingAuth 
+              step={onboardingSteps[7]}
+            />
+          );
+        case 8:
+          return (
+            <OnboardingPersonalizationSetup
+              step={onboardingSteps[8]}
+              onNext={handleNext}
+              onBack={handleBack}
             />
           );
         default:

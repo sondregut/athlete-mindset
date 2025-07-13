@@ -1,6 +1,7 @@
 import * as FileSystem from 'expo-file-system';
 import { Audio } from 'expo-av';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Crypto from 'expo-crypto';
 import { getOpenAIApiKey, OPENAI_TTS_ENDPOINT } from '@/config/api-config';
 
 export type TTSVoice = 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer';
@@ -15,6 +16,10 @@ interface TTSOptions {
 interface CacheEntry {
   uri: string;
   timestamp: number;
+  text: string;
+  voice: string;
+  model: string;
+  speed: number;
 }
 
 export class SimpleTTSService {
@@ -27,7 +32,10 @@ export class SimpleTTSService {
 
   private constructor() {
     this.apiKey = getOpenAIApiKey();
-    this.cacheDir = `${FileSystem.documentDirectory}tts-cache/`;
+    console.log('SimpleTTSService: API key loaded:', this.apiKey ? 'Yes' : 'No');
+    console.log('SimpleTTSService: API key length:', this.apiKey?.length || 0);
+    // Use document directory for persistent storage
+    this.cacheDir = `${FileSystem.documentDirectory}tts-persistent-cache/`;
     this.initialize();
   }
 
@@ -51,6 +59,9 @@ export class SimpleTTSService {
       if (cacheData) {
         const parsed = JSON.parse(cacheData);
         this.cacheIndex = new Map(Object.entries(parsed));
+        
+        // Clean up stale entries
+        await this.cleanupStaleEntries();
       }
 
       // Configure audio session
@@ -62,36 +73,82 @@ export class SimpleTTSService {
       });
 
       this.isInitialized = true;
-      console.log('SimpleTTSService initialized');
+      console.log('SimpleTTSService initialized with', this.cacheIndex.size, 'cached entries');
     } catch (error) {
       console.error('Failed to initialize TTS service:', error);
     }
   }
 
-  private getCacheKey(text: string, options: TTSOptions): string {
+  private async cleanupStaleEntries() {
+    const staleKeys: string[] = [];
+    const now = Date.now();
+    const maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+    for (const [key, entry] of this.cacheIndex.entries()) {
+      // Check if file exists
+      const fileInfo = await FileSystem.getInfoAsync(entry.uri);
+      if (!fileInfo.exists) {
+        staleKeys.push(key);
+      } else if (now - entry.timestamp > maxAge) {
+        // Remove old entries
+        try {
+          await FileSystem.deleteAsync(entry.uri, { idempotent: true });
+          staleKeys.push(key);
+        } catch (error) {
+          console.warn('Failed to delete old cache file:', error);
+        }
+      }
+    }
+
+    // Remove stale entries from index
+    if (staleKeys.length > 0) {
+      console.log(`Cleaning up ${staleKeys.length} stale cache entries`);
+      staleKeys.forEach(key => this.cacheIndex.delete(key));
+      await this.saveCacheIndex();
+    }
+  }
+
+  private async getCacheKey(text: string, options: TTSOptions): Promise<string> {
     const { voice = 'nova', model = 'tts-1', speed = 1.0 } = options;
-    return `${text.substring(0, 50)}_${voice}_${model}_${speed}`.replace(/[^a-zA-Z0-9]/g, '_');
+    const keyString = `${text}-${voice}-${model}-${speed}`;
+    const hash = await Crypto.digestStringAsync(
+      Crypto.CryptoDigestAlgorithm.SHA256,
+      keyString
+    );
+    return `tts_${hash.substring(0, 16)}`;
   }
 
   async synthesizeSpeech(text: string, options: TTSOptions = {}): Promise<string> {
+    console.log('=== synthesizeSpeech called ===');
+    console.log('Text:', text.substring(0, 50) + '...');
+    console.log('Options:', options);
+    
     if (!this.isInitialized) {
+      console.log('Service not initialized, initializing now...');
       await this.initialize();
     }
 
-    const cacheKey = this.getCacheKey(text, options);
+    const { voice = 'nova', model = 'tts-1', speed = 1.0 } = options;
+    const cacheKey = await this.getCacheKey(text, options);
+    console.log('Cache key:', cacheKey);
     
     // Check cache
     const cached = this.cacheIndex.get(cacheKey);
     if (cached) {
       const fileInfo = await FileSystem.getInfoAsync(cached.uri);
       if (fileInfo.exists) {
-        console.log('Using cached audio for:', cacheKey);
+        console.log('✅ Cache hit for:', cacheKey);
         return cached.uri;
+      } else {
+        // Remove stale entry
+        console.log('Removing stale cache entry:', cacheKey);
+        this.cacheIndex.delete(cacheKey);
+        await this.saveCacheIndex();
       }
     }
 
     // Generate new audio
-    console.log('Generating new audio for:', text.substring(0, 50) + '...');
+    console.log('❌ Cache miss - generating new audio for:', text.substring(0, 50) + '...');
     
     try {
       const audioUri = await this.generateAudio(text, options);
@@ -103,12 +160,23 @@ export class SimpleTTSService {
         to: cacheUri
       });
 
-      // Update cache index
+      // Update cache index with full metadata
       this.cacheIndex.set(cacheKey, {
         uri: cacheUri,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        text,
+        voice,
+        model,
+        speed
       });
       await this.saveCacheIndex();
+
+      // Clean up temp file
+      try {
+        await FileSystem.deleteAsync(audioUri, { idempotent: true });
+      } catch (error) {
+        console.warn('Failed to clean up temp file:', error);
+      }
 
       return cacheUri;
     } catch (error: any) {
@@ -119,6 +187,11 @@ export class SimpleTTSService {
 
   private async generateAudio(text: string, options: TTSOptions): Promise<string> {
     const { voice = 'nova', model = 'tts-1', speed = 1.0 } = options;
+    
+    console.log('=== generateAudio called ===');
+    console.log('API Key exists:', !!this.apiKey);
+    console.log('API Key starts with:', this.apiKey?.substring(0, 7));
+    console.log('API Key ends with:', this.apiKey?.substring(this.apiKey.length - 4));
     
     if (!this.apiKey) {
       throw new Error('OpenAI API key not configured');
@@ -137,6 +210,7 @@ export class SimpleTTSService {
       endpoint: OPENAI_TTS_ENDPOINT,
       method: 'POST',
       hasApiKey: !!this.apiKey,
+      apiKeyLength: this.apiKey.length,
       body: requestBody 
     });
     
@@ -223,13 +297,32 @@ export class SimpleTTSService {
 
   async playAudio(uri: string, options: { volume?: number } = {}): Promise<Audio.Sound> {
     try {
-      // Stop current sound if playing
+      // Stop and unload current sound if exists
       if (this.currentSound) {
-        await this.currentSound.unloadAsync();
+        try {
+          const status = await this.currentSound.getStatusAsync();
+          if (status.isLoaded) {
+            await this.currentSound.stopAsync();
+            await this.currentSound.unloadAsync();
+          }
+        } catch (e) {
+          console.warn('Error cleaning up previous sound:', e);
+        }
+        this.currentSound = null;
       }
 
+      console.log('Creating audio from URI:', uri);
+      
+      // Verify file exists
+      const fileInfo = await FileSystem.getInfoAsync(uri);
+      if (!fileInfo.exists) {
+        throw new Error('Audio file does not exist at: ' + uri);
+      }
+      console.log('Audio file exists, size:', (fileInfo as any).size, 'bytes');
+
       // Create and play new sound
-      const { sound } = await Audio.Sound.createAsync(
+      console.log('Creating Audio.Sound with volume:', options.volume || 1.0);
+      const { sound, status } = await Audio.Sound.createAsync(
         { uri },
         { 
           shouldPlay: true,
@@ -238,9 +331,18 @@ export class SimpleTTSService {
       );
 
       this.currentSound = sound;
+      console.log('Audio created, initial status:', status);
+      
+      // Check if sound is actually playing
+      if (status.isLoaded && !status.isPlaying) {
+        console.log('Audio loaded but not playing, attempting to play manually');
+        await sound.playAsync();
+      }
+      
       return sound;
     } catch (error) {
       console.error('Failed to play audio:', error);
+      this.currentSound = null;
       throw error;
     }
   }
@@ -248,11 +350,18 @@ export class SimpleTTSService {
   async stopCurrentAudio(): Promise<void> {
     if (this.currentSound) {
       try {
-        await this.currentSound.stopAsync();
-        await this.currentSound.unloadAsync();
+        const status = await this.currentSound.getStatusAsync();
+        if (status.isLoaded) {
+          if (status.isPlaying) {
+            await this.currentSound.stopAsync();
+          }
+          await this.currentSound.unloadAsync();
+        }
         this.currentSound = null;
       } catch (error) {
         console.error('Error stopping audio:', error);
+        // Set to null even if error occurs
+        this.currentSound = null;
       }
     }
   }
@@ -272,6 +381,33 @@ export class SimpleTTSService {
     } catch (error) {
       console.error('Failed to clear cache:', error);
     }
+  }
+
+  async getCacheStats(): Promise<{
+    totalEntries: number;
+    totalSize: number;
+    oldestEntry: Date | null;
+    newestEntry: Date | null;
+  }> {
+    let totalSize = 0;
+    let oldestTimestamp = Infinity;
+    let newestTimestamp = 0;
+
+    for (const entry of this.cacheIndex.values()) {
+      const fileInfo = await FileSystem.getInfoAsync(entry.uri);
+      if (fileInfo.exists) {
+        totalSize += (fileInfo as any).size || 0;
+        oldestTimestamp = Math.min(oldestTimestamp, entry.timestamp);
+        newestTimestamp = Math.max(newestTimestamp, entry.timestamp);
+      }
+    }
+
+    return {
+      totalEntries: this.cacheIndex.size,
+      totalSize,
+      oldestEntry: oldestTimestamp === Infinity ? null : new Date(oldestTimestamp),
+      newestEntry: newestTimestamp === 0 ? null : new Date(newestTimestamp),
+    };
   }
 
   async testConnection(): Promise<boolean> {

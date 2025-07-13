@@ -32,13 +32,7 @@ export default function AppWrapper({ children }: AppWrapperProps) {
     error
   });
 
-  // DEV: Auto-reset onboarding for testing (remove in production)
-  useEffect(() => {
-    if (isHydrated) {
-      console.log('🧪 DEV: Auto-resetting onboarding for testing');
-      resetOnboarding();
-    }
-  }, [isHydrated, resetOnboarding]);
+  // Removed auto-reset for better performance
 
   useEffect(() => {
     console.log('🔄 AppWrapper useEffect triggered:', {
@@ -66,6 +60,11 @@ export default function AppWrapper({ children }: AppWrapperProps) {
       console.log('🎯 Setting ready state and navigation...');
       setIsReady(true);
       setHasNavigated(true);
+      
+      // Hide splash screen when ready
+      import('expo-splash-screen').then(SplashScreen => {
+        SplashScreen.hideAsync();
+      });
       
       // Use setTimeout to ensure state updates complete
       setTimeout(() => {

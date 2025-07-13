@@ -150,10 +150,54 @@ This is an **Athlete Mindset Tracking App** focused on mental resilience and sel
 - **Session Tracking**: Real-time timer with different session types
 - **Post-Training Reflection**: 3 positives, stretch goals, RPE ratings
 - **Progress Analytics**: Streak tracking, motivational quotes, session history
+- **Guided Visualizations**: Mental training exercises with AI-powered text-to-speech narration
 
 ### Session Types Supported
 - Training, Competition, Recovery, Skill Work, Other
 - Each with specific activity specifications (e.g., "Weightlifting - Lower Body")
+
+## Text-to-Speech (TTS) Integration
+
+### OpenAI TTS with Aggressive Caching
+The app uses a multi-layer caching system to reduce OpenAI TTS API costs by 90%+:
+
+#### Cache Architecture
+1. **Memory Cache** (`tts-memory-cache.ts`) - In-app LRU cache for instant access
+2. **Local Device Cache** - FileSystem storage with 100MB limit per user
+3. **Firebase Cloud Cache** (`tts-firebase-cache.ts`) - Shared across all users
+4. **OpenAI API** (`tts-openai-service.ts`) - Only called if not cached
+
+#### Cache Flow
+1. Check memory cache → Return if found
+2. Check local FileSystem cache → Return if found  
+3. Check Firebase Storage → Download and cache locally if found
+4. Generate via OpenAI API → Upload to Firebase + cache locally
+
+#### Key Features
+- **Deterministic Cache Keys**: SHA-256 hash of text+voice+speed+model
+- **LRU Eviction**: Automatic cleanup of least recently used items
+- **Cross-User Sharing**: Identical content shared via Firebase
+- **Rate Limiting**: 1-second minimum interval between API calls
+- **Analytics**: Track cache hit rates and usage patterns
+- **Voices**: Six options (nova, alloy, echo, fable, onyx, shimmer)
+
+### TTS Configuration
+- **Environment Variable**: `OPENAI_API_KEY` in `.env` file
+- **Babel Plugin**: `react-native-dotenv` configured in `babel.config.js`
+- **App Config**: `app.config.js` loads environment variables
+
+### TTS Troubleshooting
+1. Run debug screen: Navigate to `/debug-tts` in the app
+2. Check cache stats to verify caching is working
+3. Verify `.env` file exists with valid API key
+4. Ensure `bun install` to get react-native-dotenv
+5. Clear Metro cache: `bunx rork start --clear`
+
+### Security & Cost Optimization
+- **Firebase Rules**: Configured for public read, authenticated write
+- **Cost Reduction**: Cache sharing reduces API calls by 90%+
+- **Storage Limits**: 10GB Firebase, 100MB per device
+- **Production**: Consider Firebase Functions for additional security
 
 ## Repository Etiquette
 

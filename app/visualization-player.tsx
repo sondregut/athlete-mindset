@@ -8,19 +8,20 @@ import { X, ChevronLeft, ChevronRight, Pause, Play, Volume2, VolumeX, Loader2, S
 import { Audio } from 'expo-av';
 import * as Haptics from 'expo-haptics';
 import { useKeepAwake } from 'expo-keep-awake';
-// Use simple TTS service
-import { SimpleTTSService } from '@/services/simple-tts-service';
+import * as FileSystem from 'expo-file-system';
+import { TTSFirebaseCache } from '@/services/tts-firebase-cache';
 import VisualizationSettings from '@/components/VisualizationSettings';
+import { usePersonalizedVisualization } from '@/hooks/usePersonalizedVisualization';
 
 const { height, width } = Dimensions.get('window');
 
 export default function VisualizationPlayerScreen() {
-  useKeepAwake(); // Prevent screen from sleeping during visualization
-  
-  const { id, preloadedAudio: preloadedAudioParam, disableAudio } = useLocalSearchParams<{ 
+  // 1. Route params and hooks FIRST
+  const { id, preloadedAudio: preloadedAudioParam, disableAudio, skipPreload } = useLocalSearchParams<{ 
     id: string; 
     preloadedAudio?: string;
     disableAudio?: string;
+    skipPreload?: string;
   }>();
   const colors = useThemeColors();
   const { 
@@ -36,66 +37,141 @@ export default function VisualizationPlayerScreen() {
     updatePreferences,
   } = useVisualizationStore();
   
-  const visualization = getVisualizationById(id);
+  // 2. State hooks
   const [ttsSound, setTtsSound] = useState<Audio.Sound | null>(null);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [audioError, setAudioError] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const ttsService = useRef(SimpleTTSService.getInstance()).current;
   
-  // Parse preloaded audio from route params
+  // 3. Refs
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
   const preloadedAudioMap = useRef<Map<number, string>>(new Map());
+  const ttsService = useRef(TTSFirebaseCache.getInstance()).current;
+  const isLoadingAudioRef = useRef(false);
+  const loadAudioTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const audioGenerationRef = useRef(0);
+  const progressAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  
+  // 4. Get visualization data
+  const visualization = getVisualizationById(id);
+  
+  // 4.5. Get personalized content
+  const { 
+    personalizedSteps, 
+    isGenerating: isGeneratingPersonalization,
+    error: personalizationError 
+  } = usePersonalizedVisualization(visualization || {} as any, {
+    forceRegenerate: false,
+  });
+  
+  // 5. Prevent screen from sleeping
+  useKeepAwake();
+  
+  // 6. Safe step tracking
+  const currentStep = currentSession?.currentStep ?? 0;
+  
+  // 7. Component lifecycle management
   useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      console.log('=== Component unmounting, cleaning up audio ===');
+      isMounted.current = false;
+      isNavigating.current = false;
+      
+      // Clear any pending audio loads
+      if (loadAudioTimeoutRef.current) {
+        clearTimeout(loadAudioTimeoutRef.current);
+        loadAudioTimeoutRef.current = null;
+      }
+      
+      // Immediate audio cleanup on unmount
+      if (ttsSound) {
+        console.log('Stopping ttsSound on unmount');
+        ttsSound.stopAsync().catch(() => {});
+        ttsSound.unloadAsync().catch(() => {});
+      }
+      ttsService.stopCurrentAudio().catch(() => {});
+    };
+  }, []);
+  
+  // 8. Parse preloaded audio
+  useEffect(() => {
+    if (!isMounted.current) return;
+    
+    console.log('=== Visualization Player Params ===');
+    console.log('skipPreload:', skipPreload);
+    console.log('disableAudio:', disableAudio);
+    console.log('preloadedAudioParam exists:', !!preloadedAudioParam);
+    
+    if (skipPreload === 'true') {
+      console.log('⚠️ Skipping preload - will generate audio on demand');
+      return;
+    }
+    
     if (preloadedAudioParam) {
       try {
+        console.log('Parsing preloaded audio param:', preloadedAudioParam);
         const parsed = JSON.parse(preloadedAudioParam);
+        console.log('Parsed preloaded audio:', parsed);
+        
         Object.entries(parsed).forEach(([stepId, uri]) => {
-          preloadedAudioMap.current.set(parseInt(stepId), uri as string);
+          const stepIdNum = parseInt(stepId);
+          preloadedAudioMap.current.set(stepIdNum, uri as string);
+          console.log(`Added preloaded audio for step ${stepIdNum}: ${uri}`);
         });
+        
         console.log(`Received ${preloadedAudioMap.current.size} preloaded audio files`);
+        console.log('Preloaded audio map contents:', Array.from(preloadedAudioMap.current.entries()));
       } catch (error) {
         console.error('Failed to parse preloaded audio:', error);
       }
+    } else {
+      console.log('No preloaded audio param provided');
     }
-  }, [preloadedAudioParam]);
-
-  // Animation values
-  const progressAnim = useRef(new Animated.Value(0)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-
-  // Early return after all hooks
-  if (!visualization || !currentSession) {
-    return (
-      <View style={{ flex: 1, backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ color: colors.text, fontSize: 16 }}>
-          Visualization not found
-        </Text>
-      </View>
-    );
-  }
-
-  // Move these calculations after the early return check
-  const currentStepData = visualization.steps[currentSession.currentStep];
-  const isLastStep = currentSession.currentStep === visualization.steps.length - 1;
-  const progress = (currentSession.currentStep + 1) / visualization.steps.length;
-
-  // Safe step tracking that won't break if currentSession becomes null
-  const currentStep = currentSession?.currentStep ?? 0;
-
+  }, [preloadedAudioParam, skipPreload]);
+  
+  // 9. Configure audio session
   useEffect(() => {
+    const configureAudioSession = async () => {
+      try {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: true,
+          shouldDuckAndroid: true,
+        });
+        console.log('Audio session configured successfully');
+      } catch (error) {
+        console.error('Failed to configure audio session:', error);
+      }
+    };
+    
+    configureAudioSession();
+  }, []);
+  
+  // 10. Progress animation
+  useEffect(() => {
+    if (!isMounted.current) return;
+    
     if (currentSession && visualization) {
+      const stepsLength = personalizedSteps?.length || visualization.steps.length;
+      const progress = (currentSession.currentStep + 1) / stepsLength;
       Animated.timing(progressAnim, {
         toValue: progress,
         duration: 300,
         useNativeDriver: false,
       }).start();
     }
-  }, [currentStep, progress]);
-
+  }, [currentStep, currentSession, visualization, personalizedSteps]);
+  
+  // 11. Fade animation
   useEffect(() => {
+    if (!isMounted.current) return;
+    
     if (currentSession) {
-      // Fade in animation for step content
       fadeAnim.setValue(0);
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -104,115 +180,260 @@ export default function VisualizationPlayerScreen() {
       }).start();
     }
   }, [currentStep]);
-
-  // Cleanup audio on unmount
-  useEffect(() => {
-    return () => {
-      // Use async cleanup
-      (async () => {
-        if (ttsSound) {
-          try {
-            const status = await ttsSound.getStatusAsync();
-            if (status.isLoaded) {
-              await ttsSound.stopAsync();
-              await ttsSound.unloadAsync();
-            }
-          } catch (error) {
-            console.error('Error cleaning up sound on unmount:', error);
-          }
+  
+  // 12. Create cleanup function
+  const cleanupAudio = useCallback(async () => {
+    console.log('Cleaning up audio...');
+    // Clear any pending audio load
+    if (loadAudioTimeoutRef.current) {
+      clearTimeout(loadAudioTimeoutRef.current);
+      loadAudioTimeoutRef.current = null;
+    }
+    
+    // Stop and unload current sound
+    if (ttsSound) {
+      try {
+        const status = await ttsSound.getStatusAsync();
+        if (status.isLoaded) {
+          await ttsSound.stopAsync();
+          await ttsSound.unloadAsync();
         }
-        try {
-          await ttsService.stopCurrentAudio();
-        } catch (error) {
-          console.error('Error stopping TTS service on unmount:', error);
-        }
-      })();
-    };
-  }, [ttsSound]);
-
-  // Configure audio session on mount
-  useEffect(() => {
-    configureAudioSession();
-  }, []);
-
-  const configureAudioSession = async () => {
+      } catch (error) {
+        console.error('Error cleaning up ttsSound:', error);
+      }
+      setTtsSound(null);
+      setIsPlaying(false);
+    }
+    
+    // Stop service audio
     try {
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: true,
-        shouldDuckAndroid: true,
-      });
+      await ttsService.stopCurrentAudio();
     } catch (error) {
-      console.error('Failed to configure audio session:', error);
+      console.error('Error stopping service audio:', error);
     }
-  };
-
-  // Handle TTS audio when step changes
-  useEffect(() => {
-    if (currentSession && visualization && (preferences.ttsEnabled ?? true) && !disableAudio) {
-      loadTTSAudio();
+  }, [ttsSound, ttsService]);
+  
+  // 13. Background preloading function
+  const preloadRemainingSteps = useCallback(async () => {
+    if (!visualization || !currentSession) return;
+    
+    console.log('Starting background preload for remaining steps...');
+    const startFrom = currentStep + 1;
+    const steps = personalizedSteps || visualization.steps;
+    
+    for (let i = startFrom; i < steps.length; i++) {
+      if (!isMounted.current) break;
+      
+      // Skip if already preloaded
+      if (preloadedAudioMap.current.has(i)) {
+        console.log(`Step ${i} already preloaded, skipping`);
+        continue;
+      }
+      
+      try {
+        const stepData = steps[i];
+        console.log(`Background preloading step ${i + 1}...`);
+        
+        const audioUri = await ttsService.synthesizeSpeech(stepData.content, {
+          voice: preferences.ttsVoice ?? 'nova',
+          model: preferences.ttsModel ?? 'tts-1',
+          speed: preferences.ttsSpeed ?? 1.0,
+        });
+        
+        if (isMounted.current) {
+          preloadedAudioMap.current.set(i, audioUri);
+          console.log(`✅ Background preloaded step ${i + 1}`);
+        }
+        
+        // Add delay between preloads to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } catch (error) {
+        console.error(`Failed to preload step ${i}:`, error);
+      }
     }
-  }, [currentStep, preferences.ttsEnabled]);
+    
+    console.log('Background preloading complete');
+  }, [currentStep, visualization, currentSession, preferences, ttsService, personalizedSteps]);
 
-  const loadTTSAudio = async () => {
+  // 14. Handle voice change
+  const handleVoiceChange = useCallback(() => {
+    console.log('Voice changed, clearing preloaded audio...');
+    
+    // Stop any currently playing audio
+    if (ttsSound) {
+      console.log('Stopping current TTS audio due to voice change');
+      ttsSound.stopAsync().catch(() => {});
+      ttsSound.unloadAsync().catch(() => {});
+      setTtsSound(null);
+    }
+    
+    // Clear preloaded audio map since voice has changed
+    preloadedAudioMap.current.clear();
+    console.log('Cleared preloaded audio map');
+    
+    // Reload current step with new voice
+    if (isMounted.current) {
+      console.log('Reloading current step with new voice...');
+      loadTTSAudio().then(() => {
+        console.log('Current step reloaded, starting background preload...');
+        // Start preloading remaining steps with new voice
+        setTimeout(() => {
+          if (isMounted.current) {
+            preloadRemainingSteps();
+          }
+        }, 1000);
+      });
+    }
+  }, [ttsSound, preloadRemainingSteps]);
+
+  // 15. Load TTS Audio function
+  const loadTTSAudio = useCallback(async () => {
+    if (!isMounted.current || !visualization || !currentSession) return;
+    
+    // Prevent concurrent audio loads
+    if (isLoadingAudioRef.current) {
+      console.log('Audio already loading, skipping...');
+      return;
+    }
+    
+    // Track this audio generation
+    const thisGeneration = ++audioGenerationRef.current;
+    isLoadingAudioRef.current = true;
+    console.log(`=== Loading TTS Audio for step ${currentStep} (generation ${thisGeneration}) ===`);
+    console.log('currentSession.currentStep:', currentSession.currentStep);
+    console.log('visualization.steps.length:', visualization.steps.length);
+    
+    // Use personalized steps if available, otherwise use original
+    const steps = personalizedSteps || visualization.steps;
+    const currentStepData = steps[currentStep];
+    console.log('Current step data:', currentStepData);
+    console.log('Current step content:', currentStepData?.content);
+    console.log('Using personalized content:', !!personalizedSteps);
+    console.log('Preloaded map size:', preloadedAudioMap.current.size);
+    console.log('Preloaded map keys:', Array.from(preloadedAudioMap.current.keys()));
+    
+    if (!isMounted.current) {
+      isLoadingAudioRef.current = false;
+      return;
+    }
+    
     setIsLoadingAudio(true);
     setAudioError(null);
 
     try {
-      // Stop any existing audio
-      if (ttsSound) {
-        await ttsSound.unloadAsync();
-        setTtsSound(null);
-      }
-      await ttsService.stopCurrentAudio();
+      // Always cleanup before loading new audio
+      await cleanupAudio();
 
       let audioUri: string;
       
       // Check if audio is already preloaded
+      console.log(`Checking for preloaded audio for step ${currentStep}`);
+      console.log('Available keys in preloaded map:', Array.from(preloadedAudioMap.current.keys()));
+      
       if (preloadedAudioMap.current.has(currentStep)) {
         audioUri = preloadedAudioMap.current.get(currentStep)!;
-        console.log(`Using preloaded audio for step ${currentStep + 1}`);
+        console.log(`✅ Found preloaded audio for step ${currentStep}, URI: ${audioUri}`);
+        
+        // Verify the preloaded file exists
+        const fileInfo = await FileSystem.getInfoAsync(audioUri);
+        console.log(`Preloaded file exists: ${fileInfo.exists}, size: ${(fileInfo as any).size || 'unknown'}`);
+        
+        if (!fileInfo.exists) {
+          console.error('Preloaded audio file not found, falling back to on-demand generation');
+          const stepData = steps[currentStep];
+          if (!stepData) {
+            throw new Error(`No step data found for step ${currentStep}`);
+          }
+          audioUri = await ttsService.synthesizeSpeech(stepData.content, {
+            voice: preferences.ttsVoice ?? 'nova',
+            model: preferences.ttsModel ?? 'tts-1',
+            speed: preferences.ttsSpeed ?? 1.0,
+          });
+        }
       } else {
         // Synthesize speech for current step (fallback)
         console.log(`Loading audio on-demand for step ${currentStep + 1} (fallback)`);
-        audioUri = await ttsService.synthesizeSpeech(currentStepData.content, {
+        const stepData = steps[currentStep];
+        console.log('Step data for synthesis:', stepData);
+        
+        if (!stepData) {
+          throw new Error(`No step data found for step ${currentStep}`);
+        }
+        
+        audioUri = await ttsService.synthesizeSpeech(stepData.content, {
           voice: preferences.ttsVoice ?? 'nova',
           model: preferences.ttsModel ?? 'tts-1',
           speed: preferences.ttsSpeed ?? 1.0,
         });
       }
 
+      // Check if we're still the current generation before playing
+      if (thisGeneration !== audioGenerationRef.current) {
+        console.log(`Audio generation ${thisGeneration} cancelled, current is ${audioGenerationRef.current}`);
+        return;
+      }
+      
       // Play the audio if auto-play is enabled and not paused
-      if ((preferences.autoPlayTTS ?? true) && !isPaused) {
+      if ((preferences.autoPlayTTS ?? true) && !isPaused && isMounted.current) {
+        console.log('Attempting to play audio from URI:', audioUri);
+        console.log('Audio preferences:', {
+          autoPlayTTS: preferences.autoPlayTTS ?? true,
+          volume: preferences.volume ?? 0.8,
+          ttsEnabled: preferences.ttsEnabled ?? true,
+          isPaused: isPaused
+        });
+        
         const sound = await ttsService.playAudio(audioUri, {
           volume: preferences.volume ?? 0.8,
         });
         
-        setTtsSound(sound);
-        setIsPlaying(true);
+        if (isMounted.current && thisGeneration === audioGenerationRef.current) {
+          setTtsSound(sound);
+          setIsPlaying(true);
+          console.log('Audio playback started successfully');
 
-        // Set up playback status update
-        sound.setOnPlaybackStatusUpdate((status) => {
-          if (status.isLoaded && status.didJustFinish) {
-            setIsPlaying(false);
+          // Set up playback status update
+          sound.setOnPlaybackStatusUpdate((status) => {
+            if (!isMounted.current) return;
             
-            // Auto-advance to next step if enabled
-            if ((preferences.autoProgress ?? false) && !isLastStep) {
-              setTimeout(() => {
-                handleNextStep();
-              }, 1000);
+            if (status.isLoaded) {
+              if (status.isPlaying) {
+                console.log('Audio is playing');
+              } else if (status.didJustFinish) {
+                console.log('Audio finished playing');
+                if (isMounted.current) {
+                  setIsPlaying(false);
+                }
+                
+                // Auto-advance to next step if enabled
+                const isLast = currentStep === steps.length - 1;
+                if ((preferences.autoProgress ?? false) && !isLast && isMounted.current) {
+                  setTimeout(() => {
+                    if (isMounted.current && !isLoadingAudioRef.current) {
+                      handleNextStep();
+                    }
+                  }, 1000);
+                }
+              }
             }
-          }
-        });
+          });
+        } else {
+          // Another audio load has started, stop this one
+          console.log(`Stopping audio from generation ${thisGeneration} as current is ${audioGenerationRef.current}`);
+          sound.stopAsync().catch(() => {});
+          sound.unloadAsync().catch(() => {});
+          return;
+        }
       }
     } catch (error: any) {
+      if (!isMounted.current) return;
+      
       console.error('TTS audio failed:', error);
+      console.error('Full error:', JSON.stringify(error, null, 2));
       setAudioError(error.message || 'Failed to load audio');
       
       // Show user-friendly error message
       if (error.message?.includes('429')) {
-        // Don't show alert for rate limit errors, just log them
         console.log('Rate limited, will retry automatically');
       } else if (error.message?.includes('Invalid API key')) {
         Alert.alert(
@@ -223,13 +444,13 @@ export default function VisualizationPlayerScreen() {
       } else {
         Alert.alert(
           'Audio Error',
-          'Unable to generate speech. Please check your internet connection and try again.',
+          `Unable to generate speech: ${error.message}`,
           [
             { text: 'OK' },
             { 
               text: 'Clear Cache', 
               onPress: async () => {
-                await ttsService.clearCache();
+                await ttsService.clearLocalCache();
                 Alert.alert('Cache Cleared', 'Audio cache has been cleared. Please try again.');
               }
             }
@@ -237,11 +458,101 @@ export default function VisualizationPlayerScreen() {
         );
       }
     } finally {
-      setIsLoadingAudio(false);
+      isLoadingAudioRef.current = false;
+      if (isMounted.current) {
+        setIsLoadingAudio(false);
+      }
     }
-  };
-
+  }, [currentStep, visualization, currentSession, preferences, isPaused, ttsService, cleanupAudio]);
+  
+  // 16. Handle TTS audio when step changes
+  useEffect(() => {
+    if (!isMounted.current) return;
+    
+    console.log('=== Audio loading effect triggered ===');
+    console.log('currentSession exists:', !!currentSession);
+    console.log('visualization exists:', !!visualization);
+    console.log('preferences.ttsEnabled:', preferences.ttsEnabled);
+    console.log('disableAudio:', disableAudio);
+    
+    // Clear any pending audio load
+    if (loadAudioTimeoutRef.current) {
+      clearTimeout(loadAudioTimeoutRef.current);
+    }
+    
+    if (currentSession && visualization && (preferences.ttsEnabled ?? true) && disableAudio !== 'true') {
+      console.log('Conditions met, scheduling loadTTSAudio()');
+      // Add small delay to debounce rapid step changes
+      loadAudioTimeoutRef.current = setTimeout(() => {
+        if (isMounted.current) {
+          loadTTSAudio().then(() => {
+            // Start background preloading for remaining steps
+            if (currentStep === 0 && isMounted.current) {
+              console.log('Starting background preload after first step loads...');
+              setTimeout(() => {
+                if (isMounted.current) {
+                  preloadRemainingSteps();
+                }
+              }, 1000);
+            }
+          });
+        }
+      }, 100);
+    } else {
+      console.log('Conditions not met, skipping audio load');
+    }
+    
+    return () => {
+      if (loadAudioTimeoutRef.current) {
+        clearTimeout(loadAudioTimeoutRef.current);
+      }
+    };
+  }, [currentStep, currentSession, visualization, preferences.ttsEnabled, disableAudio]);
+  
+  // === EARLY RETURN AFTER ALL HOOKS ===
+  if (!visualization || !currentSession) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={{ color: colors.text, fontSize: 16, marginTop: 16 }}>
+            Loading visualization...
+          </Text>
+        </View>
+      </View>
+    );
+  }
+  
+  // Show personalization loading state
+  if (isGeneratingPersonalization && !personalizedSteps) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40 }}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={{ color: colors.text, fontSize: 18, marginTop: 24, fontWeight: '600', textAlign: 'center' }}>
+            Personalizing Your Visualization
+          </Text>
+          <Text style={{ color: colors.darkGray, fontSize: 14, marginTop: 12, textAlign: 'center' }}>
+            Creating content specifically for your sport and goals...
+          </Text>
+        </View>
+      </View>
+    );
+  }
+  
+  // === COMPONENT LOGIC (after early return) ===
+  // Use personalized steps if available, otherwise use original
+  const steps = personalizedSteps || visualization.steps;
+  const currentStepData = steps[currentSession.currentStep];
+  const isLastStep = currentSession.currentStep === steps.length - 1;
+  const progress = (currentSession.currentStep + 1) / steps.length;
+  
+  // Navigation handlers with guard
   const handleExit = () => {
+    if (isNavigating.current) return;
+    
     Alert.alert(
       'Stop Visualization?',
       'Are you sure you want to stop? Your progress will be lost.',
@@ -251,30 +562,21 @@ export default function VisualizationPlayerScreen() {
           text: 'Stop', 
           style: 'destructive',
           onPress: async () => {
-            // Clean up audio
-            if (ttsSound) {
-              try {
-                const status = await ttsSound.getStatusAsync();
-                if (status.isLoaded) {
-                  await ttsSound.stopAsync();
-                  await ttsSound.unloadAsync();
-                }
-              } catch (error) {
-                console.error('Error unloading sound:', error);
-              }
-            }
-            try {
-              await ttsService.stopCurrentAudio();
-            } catch (error) {
-              console.error('Error stopping current audio:', error);
-            }
+            if (isNavigating.current) return;
+            isNavigating.current = true;
+            
+            // Immediate cleanup before navigation
+            await cleanupAudio();
             
             // Abandon session
-            abandonSession();
+            try {
+              abandonSession();
+            } catch (error) {
+              console.error('Error abandoning session:', error);
+            }
             
-            // Navigate back to mental training tab
-            // Use push to avoid navigation stack issues
-            router.push('/(tabs)/mental-training');
+            // Navigate back
+            router.back();
           }
         },
       ]
@@ -301,23 +603,11 @@ export default function VisualizationPlayerScreen() {
   };
 
   const handleComplete = async () => {
-    // Clean up audio
-    if (ttsSound) {
-      try {
-        const status = await ttsSound.getStatusAsync();
-        if (status.isLoaded) {
-          await ttsSound.stopAsync();
-          await ttsSound.unloadAsync();
-        }
-      } catch (error) {
-        console.error('Error unloading sound:', error);
-      }
-    }
-    try {
-      await ttsService.stopCurrentAudio();
-    } catch (error) {
-      console.error('Error stopping current audio:', error);
-    }
+    if (isNavigating.current) return;
+    isNavigating.current = true;
+    
+    // Immediate cleanup before navigation
+    await cleanupAudio();
     
     // Haptic feedback
     if (Platform.OS !== 'web') {
@@ -325,22 +615,25 @@ export default function VisualizationPlayerScreen() {
     }
     
     // Complete the session
-    completeSession();
+    try {
+      completeSession();
+    } catch (error) {
+      console.error('Error completing session:', error);
+    }
     
-    // Show success message
-    Alert.alert(
-      'Visualization Complete! 🎉',
-      `Great job completing "${visualization.title}". Keep up the great work!`,
-      [
-        { 
-          text: 'OK',
-          onPress: () => {
-            // Navigate back to mental training tab after user acknowledges
-            router.push('/(tabs)/mental-training');
-          }
-        }
-      ]
-    );
+    // Navigate back
+    router.back();
+    
+    // Show success message after navigation
+    setTimeout(() => {
+      if (visualization) {
+        Alert.alert(
+          'Visualization Complete! 🎉',
+          `Great job completing "${visualization.title}". Keep up the great work!`,
+          [{ text: 'OK' }]
+        );
+      }
+    }, 300);
   };
 
   const toggleAudio = async () => {
@@ -415,6 +708,7 @@ export default function VisualizationPlayerScreen() {
     container: {
       flex: 1,
       backgroundColor: colors.background,
+      position: 'relative', // Ensure stable positioning
     },
     header: {
       flexDirection: 'row',
@@ -539,12 +833,7 @@ export default function VisualizationPlayerScreen() {
 
   return (
     <View style={styles.container}>
-      <Stack.Screen 
-        options={{ 
-          headerShown: false,
-          gestureEnabled: false, // Prevent accidental swipe back
-        }} 
-      />
+      <Stack.Screen options={{ headerShown: false }} />
 
       {/* Header */}
       <View style={styles.header}>
@@ -553,7 +842,7 @@ export default function VisualizationPlayerScreen() {
         </TouchableOpacity>
         
         <Text style={styles.stepNumber}>
-          Step {currentSession.currentStep + 1} of {visualization.steps.length}
+          Step {currentSession.currentStep + 1} of {steps.length}
         </Text>
         
         <View style={styles.headerButtons}>
@@ -600,7 +889,7 @@ export default function VisualizationPlayerScreen() {
           </Text>
           
           {/* Audio Status */}
-          {(preferences.ttsEnabled ?? true) && !disableAudio && (
+          {(preferences.ttsEnabled ?? true) && disableAudio !== 'true' && (
             <View>
               {isLoadingAudio ? (
                 <View style={styles.audioStatus}>
@@ -669,6 +958,7 @@ export default function VisualizationPlayerScreen() {
       <VisualizationSettings
         visible={showSettings}
         onClose={() => setShowSettings(false)}
+        onVoiceChange={handleVoiceChange}
       />
     </View>
   );

@@ -1,0 +1,37 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // TEMPORARY TEST RULES - VERY PERMISSIVE
+    // DO NOT USE IN PRODUCTION
+    
+    // TTS Cache Collection - Allow everything for testing
+    match /tts-cache/{document=**} {
+      // Allow all operations for testing
+      allow read: if true;
+      allow write: if true; // This includes create, update, delete
+    }
+    
+    // TTS Metadata Collection
+    match /tts-metadata/{document=**} {
+      allow read: if true;
+      allow write: if true;
+    }
+    
+    // Users collection
+    match /users/{document=**} {
+      allow read: if true;
+      allow write: if true;
+    }
+    
+    // Any other collections for testing
+    match /{document=**} {
+      // Be careful - this allows access to everything
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+  }
+}
+
+// WARNING: These rules are ONLY for testing!
+// They allow anyone to read/write the TTS cache collections
+// Replace with proper rules after testing

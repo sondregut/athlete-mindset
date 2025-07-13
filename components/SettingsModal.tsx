@@ -6,6 +6,7 @@ import SettingsSection from './SettingsSection';
 import ProfilePreferences from './ProfilePreferences';
 import ThemeSettings from './ThemeSettings';
 import FirebaseDebugPanel from './FirebaseDebugPanel';
+import PersonalizationSettings from './PersonalizationSettings';
 
 interface SettingsModalProps {
   visible: boolean;
@@ -62,6 +63,9 @@ export default function SettingsModal({ visible, onClose }: SettingsModalProps) 
         <ScrollView contentContainerStyle={styles.contentContainer}>
           {/* Profile Preferences */}
           <ProfilePreferences />
+          
+          {/* AI Personalization */}
+          <PersonalizationSettings />
           
           {/* Theme Settings */}
           <ThemeSettings />
