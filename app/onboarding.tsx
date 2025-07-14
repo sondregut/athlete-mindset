@@ -188,7 +188,7 @@ export default function OnboardingScreen() {
           );
         case 6:
           return (
-            <OnboardingGoals
+            <OnboardingPersonalizationSetup
               step={onboardingSteps[6]}
               onNext={handleNext}
               onBack={handleBack}
@@ -196,16 +196,16 @@ export default function OnboardingScreen() {
           );
         case 7:
           return (
-            <OnboardingAuth 
+            <OnboardingGoals
               step={onboardingSteps[7]}
+              onNext={handleNext}
+              onBack={handleBack}
             />
           );
         case 8:
           return (
-            <OnboardingPersonalizationSetup
+            <OnboardingAuth 
               step={onboardingSteps[8]}
-              onNext={handleNext}
-              onBack={handleBack}
             />
           );
         default:

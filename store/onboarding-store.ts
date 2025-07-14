@@ -144,6 +144,13 @@ export const onboardingSteps = [
     icon: '🎨',
   },
   {
+    id: 'personalization-setup',
+    title: 'Personalize Your\nMental Training',
+    subtitle: 'Set up AI personalization',
+    description: 'Take 2 minutes to tell us about your sport, experience, and goals. Our AI will create personalized visualizations just for you.',
+    icon: '⚡',
+  },
+  {
     id: 'goals',
     title: 'Set Your\nMental Training Goals',
     subtitle: 'Consistency drives excellence',
@@ -156,13 +163,6 @@ export const onboardingSteps = [
     subtitle: 'Save your progress',
     description: 'Sign up to track your journey, sync across devices, and unlock all features.',
     icon: '🔐',
-  },
-  {
-    id: 'personalization-setup',
-    title: 'Personalize Your\nMental Training',
-    subtitle: 'Set up AI personalization',
-    description: 'Take 2 minutes to tell us about your sport, experience, and goals. Our AI will create personalized visualizations just for you. You can skip and set up later.',
-    icon: '⚡',
   },
 ];
 

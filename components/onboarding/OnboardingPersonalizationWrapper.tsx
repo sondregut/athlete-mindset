@@ -122,100 +122,13 @@ export default function OnboardingPersonalizationWrapper({
 
   return (
     <View style={styles.container}>
-      {/* Progress Header */}
-      <View style={styles.progressContainer}>
-        {currentStep > 0 && (
-          <TouchableOpacity 
-            style={styles.backButton} 
-            onPress={handleBack}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <ChevronLeft size={20} color={colors.darkGray} />
-          </TouchableOpacity>
-        )}
-        
-        <View style={styles.dotsContainer}>
-          {personalizationSteps.map((_, index) => (
-            <View
-              key={index}
-              style={[
-                styles.progressDot,
-                index === currentStep && styles.activeDot,
-                index < currentStep && styles.completedDot,
-              ]}
-            />
-          ))}
-        </View>
-        
-        {currentStep > 0 && currentStep < personalizationSteps.length - 1 && (
-          <TouchableOpacity 
-            style={styles.skipButton} 
-            onPress={handleSkipPersonalization}
-          >
-            <Text style={styles.skipText}>Skip for now</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Content */}
-      <View style={styles.content}>
-        {renderStep()}
-      </View>
+      {renderStep()}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-  },
-  progressContainer: {
-    position: 'relative',
-    paddingTop: 20,
-    paddingHorizontal: 20,
-    paddingBottom: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    backgroundColor: colors.lightGray,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dotsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-    flex: 1,
-  },
-  progressDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.mediumGray,
-  },
-  activeDot: {
-    backgroundColor: colors.primary,
-    width: 24,
-  },
-  completedDot: {
-    backgroundColor: colors.success,
-  },
-  skipButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  skipText: {
-    fontSize: 14,
-    color: colors.primary,
-    fontWeight: '500',
-  },
-  content: {
     flex: 1,
   },
 });
