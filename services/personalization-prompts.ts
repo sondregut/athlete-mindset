@@ -1,19 +1,63 @@
 import { UserContext, ContextualFactors, PersonalizationRequest } from '@/types/personalization';
+import { SportContextMapper } from './sport-context-mapper';
 
 export class PersonalizationPrompts {
   static generateSystemPrompt(): string {
-    return `You are an expert sports psychologist and visualization coach specializing in creating personalized mental training content for athletes. Your role is to adapt generic visualization scripts to be highly specific and relevant to each athlete's sport, experience level, and current context.
+    return `You are an expert sports psychologist and visualization coach specializing in creating personalized mental training content for athletes. Your role is to make MINIMAL, TARGETED adaptations to generic visualization scripts by replacing only sport-specific terms.
 
-Key guidelines:
-1. Use sport-specific terminology and scenarios
-2. Reference relevant muscle groups, movements, and techniques
-3. Include sensory details specific to their sport environment
-4. Adapt complexity based on experience level
-5. Maintain the original structure and timing
-6. Keep language positive, present-tense, and action-oriented
-7. Be concise but impactful - every word should serve a purpose
+CRITICAL INSTRUCTIONS:
+1. PRESERVE 85-90% of the original content word-for-word
+2. Replace ALL generic terms with sport-specific equivalents
+3. IMPORTANT: When you see multiple options like "track, gym, field, court, or road" - replace with ONLY the single appropriate venue
+4. DO NOT rewrite sentences or change the structure
+5. DO NOT add new content or remove existing content
+6. Maintain exact timing and flow of the original
 
-You will receive the athlete's profile and base content, then personalize it while maintaining the core message and duration.`;
+MULTI-OPTION REPLACEMENTS (MUST replace with single option):
+- "track, gym, field, court, or road" → Use ONLY the appropriate single venue
+- "the track, pool, field, court, or road" → Use ONLY the appropriate single venue
+- "running, playing, lifting" → Use ONLY the appropriate single action
+- Any list of venues/actions → Pick ONLY the one that matches the sport
+
+SPORT-SPECIFIC REPLACEMENT GUIDE:
+
+RACING SPORTS (Running, Swimming, Cycling):
+- "competition venue" → "track"
+- "your performance" → "your race"
+- "crossing the finish line" → "crossing the finish line"
+- "completing your performance" → "finishing your race"
+
+TEAM SPORTS (Basketball, Soccer, Volleyball):
+- "competition venue" → "court" or "field"
+- "your performance" → "your game"
+- "crossing the finish line" → "hearing the final whistle/buzzer"
+- "completing your performance" → "finishing the game"
+
+STRENGTH SPORTS (Weightlifting, CrossFit):
+- "competition venue" → "gym"
+- "your performance" → "your lift"
+- "crossing the finish line" → "completing your final rep"
+- "completing your performance" → "finishing your set"
+
+PERFORMANCE SPORTS (Gymnastics, Dance, Figure Skating):
+- "competition venue" → "performance area"
+- "your performance" → "your routine"
+- "crossing the finish line" → "completing your routine"
+- "executing" → "performing"
+
+COMBAT SPORTS (Boxing, MMA, Wrestling):
+- "competition venue" → "ring" or "mat"
+- "your performance" → "your match"
+- "crossing the finish line" → "hearing the final bell"
+- "completing your performance" → "finishing the match"
+
+MINDFULNESS SPORTS (Yoga, Pilates):
+- "competition venue" → "studio"
+- "your performance" → "your practice"
+- "crossing the finish line" → "completing your final pose"
+- "completing your performance" → "finishing your session"
+
+Remember: The goal is subtle personalization, not complete rewriting. When in doubt, keep the original wording.`;
   }
 
   static generateUserPrompt(request: PersonalizationRequest): string {
@@ -64,6 +108,27 @@ You will receive the athlete's profile and base content, then personalize it whi
     // Add tone preference
     prompt += `\nDESIRED TONE: ${tone || 'motivational'}\n`;
     
+    // Add sport-specific replacements if available
+    if (userContext.sport) {
+      const sportName = userContext.sport.includes(' ') || userContext.sport.length > 20 
+        ? userContext.sport 
+        : this.formatSportName(userContext.sport);
+      
+      let replacements = SportContextMapper.getReplacements(sportName);
+      
+      // For track and field, get event-specific replacements
+      if (userContext.trackFieldEvent) {
+        replacements = SportContextMapper.getTrackFieldEventReplacements(userContext.trackFieldEvent);
+      }
+      
+      if (Object.keys(replacements).length > 0) {
+        prompt += `\nSPECIFIC REPLACEMENTS FOR ${sportName.toUpperCase()}:\n`;
+        Object.entries(replacements).forEach(([generic, specific]) => {
+          prompt += `- "${generic}" → "${specific}"\n`;
+        });
+      }
+    }
+    
     // Add base content
     prompt += `\nBASE VISUALIZATION CONTENT:\n`;
     baseContent.forEach((step, index) => {
@@ -71,14 +136,32 @@ You will receive the athlete's profile and base content, then personalize it whi
     });
     
     // Add instructions
-    prompt += `\nINSTRUCTIONS:
-1. Personalize each step to be specific to their sport and context
-2. Include relevant sensory details (sounds, feelings, environment)
-3. Use appropriate technical terms for their sport
-4. Maintain the same number of steps and approximate length
-5. Keep the core message and progression of each step
+    prompt += `\nCRITICAL INSTRUCTIONS:
+1. Make MINIMAL changes - preserve 90-95% of the original text
+2. ONLY replace generic terms with sport-specific equivalents
+3. DO NOT rewrite entire sentences or paragraphs
+4. Maintain EXACT same number of steps and length
+5. Keep the EXACT progression and core message
 6. Return ONLY the personalized steps as a numbered list
-7. Do not include any explanations or metadata`;
+7. Do not include any explanations or metadata
+
+EXAMPLE OF CORRECT PERSONALIZATION:
+Original: "Imagine every detail - whether it's the track, gym, field, court, or road."
+For a swimmer: "Imagine every detail - the pool."
+For a basketball player: "Imagine every detail - the court."
+For a weightlifter: "Imagine every detail - the gym."
+
+Original: "Visualize yourself at the competition venue. See the environment clearly."
+For a track sprinter: "Visualize yourself at the track. See the environment clearly."
+For a basketball player: "Visualize yourself on the court. See the environment clearly."
+
+EXAMPLE OF INCORRECT PERSONALIZATION:
+Original: "whether it's the track, gym, field, court, or road"
+WRONG for swimmer: "whether it's the track, gym, field, court, pool, or road" (added to list)
+WRONG for swimmer: "whether it's the pool, track, gym, field, court, or road" (kept the list)
+CORRECT for swimmer: "the pool" (replaced entire list with single venue)
+
+Remember: Replace lists of options with the SINGLE appropriate term.`;
     
     return prompt;
   }

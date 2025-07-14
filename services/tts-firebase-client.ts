@@ -189,6 +189,8 @@ export class TTSFirebaseClient {
 
   /**
    * Upload audio to Firebase Storage and save metadata
+   * DISABLED: Firebase Storage uploads are not compatible with React Native/Expo Go
+   * due to blob creation restrictions. Using local caching only.
    */
   async uploadToFirebase(
     cacheKey: string,
@@ -201,95 +203,9 @@ export class TTSFirebaseClient {
       fileSize: number;
     }
   ): Promise<string> {
-    const maxRetries = 3;
-    let lastError: any;
-
-    // Ensure we have base64 string
-    const audioBase64 = this.ensureBase64(audioData);
-    console.log(`TTS Client: Audio data type: ${typeof audioData}, converted to base64 string`);
-
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      try {
-        await this.ensureAuth();
-
-        console.log(`TTS Client: Upload attempt ${attempt + 1}/${maxRetries} for key ${cacheKey}`);
-
-        // Upload to Storage using base64
-        const storageRef = ref(this.storage, `tts-cache/${cacheKey}.mp3`);
-        
-        // Use uploadString with base64 format (most reliable for React Native)
-        let snapshot;
-        try {
-          console.log('TTS Client: Uploading with base64 format to Firebase Storage...');
-          console.log(`TTS Client: Base64 length: ${audioBase64.length} characters`);
-          
-          snapshot = await uploadString(storageRef, audioBase64, 'base64', {
-            contentType: 'audio/mpeg',
-            customMetadata: {
-              text: metadata.text.substring(0, 100),
-              voice: metadata.voice,
-              model: metadata.model,
-              speed: metadata.speed.toString(),
-              userId: this.currentUser?.uid || 'anonymous'
-            }
-          });
-          console.log('✅ TTS Client: Upload successful using base64 format');
-        } catch (uploadError: any) {
-          console.error('TTS Client: Upload failed:', uploadError.message);
-          throw uploadError;
-        }
-
-        // Get download URL
-        const downloadUrl = await getDownloadURL(snapshot.ref);
-        console.log(`✅ TTS Client: Got download URL: ${downloadUrl.substring(0, 50)}...`);
-
-        // Save metadata to Firestore with retry
-        try {
-          const cacheEntry: CacheEntry = {
-            text: metadata.text,
-            voice: metadata.voice,
-            model: metadata.model,
-            speed: metadata.speed,
-            storageUrl: downloadUrl,
-            fileSize: metadata.fileSize,
-            createdAt: serverTimestamp(),
-            accessCount: 1,
-            lastAccessed: serverTimestamp(),
-            hash: cacheKey
-          };
-
-          await setDoc(doc(this.db, 'tts-cache', cacheKey), cacheEntry);
-          console.log('✅ TTS Client: Metadata saved to Firestore');
-        } catch (firestoreError: any) {
-          console.error('TTS Client: Firestore save failed:', firestoreError.message);
-          // Don't fail the whole upload if Firestore fails - we have the file in Storage
-          if (firestoreError.code === 'permission-denied') {
-            console.log('⚠️ TTS Client: Firestore permission denied - please update security rules');
-          }
-        }
-
-        console.log('✅ TTS Client: Upload complete');
-        return downloadUrl;
-        
-      } catch (error: any) {
-        lastError = error;
-        console.error(`TTS Client: Upload attempt ${attempt + 1} failed:`, error.message);
-        
-        if (error.code === 'storage/unauthorized') {
-          console.log('⚠️ TTS Client: Storage permission denied - please check security rules');
-        }
-        
-        // Wait before retry with exponential backoff
-        if (attempt < maxRetries - 1) {
-          const delay = 1000 * Math.pow(2, attempt);
-          console.log(`TTS Client: Waiting ${delay}ms before retry...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-        }
-      }
-    }
-
-    console.error('❌ TTS Client: All upload attempts failed');
-    throw lastError;
+    // Firebase Storage uploads disabled for React Native/Expo Go compatibility
+    // Return a dummy URL to satisfy the interface
+    return `local://tts-cache/${cacheKey}.mp3`;
   }
 
   /**

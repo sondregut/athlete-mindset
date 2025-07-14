@@ -1,24 +1,63 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { router } from 'expo-router';
-import { ChevronRight, Clock, Trophy, Brain } from 'lucide-react-native';
+import { ChevronRight, ChevronDown, Star } from 'lucide-react-native';
 import Card from '@/components/Card';
+import SearchBar from '@/components/SearchBar';
+import VisualizationCard from '@/components/VisualizationCard';
 import { useVisualizationStore } from '@/store/visualization-store';
-import { visualizations } from '@/constants/visualizations';
+import { visualizations, getVisualizationsByCategory } from '@/constants/visualizations';
+import { CATEGORY_INFO, VisualizationCategory } from '@/types/visualization';
 import { useSessionStore } from '@/store/session-store';
 import SessionLogItem from '@/components/SessionLogItem';
 
 export default function MentalTrainingScreen() {
   const colors = useThemeColors();
-  const { completedSessions, getVisualizationStats } = useVisualizationStore();
+  const { completedSessions, getVisualizationStats, favorites } = useVisualizationStore();
   const { logs } = useSessionStore();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
+    new Set(['performance-process', 'identity-shifting', 'emotional-healing', 'goal-achievement'])
+  );
   
   // Get recent mental training sessions
   const recentMentalTrainingSessions = logs
     .filter(log => log.sessionType === 'visualization' && log.status === 'completed')
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, 5);
+    .slice(0, 3);
+
+  // Filter visualizations based on search
+  const filteredVisualizations = useMemo(() => {
+    if (!searchQuery.trim()) return visualizations;
+    
+    const query = searchQuery.toLowerCase();
+    return visualizations.filter(viz => 
+      viz.title.toLowerCase().includes(query) ||
+      viz.description.toLowerCase().includes(query)
+    );
+  }, [searchQuery]);
+
+  // Group visualizations by category
+  const visualizationsByCategory = useMemo(() => {
+    const grouped: Record<VisualizationCategory, typeof visualizations> = {
+      'performance-process': [],
+      'identity-shifting': [],
+      'emotional-healing': [],
+      'goal-achievement': [],
+    };
+    
+    filteredVisualizations.forEach(viz => {
+      grouped[viz.category].push(viz);
+    });
+    
+    return grouped;
+  }, [filteredVisualizations]);
+
+  // Get favorite visualizations
+  const favoriteVisualizations = useMemo(() => {
+    return visualizations.filter(viz => favorites.includes(viz.id));
+  }, [favorites]);
 
   const handleVisualizationPress = (visualizationId: string) => {
     router.push({
@@ -27,15 +66,14 @@ export default function MentalTrainingScreen() {
     });
   };
 
-  const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case 'confidence':
-        return <Trophy size={20} color={colors.primary} />;
-      case 'focus':
-        return <Brain size={20} color={colors.primary} />;
-      default:
-        return <Brain size={20} color={colors.primary} />;
+  const toggleCategory = (category: string) => {
+    const newExpanded = new Set(expandedCategories);
+    if (newExpanded.has(category)) {
+      newExpanded.delete(category);
+    } else {
+      newExpanded.add(category);
     }
+    setExpandedCategories(newExpanded);
   };
 
   const styles = StyleSheet.create({
@@ -89,56 +127,43 @@ export default function MentalTrainingScreen() {
       marginBottom: 16,
       marginTop: 8,
     },
-    visualizationCard: {
-      marginBottom: 12,
+    categorySection: {
+      marginBottom: 24,
     },
-    visualizationContent: {
+    categoryHeader: {
       flexDirection: 'row',
       alignItems: 'center',
-      padding: 16,
+      justifyContent: 'space-between',
+      paddingVertical: 12,
+      paddingHorizontal: 4,
     },
-    iconContainer: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      backgroundColor: `${colors.primary}15`,
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginRight: 16,
-    },
-    visualizationInfo: {
+    categoryInfo: {
       flex: 1,
     },
-    visualizationTitle: {
+    categoryTitle: {
       fontSize: 18,
       fontWeight: '600',
       color: colors.text,
       marginBottom: 4,
     },
-    visualizationDescription: {
+    categoryDescription: {
       fontSize: 14,
       color: colors.darkGray,
-      marginBottom: 4,
     },
-    visualizationMeta: {
+    categoryChevron: {
+      marginLeft: 12,
+    },
+    categoryContent: {
+      marginTop: 8,
+    },
+    favoritesSection: {
+      marginBottom: 24,
+    },
+    favoritesHeader: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 12,
-    },
-    metaItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-    },
-    metaText: {
-      fontSize: 12,
-      color: colors.darkGray,
-    },
-    chevron: {
-      marginLeft: 8,
-    },
-    recentSessionItem: {
-      marginBottom: 12,
+      gap: 8,
+      marginBottom: 16,
     },
     emptyStateText: {
       fontSize: 14,
@@ -146,6 +171,15 @@ export default function MentalTrainingScreen() {
       textAlign: 'center',
       fontStyle: 'italic',
       marginVertical: 20,
+    },
+    noResultsText: {
+      fontSize: 16,
+      color: colors.darkGray,
+      textAlign: 'center',
+      marginTop: 40,
+    },
+    recentSessionItem: {
+      marginBottom: 12,
     },
   });
 
@@ -193,53 +227,89 @@ export default function MentalTrainingScreen() {
           </View>
         </Card>
 
-        <Text style={styles.sectionTitle}>Available Visualizations</Text>
+        {/* Search Bar */}
+        <SearchBar
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Search visualizations..."
+        />
 
-        {visualizations.map((visualization) => {
-          const stats = getVisualizationStats(visualization.id);
+        {/* Favorites Section */}
+        {favoriteVisualizations.length > 0 && !searchQuery && (
+          <View style={styles.favoritesSection}>
+            <View style={styles.favoritesHeader}>
+              <Star size={20} color={colors.primary} fill={colors.primary} />
+              <Text style={styles.sectionTitle}>Favorites</Text>
+            </View>
+            {favoriteVisualizations.map(visualization => {
+              const stats = getVisualizationStats(visualization.id);
+              return (
+                <VisualizationCard
+                  key={visualization.id}
+                  visualization={visualization}
+                  onPress={() => handleVisualizationPress(visualization.id)}
+                  completionCount={stats.completionCount}
+                />
+              );
+            })}
+          </View>
+        )}
+
+        {/* No results message */}
+        {searchQuery && filteredVisualizations.length === 0 && (
+          <Text style={styles.noResultsText}>
+            No visualizations found matching "{searchQuery}"
+          </Text>
+        )}
+
+        {/* Categories */}
+        {!searchQuery && (
+          <Text style={styles.sectionTitle}>All Visualizations</Text>
+        )}
+        
+        {Object.entries(visualizationsByCategory).map(([category, vizs]) => {
+          if (vizs.length === 0) return null;
+          
+          const categoryInfo = CATEGORY_INFO[category as VisualizationCategory];
+          const isExpanded = expandedCategories.has(category);
           
           return (
-            <TouchableOpacity
-              key={visualization.id}
-              onPress={() => handleVisualizationPress(visualization.id)}
-            >
-              <Card style={styles.visualizationCard}>
-                <View style={styles.visualizationContent}>
-                  <View style={styles.iconContainer}>
-                    {getCategoryIcon(visualization.category)}
-                  </View>
-                  <View style={styles.visualizationInfo}>
-                    <Text style={styles.visualizationTitle}>
-                      {visualization.title}
-                    </Text>
-                    <Text style={styles.visualizationDescription}>
-                      {visualization.description}
-                    </Text>
-                    <View style={styles.visualizationMeta}>
-                      <View style={styles.metaItem}>
-                        <Clock size={12} color={colors.darkGray} />
-                        <Text style={styles.metaText}>
-                          {visualization.duration} min
-                        </Text>
-                      </View>
-                      {stats.completionCount > 0 && (
-                        <View style={styles.metaItem}>
-                          <Trophy size={12} color={colors.darkGray} />
-                          <Text style={styles.metaText}>
-                            {stats.completionCount}x completed
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                  <ChevronRight 
-                    size={20} 
-                    color={colors.darkGray} 
-                    style={styles.chevron}
-                  />
+            <View key={category} style={styles.categorySection}>
+              <TouchableOpacity 
+                onPress={() => toggleCategory(category)}
+                style={styles.categoryHeader}
+              >
+                <View style={styles.categoryInfo}>
+                  <Text style={styles.categoryTitle}>{categoryInfo.title}</Text>
+                  <Text style={styles.categoryDescription}>
+                    {categoryInfo.description}
+                  </Text>
                 </View>
-              </Card>
-            </TouchableOpacity>
+                <View style={styles.categoryChevron}>
+                  {isExpanded ? (
+                    <ChevronDown size={20} color={colors.darkGray} />
+                  ) : (
+                    <ChevronRight size={20} color={colors.darkGray} />
+                  )}
+                </View>
+              </TouchableOpacity>
+              
+              {isExpanded && (
+                <View style={styles.categoryContent}>
+                  {vizs.map(visualization => {
+                    const stats = getVisualizationStats(visualization.id);
+                    return (
+                      <VisualizationCard
+                        key={visualization.id}
+                        visualization={visualization}
+                        onPress={() => handleVisualizationPress(visualization.id)}
+                        completionCount={stats.completionCount}
+                      />
+                    );
+                  })}
+                </View>
+              )}
+            </View>
           );
         })}
 

@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform, FlatList, Keyboard, Pressable, TouchableWithoutFeedback } from 'react-native';
 import { ChevronRight, Search } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 import OnboardingButton from '../onboarding/OnboardingButton';
 import { PersonalizationProfile } from '@/types/personalization-profile';
 import { TrackFieldEvent, trackFieldEventOptions } from '@/store/user-store';
+import { SportItem, searchSports } from '@/constants/sportsList';
 
 interface PersonalizationSportProps {
   onNext: () => void;
@@ -34,6 +35,24 @@ export default function PersonalizationSport({
   const [showTrackFieldEvents, setShowTrackFieldEvents] = useState(sport === 'Track & Field');
   const [selectedTrackEvent, setSelectedTrackEvent] = useState<TrackFieldEvent | undefined>();
   const [trackEventSearch, setTrackEventSearch] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [dropdownResults, setDropdownResults] = useState<SportItem[]>([]);
+  const [selectedDropdownIndex, setSelectedDropdownIndex] = useState(-1);
+  const inputRef = useRef<TextInput>(null);
+  const dropdownRef = useRef<View>(null);
+
+  // Handle search input changes
+  useEffect(() => {
+    if (sport.trim().length > 0) {
+      const results = searchSports(sport);
+      setDropdownResults(results);
+      setShowDropdown(results.length > 0);
+      setSelectedDropdownIndex(-1);
+    } else {
+      setShowDropdown(false);
+      setDropdownResults([]);
+    }
+  }, [sport]);
 
   const handleContinue = () => {
     updateProfile({
@@ -41,6 +60,43 @@ export default function PersonalizationSport({
       specific_role: showTrackFieldEvents && selectedTrackEvent ? selectedTrackEvent : (role.trim() || undefined),
     });
     onNext();
+  };
+
+  const handleSelectFromDropdown = (item: SportItem) => {
+    console.log('Selecting sport:', item.label);
+    
+    // If it's a track event, automatically set up the track field selection
+    if (item.isTrackEvent && item.trackEventValue) {
+      setSport('Track & Field');
+      updateProfile({ sport_activity: 'Track & Field' });
+      setShowTrackFieldEvents(true);
+      setSelectedTrackEvent(item.trackEventValue as TrackFieldEvent);
+      setTrackEventSearch('');
+      // Don't show role input for track events
+      setShowRole(false);
+    } else {
+      selectSport(item.value);
+    }
+    
+    setShowDropdown(false);
+    setDropdownResults([]);
+    Keyboard.dismiss();
+  };
+
+  // Note: Keyboard navigation is not fully supported on React Native
+  // This is primarily for web compatibility
+  const handleInputKeyPress = (e: any) => {
+    if (Platform.OS === 'web') {
+      if (e.nativeEvent.key === 'ArrowDown') {
+        setSelectedDropdownIndex(prev => 
+          prev < dropdownResults.length - 1 ? prev + 1 : prev
+        );
+      } else if (e.nativeEvent.key === 'ArrowUp') {
+        setSelectedDropdownIndex(prev => prev > 0 ? prev - 1 : -1);
+      } else if (e.nativeEvent.key === 'Enter' && selectedDropdownIndex >= 0) {
+        handleSelectFromDropdown(dropdownResults[selectedDropdownIndex]);
+      }
+    }
   };
 
   const selectSport = (selectedSport: string) => {
@@ -79,11 +135,17 @@ export default function PersonalizationSport({
   }, {} as Record<string, typeof trackFieldEventOptions>);
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+    <TouchableWithoutFeedback onPress={() => {
+      if (showDropdown) {
+        setShowDropdown(false);
+        Keyboard.dismiss();
+      }
+    }}>
+      <KeyboardAvoidingView 
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>What's Your Sport?</Text>
@@ -92,9 +154,10 @@ export default function PersonalizationSport({
           </Text>
         </View>
 
-        {/* Text Input */}
+        {/* Text Input with Dropdown */}
         <View style={styles.inputContainer}>
           <TextInput
+            ref={inputRef}
             style={styles.input}
             placeholder="Type your sport or activity..."
             placeholderTextColor={colors.mediumGray}
@@ -102,6 +165,12 @@ export default function PersonalizationSport({
             onChangeText={setSport}
             autoCapitalize="words"
             returnKeyType="next"
+            onFocus={() => {
+              if (sport.trim().length > 0 && dropdownResults.length > 0) {
+                setShowDropdown(true);
+              }
+            }}
+            onKeyPress={handleInputKeyPress}
             onSubmitEditing={() => {
               if (showRole) {
                 // Focus on role input
@@ -110,6 +179,50 @@ export default function PersonalizationSport({
               }
             }}
           />
+          
+          {/* Dropdown */}
+          {showDropdown && dropdownResults.length > 0 && (
+            <TouchableWithoutFeedback>
+              <View style={styles.dropdown}>
+                <ScrollView 
+                  style={styles.dropdownScroll} 
+                  keyboardShouldPersistTaps="always"
+                  nestedScrollEnabled={true}
+                  showsVerticalScrollIndicator={true}
+                >
+                  {dropdownResults.map((item, index) => (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={[
+                        styles.dropdownItem,
+                        selectedDropdownIndex === index && styles.dropdownItemSelected,
+                      ]}
+                      onPress={() => {
+                        console.log('Dropdown item pressed:', item.label, 'isTrackEvent:', item.isTrackEvent);
+                        handleSelectFromDropdown(item);
+                      }}
+                      activeOpacity={0.7}
+                      hitSlop={{ top: 5, bottom: 5, left: 10, right: 10 }}
+                    >
+                      {item.icon && (
+                        <Text style={styles.dropdownIcon}>{item.icon}</Text>
+                      )}
+                      <Text 
+                        style={[
+                          styles.dropdownText,
+                          selectedDropdownIndex === index && styles.dropdownTextSelected
+                        ]}
+                        numberOfLines={2}
+                        ellipsizeMode="tail"
+                      >
+                        {item.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            </TouchableWithoutFeedback>
+          )}
         </View>
 
         {/* Popular Sports */}
@@ -221,6 +334,7 @@ export default function PersonalizationSport({
         />
       </View>
     </KeyboardAvoidingView>
+    </TouchableWithoutFeedback>
   );
 }
 
@@ -249,6 +363,8 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     marginBottom: 32,
+    position: 'relative',
+    zIndex: 10,
   },
   input: {
     fontSize: 18,
@@ -327,6 +443,55 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     marginBottom: 0,
+  },
+  dropdown: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    backgroundColor: colors.cardBackground,
+    borderRadius: 12,
+    marginTop: 8,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+    zIndex: 20,
+    maxHeight: 300,
+  },
+  dropdownScroll: {
+    borderRadius: 12,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    minHeight: 48,
+  },
+  dropdownItemSelected: {
+    backgroundColor: `${colors.primary}10`,
+  },
+  dropdownIcon: {
+    fontSize: 18,
+    marginRight: 12,
+    width: 24,
+    textAlign: 'center',
+  },
+  dropdownText: {
+    fontSize: 16,
+    color: colors.text,
+    flex: 1,
+  },
+  dropdownTextSelected: {
+    color: colors.primary,
+    fontWeight: '600',
   },
   trackFieldContainer: {
     marginBottom: 32,

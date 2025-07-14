@@ -1,4 +1,31 @@
-export type VisualizationCategory = 'confidence' | 'focus' | 'recovery' | 'performance';
+export type VisualizationCategory = 'performance-process' | 'identity-shifting' | 'emotional-healing' | 'goal-achievement';
+
+export const CATEGORY_INFO = {
+  'performance-process': {
+    title: 'Performance & Process Enhancement',
+    description: 'Improve execution of specific tasks, skills, or routines',
+    icon: 'target',
+    color: '#FF6B6B',
+  },
+  'identity-shifting': {
+    title: 'Internal State & Identity Shifting', 
+    description: 'Build confidence, self-belief, and personal power',
+    icon: 'user',
+    color: '#4ECDC4',
+  },
+  'emotional-healing': {
+    title: 'Emotional Healing & Regulation',
+    description: 'Process and manage difficult emotions or challenges',
+    icon: 'heart',
+    color: '#45B7D1',
+  },
+  'goal-achievement': {
+    title: 'Outcome & Goal Achievement',
+    description: 'Create clear visions of future achievements',
+    icon: 'trophy',
+    color: '#F7B801',
+  },
+};
 
 export interface VisualizationStep {
   id: number;
@@ -50,4 +77,9 @@ export interface VisualizationStats {
   totalDuration: number; // in seconds
   lastCompletedAt?: string;
   averageDuration: number;
+}
+
+export interface VisualizationFavorite {
+  visualizationId: string;
+  addedAt: string; // ISO date string
 }

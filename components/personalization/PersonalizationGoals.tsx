@@ -81,9 +81,6 @@ export default function PersonalizationGoals({
               ]}>
                 {goal.label}
               </Text>
-              <Text style={styles.goalDescription}>
-                {goal.description}
-              </Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -183,11 +180,6 @@ const styles = StyleSheet.create({
   },
   goalTitleSelected: {
     color: colors.primary,
-  },
-  goalDescription: {
-    fontSize: 14,
-    color: colors.darkGray,
-    lineHeight: 20,
   },
   counterContainer: {
     alignItems: 'center',

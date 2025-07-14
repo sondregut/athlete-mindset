@@ -73,9 +73,9 @@ export default function VisualizationDetailScreen() {
 
   const getCategoryIcon = () => {
     switch (visualization.category) {
-      case 'confidence':
+      case 'identity-shifting':
         return <Trophy size={24} color={colors.primary} />;
-      case 'focus':
+      case 'performance-process':
         return <Brain size={24} color={colors.primary} />;
       default:
         return <Brain size={24} color={colors.primary} />;

@@ -28,6 +28,7 @@ interface PreloadedContent {
 
 export class PersonalizationPreloader {
   private static instance: PersonalizationPreloader;
+  private static isPreloadingGlobally = false; // Global flag to prevent duplicate preloading
   private personalizationService: OpenAIPersonalizationService;
   private ttsService: TTSFirebaseCache;
   private isPreloading = false;
@@ -49,13 +50,17 @@ export class PersonalizationPreloader {
    * Generate a hash of the user profile to detect when it changes
    */
   private async generateProfileHash(profile: PersonalizationProfile): Promise<string> {
-    const profileString = JSON.stringify({
+    const profileData = {
       sport: profile.sport_activity,
       trackFieldEvent: profile.specific_role,
       experienceLevel: profile.experience_level,
       primaryFocus: profile.preferred_style,
       goals: profile.primary_goals,
-    });
+    };
+    
+    const profileString = JSON.stringify(profileData);
+    console.log('🧮 Generating hash from profile data:', profileData);
+    console.log('🧮 Profile string for hashing:', profileString);
     
     const hash = await Crypto.digestStringAsync(
       Crypto.CryptoDigestAlgorithm.SHA256,
@@ -74,10 +79,30 @@ export class PersonalizationPreloader {
       const currentHash = await this.generateProfileHash(profile);
       const statusStr = await AsyncStorage.getItem(PRELOAD_STATUS_KEY);
       
-      if (!statusStr) return true;
+      console.log(`🔍 Checking if regeneration needed for profile:`, {
+        sport: profile.sport_activity,
+        experience: profile.experience_level,
+        goals: profile.primary_goals
+      });
+      console.log(`Current profile hash: ${currentHash}`);
+      
+      if (!statusStr) {
+        console.log('📝 No previous preload status found - regeneration needed');
+        return true;
+      }
       
       const status: PreloadStatus = JSON.parse(statusStr);
-      return status.profileHash !== currentHash;
+      const hasChanged = status.profileHash !== currentHash;
+      
+      console.log(`Previous profile hash: ${status.profileHash}`);
+      if (hasChanged) {
+        console.log('🔄 Profile hash changed - regeneration needed');
+        console.log(`Previous status:`, status);
+      } else {
+        console.log('✅ Profile hash unchanged - no regeneration needed');
+      }
+      
+      return hasChanged;
     } catch (error) {
       console.error('Error checking regeneration status:', error);
       return true;
@@ -127,29 +152,57 @@ export class PersonalizationPreloader {
     profile: PersonalizationProfile,
     onProgress?: (progress: number, message: string) => void
   ): Promise<void> {
+    // Check global flag first
+    if (PersonalizationPreloader.isPreloadingGlobally) {
+      console.warn('Global preloading already in progress, skipping duplicate request');
+      return;
+    }
+    
     if (this.isPreloading) {
-      console.warn('Preloading already in progress');
+      console.warn('Instance preloading already in progress');
       return;
     }
 
+    // Set both flags
+    PersonalizationPreloader.isPreloadingGlobally = true;
     this.isPreloading = true;
     this.onProgressCallback = onProgress;
 
     try {
       const profileHash = await this.generateProfileHash(profile);
+      console.log(`Generated profile hash: ${profileHash}`);
+      console.log(`Profile sport: ${profile.sport_activity}, experience: ${profile.experience_level}`);
+      
+      // Check if regeneration is needed (profile changed)
+      const needsRegeneration = await this.needsRegeneration(profile);
+      
+      if (needsRegeneration) {
+        console.log('🔄 Profile changed detected - clearing existing cached content');
+        this.reportProgress(0, 'Clearing previous personalized content...');
+        await this.clearAllContent();
+        console.log('✅ Cache cleared - starting fresh content generation');
+      } else {
+        console.log('✅ Profile unchanged - existing content is still valid');
+        // If no regeneration needed, we can skip the whole process
+        this.reportProgress(100, 'Personalized content is up to date');
+        // Clear global flag since we're not actually preloading
+        PersonalizationPreloader.isPreloadingGlobally = false;
+        return;
+      }
+
       const visualizations = getAllVisualizations();
       const totalVisualizations = visualizations.length;
       let completedVisualizations = 0;
       let totalSteps = 0;
 
       console.log(`Starting preload for ${totalVisualizations} visualizations`);
-      this.reportProgress(0, `Starting personalization for ${totalVisualizations} visualizations...`);
+      this.reportProgress(5, `Starting personalization for ${totalVisualizations} visualizations...`);
 
       for (const visualization of visualizations) {
         try {
           // Generate personalized content
           this.reportProgress(
-            (completedVisualizations / totalVisualizations) * 0.5,
+            5 + (completedVisualizations / totalVisualizations) * 45,
             `Personalizing "${visualization.title}"...`
           );
 
@@ -157,6 +210,9 @@ export class PersonalizationPreloader {
             visualization,
             profile
           );
+          
+          console.log(`Generated personalized content for "${visualization.title}" with sport: ${profile.sport_activity}`);
+          console.log(`First step preview: ${personalizedSteps[0]?.content.substring(0, 100)}...`);
 
           // Save personalized content
           const preloadedContent: PreloadedContent = {
@@ -174,13 +230,13 @@ export class PersonalizationPreloader {
           totalSteps += personalizedSteps.length;
 
           // Generate TTS audio for each step
-          const audioProgress = 0.5 + (completedVisualizations / totalVisualizations) * 0.5;
+          const audioProgress = 50 + (completedVisualizations / totalVisualizations) * 45;
           
           for (let stepIndex = 0; stepIndex < personalizedSteps.length; stepIndex++) {
             const step = personalizedSteps[stepIndex];
             
             this.reportProgress(
-              audioProgress,
+              audioProgress + (stepIndex / personalizedSteps.length) * 5,
               `Generating audio for "${visualization.title}" (${stepIndex + 1}/${personalizedSteps.length})...`
             );
 
@@ -227,7 +283,9 @@ export class PersonalizationPreloader {
       console.error('Error during preloading:', error);
       throw error;
     } finally {
+      // Clear both flags
       this.isPreloading = false;
+      PersonalizationPreloader.isPreloadingGlobally = false;
       this.onProgressCallback = undefined;
     }
   }

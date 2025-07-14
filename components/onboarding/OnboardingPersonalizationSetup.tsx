@@ -32,6 +32,7 @@ export default function OnboardingPersonalizationSetup({
     <OnboardingPersonalizationWrapper 
       onComplete={handleComplete}
       onSkip={handleSkip}
+      onBackToMain={onBack}
     />
   );
 }

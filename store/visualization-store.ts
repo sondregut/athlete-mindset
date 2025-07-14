@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { VisualizationSession, VisualizationPreferences, VisualizationStats } from '@/types/visualization';
+import { VisualizationSession, VisualizationPreferences, VisualizationStats, VisualizationFavorite } from '@/types/visualization';
 import { SessionLog } from '@/types/session';
 import { getVisualizationById } from '@/constants/visualizations';
 
@@ -17,6 +17,9 @@ interface VisualizationState {
   // User preferences
   preferences: VisualizationPreferences;
   
+  // Favorites
+  favorites: string[]; // Array of visualization IDs
+  
   // Actions
   startSession: (visualizationId: string) => void;
   pauseSession: () => void;
@@ -26,6 +29,8 @@ interface VisualizationState {
   completeSession: () => void;
   abandonSession: () => void;
   updatePreferences: (prefs: Partial<VisualizationPreferences>) => void;
+  toggleFavorite: (visualizationId: string) => void;
+  isFavorite: (visualizationId: string) => boolean;
   
   // Getters
   getVisualizationStats: (visualizationId: string) => VisualizationStats;
@@ -41,6 +46,7 @@ export const useVisualizationStore = create<VisualizationState>()(
       isPaused: false,
       sessionStartTime: null,
       completedSessions: [],
+      favorites: [],
       preferences: {
         audioEnabled: true,
         backgroundAudioEnabled: true,
@@ -195,6 +201,28 @@ export const useVisualizationStore = create<VisualizationState>()(
         });
       },
 
+      // Toggle favorite status
+      toggleFavorite: (visualizationId: string) => {
+        const { favorites } = get();
+        const isFav = favorites.includes(visualizationId);
+        
+        if (isFav) {
+          set({
+            favorites: favorites.filter(id => id !== visualizationId),
+          });
+        } else {
+          set({
+            favorites: [...favorites, visualizationId],
+          });
+        }
+      },
+
+      // Check if visualization is favorite
+      isFavorite: (visualizationId: string): boolean => {
+        const { favorites } = get();
+        return favorites.includes(visualizationId);
+      },
+
       // Get stats for a specific visualization
       getVisualizationStats: (visualizationId: string): VisualizationStats => {
         const { completedSessions } = get();
@@ -285,6 +313,7 @@ export const useVisualizationStore = create<VisualizationState>()(
       partialize: (state) => ({
         completedSessions: state.completedSessions,
         preferences: state.preferences,
+        favorites: state.favorites,
       }),
       version: 1,
       migrate: (persistedState: any, version: number) => {

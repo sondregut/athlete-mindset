@@ -6,12 +6,14 @@ try {
 
 module.exports = {
   expo: {
-    name: "Athlete Mindset",
+    name: "Athlete Mindset Toolkit",
     slug: "athlete-mindset-rork",
     version: "1.0.0",
     orientation: "portrait",
-    icon: "./assets/icon.png",
+    icon: "./assets/images/icon.png",
+    scheme: "myapp",
     userInterfaceStyle: "automatic",
+    newArchEnabled: true,
     splash: {
       image: "./assets/images/splash-icon.png",
       resizeMode: "contain",
@@ -32,20 +34,46 @@ module.exports = {
     ],
     ios: {
       supportsTablet: true,
-      bundleIdentifier: "com.athletemindset.app"
+      bundleIdentifier: "com.sondregut.athletemindset",
+      googleServicesFile: "./GoogleService-Info.plist",
+      infoPlist: {
+        CFBundleURLTypes: [
+          {
+            CFBundleURLSchemes: [
+              "com.googleusercontent.apps.860569454039-tjvf38os5g430uct33se2lbra2sl6is1"
+            ]
+          }
+        ]
+      }
     },
     android: {
-      package: "com.athletemindset.app",
+      package: "app.rork.athlete-mindset-toolkit-jda24fe",
       adaptiveIcon: {
-        foregroundImage: "./assets/adaptive-icon.png",
-        backgroundColor: "#000000"
+        foregroundImage: "./assets/images/adaptive-icon.png",
+        backgroundColor: "#4A6FFF"
       }
     },
     web: {
       favicon: "./assets/favicon.png"
     },
+    plugins: [
+      "expo-dev-client",
+      [
+        "expo-router",
+        {
+          "origin": "https://rork.com/"
+        }
+      ],
+      "expo-apple-authentication"
+    ],
+    experiments: {
+      typedRoutes: true
+    },
     extra: {
-      openaiApiKey: process.env.OPENAI_API_KEY || ''
+      openaiApiKey: process.env.OPENAI_API_KEY || '',
+      eas: {
+        projectId: "4657ce48-4822-4f18-bf07-8ab679a24a7a"
+      }
     }
   }
 };

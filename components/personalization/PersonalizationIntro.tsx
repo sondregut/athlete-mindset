@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Sparkles, Brain, Target, Zap } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 import OnboardingButton from '../onboarding/OnboardingButton';
@@ -74,16 +74,13 @@ export default function PersonalizationIntro({ onNext, onSkip }: Personalization
       {/* Actions */}
       <View style={styles.actions}>
         <OnboardingButton
-          title="Set It Up (2 mins)"
+          title="Set It Up"
           onPress={onNext}
           style={styles.primaryButton}
         />
-        <OnboardingButton
-          title="Maybe Later"
-          onPress={onSkip}
-          variant="secondary"
-          style={styles.secondaryButton}
-        />
+        <TouchableOpacity onPress={onSkip} style={styles.skipButton}>
+          <Text style={styles.skipButtonText}>Set up later in settings</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -182,5 +179,14 @@ const styles = StyleSheet.create({
   },
   secondaryButton: {
     marginBottom: 0,
+  },
+  skipButton: {
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  skipButtonText: {
+    fontSize: 14,
+    color: colors.darkGray,
+    textDecorationLine: 'underline',
   },
 });

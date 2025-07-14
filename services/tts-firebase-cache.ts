@@ -39,6 +39,7 @@ interface TTSOptions {
   voice?: TTSVoice;
   model?: TTSModel;
   speed?: number;
+  isPersonalized?: boolean;
 }
 
 interface CacheEntry {
@@ -176,8 +177,8 @@ export class TTSFirebaseCache {
   }
 
   private async getCacheKey(text: string, options: TTSOptions): Promise<string> {
-    const { voice = 'nova', model = 'tts-1', speed = 1.0 } = options;
-    const keyString = `${text}-${voice}-${model}-${speed}`;
+    const { voice = 'nova', model = 'tts-1', speed = 1.0, isPersonalized = false } = options;
+    const keyString = `${text}-${voice}-${model}-${speed}-${isPersonalized ? 'personalized' : 'original'}`;
     const hash = await Crypto.digestStringAsync(
       Crypto.CryptoDigestAlgorithm.SHA256,
       keyString
@@ -312,62 +313,8 @@ export class TTSFirebaseCache {
     const fileInfo = await FileSystem.getInfoAsync(localUri);
     const fileSize = 'size' in fileInfo ? fileInfo.size : 0;
     
-    // Upload to Firebase Storage
-    try {
-      if (this.useClientSDK && this.clientSDK) {
-        // Use client SDK with base64
-        console.log(`TTS Cache: Uploading to Firebase via Client SDK, data type: ${typeof audioData}`);
-        const downloadUrl = await this.clientSDK.uploadToFirebase(
-          cacheKey,
-          audioData, // This is already base64 string from callOpenAITTS
-          { text, voice, model, speed, fileSize }
-        );
-        console.log('✅ Uploaded to Firebase (Client SDK)');
-      } else {
-        // This path should not be reached in Expo Go - log error
-        console.error('❌ TTS Cache: Admin SDK path reached in React Native - this will fail');
-        console.log('❌ TTS Cache: Falling back to base64 upload method');
-        
-        try {
-          // Try direct base64 upload as fallback
-          const storageRef = ref(this.storage, `tts-cache/${cacheKey}.mp3`);
-          const snapshot = await uploadString(storageRef, audioData, 'base64', {
-            contentType: 'audio/mpeg',
-            customMetadata: {
-              text: text.substring(0, 100),
-              voice,
-              model,
-              speed: speed.toString()
-            }
-          });
-          
-          const downloadUrl = await getDownloadURL(snapshot.ref);
-          console.log('✅ Uploaded to Firebase using base64 fallback');
-          
-          // Save metadata to Firestore
-          const cacheEntry: CacheEntry = {
-            text,
-            voice,
-            model,
-            speed,
-            storageUrl: downloadUrl,
-            fileSize,
-            createdAt: serverTimestamp(),
-            accessCount: 1,
-            lastAccessed: serverTimestamp(),
-            hash: cacheKey
-          };
-          
-          await setDoc(doc(this.db, 'tts-cache', cacheKey), cacheEntry);
-        } catch (fallbackError) {
-          console.error('❌ Base64 fallback upload also failed:', fallbackError);
-          throw fallbackError;
-        }
-      }
-    } catch (error) {
-      console.error('Failed to upload to Firebase:', error);
-      // Continue even if Firebase upload fails
-    }
+    // Firebase Storage uploads disabled for React Native/Expo Go compatibility
+    // Skip upload entirely to prevent blob creation errors
     
     // Update local cache
     this.localCacheIndex.set(cacheKey, {
@@ -679,158 +626,22 @@ export class TTSFirebaseCache {
   }
 
   /**
-   * Test helper: Explicitly test Firebase upload functionality
+   * Test helper: Firebase upload test disabled
+   * Firebase Storage uploads are not compatible with React Native/Expo Go
    */
   async testFirebaseUpload(): Promise<void> {
-    console.log('\n🧪 === FIREBASE UPLOAD TEST ===');
-    
-    // Test text that's unlikely to be cached
-    const testText = `Test upload at ${new Date().toISOString()}`;
-    const voice: TTSVoice = 'nova';
-    const model: TTSModel = 'tts-1';
-    const speed = 1.0;
-    
-    try {
-      // 1. Check authentication
-      console.log('1️⃣ Checking authentication...');
-      if (this.useClientSDK && this.clientSDK) {
-        console.log('✅ Using Client SDK');
-        // Ensure client is ready
-        await this.clientSDK.isReady();
-        console.log('✅ Client SDK is ready');
-      } else {
-        console.log('⚠️ Not using Client SDK - this may fail in Expo Go');
-      }
-      
-      // 2. Generate test audio
-      console.log('\n2️⃣ Generating test audio...');
-      const cacheKey = await this.getCacheKey(testText, { voice, model, speed });
-      console.log(`Cache key: ${cacheKey}`);
-      
-      // Clear any existing cache
-      await this.clearSpecificCacheEntry(testText, voice, model, speed);
-      
-      // Generate new audio
-      console.log('Calling OpenAI TTS API...');
-      const audioData = await this.callOpenAITTS(testText, voice, model, speed);
-      console.log(`✅ Generated audio: ${audioData.length} characters of base64 data`);
-      
-      // 3. Test Firebase upload
-      console.log('\n3️⃣ Testing Firebase upload...');
-      console.log(`Using ${this.useClientSDK ? 'Client' : 'Admin'} SDK for upload`);
-      
-      if (this.useClientSDK && this.clientSDK) {
-        console.log('Attempting upload via Client SDK...');
-        const downloadUrl = await this.clientSDK.uploadToFirebase(
-          cacheKey,
-          audioData,
-          { 
-            text: testText, 
-            voice, 
-            model, 
-            speed, 
-            fileSize: Math.floor(audioData.length * 0.75) // Approximate size
-          }
-        );
-        console.log('✅ UPLOAD SUCCESSFUL!');
-        console.log(`Download URL: ${downloadUrl.substring(0, 80)}...`);
-        
-        // 4. Verify document exists
-        console.log('\n4️⃣ Verifying Firestore document...');
-        const docExists = await this.clientSDK.getFromFirebase(cacheKey);
-        if (docExists) {
-          console.log('✅ Document verified in Firestore!');
-        } else {
-          console.log('❌ Document not found in Firestore after upload');
-        }
-      } else {
-        console.log('❌ Client SDK not available - upload would fail in Expo Go');
-      }
-      
-      console.log('\n✅ Firebase upload test completed successfully!');
-      
-    } catch (error: any) {
-      console.error('\n❌ Firebase upload test failed:');
-      console.error('Error type:', error.name);
-      console.error('Error message:', error.message);
-      console.error('Error code:', error.code);
-      
-      if (error.code === 'storage/unauthorized') {
-        console.log('\n⚠️ Storage permission issue - check Firebase Storage rules');
-      } else if (error.code === 'permission-denied') {
-        console.log('\n⚠️ Firestore permission issue - check Firestore rules');
-      } else if (error.message?.includes('Failed to fetch')) {
-        console.log('\n⚠️ Network issue - check internet connection');
-      }
-      
-      console.error('\nFull error:', error);
-    }
-    
-    console.log('\n🧪 === END FIREBASE UPLOAD TEST ===\n');
+    console.log('\n🧪 === FIREBASE UPLOAD TEST DISABLED ===');
+    console.log('Firebase Storage uploads are disabled for React Native/Expo Go compatibility.');
+    console.log('Using local caching only.\n');
   }
 
   /**
-   * Manually trigger upload for existing local cache files
+   * Upload existing cache disabled
+   * Firebase Storage uploads are not compatible with React Native/Expo Go
    */
   async uploadExistingCacheToFirebase(): Promise<void> {
-    console.log('\n📤 === UPLOADING EXISTING CACHE TO FIREBASE ===');
-    
-    if (!this.useClientSDK || !this.clientSDK) {
-      console.error('❌ Client SDK not available - cannot upload in Expo Go');
-      return;
-    }
-    
-    let uploaded = 0;
-    let failed = 0;
-    let skipped = 0;
-    
-    for (const [cacheKey, entry] of this.localCacheIndex.entries()) {
-      try {
-        console.log(`\nChecking ${cacheKey}...`);
-        
-        // Check if already in Firebase
-        const existsInFirebase = await this.clientSDK.getFromFirebase(cacheKey);
-        if (existsInFirebase) {
-          console.log('⏭️ Already in Firebase, skipping');
-          skipped++;
-          continue;
-        }
-        
-        // Read the local file
-        const base64Data = await FileSystem.readAsStringAsync(entry.uri, {
-          encoding: FileSystem.EncodingType.Base64
-        });
-        
-        // Upload to Firebase
-        console.log('📤 Uploading to Firebase...');
-        const downloadUrl = await this.clientSDK.uploadToFirebase(
-          cacheKey,
-          base64Data,
-          {
-            text: 'Unknown - uploaded from existing cache',
-            voice: 'nova',
-            model: 'tts-1',
-            speed: 1.0,
-            fileSize: base64Data.length
-          }
-        );
-        
-        console.log('✅ Uploaded successfully!');
-        uploaded++;
-        
-        // Small delay to avoid rate limits
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-      } catch (error: any) {
-        console.error(`❌ Failed to upload ${cacheKey}:`, error.message);
-        failed++;
-      }
-    }
-    
-    console.log('\n📊 Upload Summary:');
-    console.log(`✅ Uploaded: ${uploaded}`);
-    console.log(`⏭️ Skipped (already exists): ${skipped}`);
-    console.log(`❌ Failed: ${failed}`);
-    console.log('\n📤 === END UPLOAD EXISTING CACHE ===\n');
+    console.log('\n📤 === UPLOAD EXISTING CACHE DISABLED ===');
+    console.log('Firebase Storage uploads are disabled for React Native/Expo Go compatibility.');
+    console.log('Using local caching only.\n');
   }
 }

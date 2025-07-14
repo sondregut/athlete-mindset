@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { usePersonalizationStore } from '@/store/personalization-store';
 import { usePersonalizationProfile } from './usePersonalizationProfile';
 import { OpenAIPersonalizationService } from '@/services/openai-personalization-service';
@@ -24,25 +24,69 @@ export function usePersonalizedVisualization(
   visualization: Visualization,
   options: UsePersonalizedVisualizationOptions = {}
 ): UsePersonalizedVisualizationResult {
-  const { profile: personalizationProfile } = usePersonalizationProfile();
+  const { profile: personalizationProfile, isLoading: isProfileLoading } = usePersonalizationProfile();
   const { preferences, recordPersonalization } = usePersonalizationStore();
   const [personalizedSteps, setPersonalizedSteps] = useState<VisualizationStep[] | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<any>(null);
+  
+  // Add refs to prevent duplicate generations
+  const isGeneratingRef = useRef(false);
+  const lastGeneratedProfileRef = useRef<string | null>(null);
+  const hasInitializedRef = useRef(false);
 
   const generatePersonalization = useCallback(async () => {
+    console.log('[usePersonalizedVisualization] generatePersonalization called', {
+      isGeneratingRef: isGeneratingRef.current,
+      isProfileLoading,
+      hasProfile: !!personalizationProfile,
+      profileEnabled: personalizationProfile?.is_personalization_enabled,
+      preferencesEnabled: preferences.enabled && preferences.autoPersonalize
+    });
+    
+    // Prevent concurrent generations
+    if (isGeneratingRef.current) {
+      console.log('[usePersonalizedVisualization] Generation already in progress, skipping');
+      return;
+    }
+    
+    // Create a profile key to track changes
+    const profileKey = personalizationProfile ? 
+      `${personalizationProfile.sport_activity}-${personalizationProfile.experience_level}-${personalizationProfile.primary_goals?.join(',')}` : 
+      null;
+    
+    // Skip if we've already generated for this profile
+    if (!options.forceRegenerate && profileKey && profileKey === lastGeneratedProfileRef.current) {
+      console.log('[usePersonalizedVisualization] Already generated for this profile, skipping');
+      return;
+    }
+    
     // Check if personalization is enabled and profile exists
-    if (!personalizationProfile?.is_personalization_enabled) {
-      console.log('[usePersonalizedVisualization] Personalization disabled or no profile');
+    if (!personalizationProfile) {
+      console.log('[usePersonalizedVisualization] No profile loaded yet - waiting for profile');
+      return;
+    }
+    
+    if (!personalizationProfile.is_personalization_enabled) {
+      console.log('[usePersonalizedVisualization] Personalization disabled by user - using original content');
+      console.log('[usePersonalizedVisualization] Profile state:', {
+        sport: personalizationProfile.sport_activity,
+        enabled: personalizationProfile.is_personalization_enabled
+      });
       return;
     }
 
     if (!preferences.enabled || !preferences.autoPersonalize) {
-      console.log('[usePersonalizedVisualization] Personalization preferences disabled');
+      console.log('[usePersonalizedVisualization] Personalization preferences disabled - using original content');
+      console.log('[usePersonalizedVisualization] Preferences:', {
+        enabled: preferences.enabled,
+        autoPersonalize: preferences.autoPersonalize
+      });
       return;
     }
 
+    isGeneratingRef.current = true;
     setIsGenerating(true);
     setError(null);
 
@@ -52,7 +96,10 @@ export function usePersonalizedVisualization(
       const preloadedContent = await preloader.getPreloadedContent(visualization.id);
       
       if (preloadedContent && !options.forceRegenerate) {
-        console.log('[usePersonalizedVisualization] Using preloaded content');
+        console.log('[usePersonalizedVisualization] Using preloaded content for sport:', personalizationProfile.sport_activity);
+        console.log('[usePersonalizedVisualization] Content generated at:', preloadedContent.generatedAt);
+        console.log('[usePersonalizedVisualization] First step preview:', preloadedContent.steps[0]?.content.substring(0, 100) + '...');
+        
         const steps: VisualizationStep[] = preloadedContent.steps.map((step, index) => ({
           id: index + 1,
           content: step.content,
@@ -63,18 +110,21 @@ export function usePersonalizedVisualization(
         
         setPersonalizedSteps(steps);
         recordPersonalization();
+        lastGeneratedProfileRef.current = profileKey;
         setIsGenerating(false);
+        isGeneratingRef.current = false;
         return;
       }
       
       // If no preloaded content, generate on demand
+      console.log('[usePersonalizedVisualization] No preloaded content found - generating on demand for sport:', personalizationProfile.sport_activity);
       const service = OpenAIPersonalizationService.getInstance();
       
       // Build user context from personalization profile
       const userContext = {
         sport: personalizationProfile.sport_activity as any, // Sport is a string in personalization profile
-        trackFieldEvent: personalizationProfile.specific_role,
-        experienceLevel: personalizationProfile.experience_level as ExperienceLevel,
+        trackFieldEvent: personalizationProfile.specific_role as any,
+        experienceLevel: personalizationProfile.experience_level as any,
         primaryFocus: personalizationProfile.primary_goals?.[0] as any, // Use first goal as primary focus
         goals: personalizationProfile.primary_goals?.join(', '),
         ageRange: undefined, // Not collected in personalization
@@ -112,6 +162,7 @@ export function usePersonalizedVisualization(
 
       setPersonalizedSteps(steps);
       recordPersonalization();
+      lastGeneratedProfileRef.current = profileKey;
       
       // Get stats
       const serviceStats = service.getStats();
@@ -121,6 +172,8 @@ export function usePersonalizedVisualization(
         visualizationId: visualization.id,
         stepCount: steps.length,
         cacheKey: personalizedContent.cacheKey,
+        sport: personalizationProfile.sport_activity,
+        firstStepPreview: steps[0]?.content.substring(0, 100) + '...'
       });
       
     } catch (err: any) {
@@ -133,6 +186,7 @@ export function usePersonalizedVisualization(
       }
     } finally {
       setIsGenerating(false);
+      isGeneratingRef.current = false;
     }
   }, [
     visualization,
@@ -145,10 +199,16 @@ export function usePersonalizedVisualization(
 
   // Generate on mount or when dependencies change
   useEffect(() => {
-    if (preferences.enabled && preferences.autoPersonalize) {
+    // Wait for profile to load before attempting personalization
+    if (personalizationProfile && preferences.enabled && preferences.autoPersonalize && !hasInitializedRef.current) {
+      console.log('[usePersonalizedVisualization] Profile loaded, generating personalization for:', {
+        sport: personalizationProfile.sport_activity,
+        enabled: personalizationProfile.is_personalization_enabled
+      });
+      hasInitializedRef.current = true;
       generatePersonalization();
     }
-  }, [generatePersonalization]);
+  }, [personalizationProfile, preferences.enabled, preferences.autoPersonalize, generatePersonalization]);
 
   const regenerate = useCallback(async () => {
     await generatePersonalization();
@@ -156,7 +216,7 @@ export function usePersonalizedVisualization(
 
   return {
     personalizedSteps,
-    isGenerating,
+    isGenerating: isGenerating || isProfileLoading, // Consider profile loading as part of generation
     error,
     regenerate,
     stats,

@@ -258,10 +258,8 @@ export class TTSCacheService {
     // Add to memory cache
     this.memoryCache.set(key, localUri, fileSize);
     
-    // Upload to Firebase in background
-    this.firebaseCache.set(key, audioBlob, metadata).catch(error => {
-      console.error('Failed to upload to Firebase cache:', error);
-    });
+    // Firebase uploads disabled for React Native/Expo Go compatibility
+    // Skip Firebase upload to prevent blob creation errors
     
     return localUri;
   }

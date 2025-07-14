@@ -143,7 +143,7 @@ export class OpenAIPersonalizationService {
     const requestBody = {
       model: 'gpt-4o-mini', // Using GPT-4o-mini as requested
       messages,
-      temperature: 0.7,
+      temperature: 0.2, // Very low temperature for consistent, precise replacements
       max_tokens: 1500,
       presence_penalty: 0.1,
       frequency_penalty: 0.1,
@@ -197,6 +197,16 @@ export class OpenAIPersonalizationService {
         // Parse the response
         const content = data.choices[0].message.content;
         const personalizedSteps = PersonalizationPrompts.parseResponse(content);
+        
+        // Validate that personalization is minimal
+        const validationResult = this.validatePersonalization(
+          request.baseContent,
+          personalizedSteps
+        );
+        
+        if (!validationResult.isValid) {
+          console.warn('[OpenAIPersonalization] Personalization changed too much:', validationResult);
+        }
         
         // Create personalized content
         const steps: PersonalizedStep[] = personalizedSteps.map((step, index) => ({
@@ -275,6 +285,49 @@ export class OpenAIPersonalizationService {
     }
     
     return [...new Set(elements)]; // Remove duplicates
+  }
+
+  private validatePersonalization(
+    baseContent: string[],
+    personalizedContent: string[]
+  ): { isValid: boolean; changePercentage: number; details: string[] } {
+    const details: string[] = [];
+    let totalChanges = 0;
+    let totalWords = 0;
+    
+    baseContent.forEach((base, index) => {
+      const personalized = personalizedContent[index] || '';
+      const baseWords = base.toLowerCase().split(/\s+/);
+      const personalizedWords = personalized.toLowerCase().split(/\s+/);
+      
+      totalWords += baseWords.length;
+      
+      // Count word-level differences
+      const maxLength = Math.max(baseWords.length, personalizedWords.length);
+      let stepChanges = 0;
+      
+      for (let i = 0; i < maxLength; i++) {
+        if (baseWords[i] !== personalizedWords[i]) {
+          stepChanges++;
+        }
+      }
+      
+      totalChanges += stepChanges;
+      
+      const stepChangePercentage = (stepChanges / baseWords.length) * 100;
+      if (stepChangePercentage > 20) {
+        details.push(`Step ${index + 1}: ${stepChangePercentage.toFixed(1)}% changed`);
+      }
+    });
+    
+    const changePercentage = (totalChanges / totalWords) * 100;
+    const isValid = changePercentage <= 20; // Allow up to 20% changes
+    
+    return {
+      isValid,
+      changePercentage,
+      details,
+    };
   }
 
   private createFallbackContent(request: PersonalizationRequest): PersonalizedContent {

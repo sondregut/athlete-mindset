@@ -25,6 +25,8 @@ export interface PersonalizationProfile {
   specific_role?: string;
   primary_goals: PrimaryGoal[];
   preferred_style: PreferredEnergyStyle;
+  weekly_session_target?: number;
+  weekly_visualization_target?: number;
   completed_at: string;
   is_personalization_enabled: boolean;
 }

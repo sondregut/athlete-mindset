@@ -10,12 +10,14 @@ import PersonalizationSport from '@/components/personalization/PersonalizationSp
 import PersonalizationExperience from '@/components/personalization/PersonalizationExperience';
 import PersonalizationGoals from '@/components/personalization/PersonalizationGoals';
 import PersonalizationEnergyStyle from '@/components/personalization/PersonalizationEnergyStyle';
+import PersonalizationTrainingGoals from '@/components/personalization/PersonalizationTrainingGoals';
 import PersonalizationComplete from '@/components/personalization/PersonalizationComplete';
 import { useUserStore } from '@/store/user-store';
 
 interface OnboardingPersonalizationWrapperProps {
   onComplete: () => void;
   onSkip: () => void;
+  onBackToMain?: () => void;
 }
 
 const personalizationSteps = [
@@ -24,12 +26,14 @@ const personalizationSteps = [
   { id: 'experience', title: 'Experience Level' },
   { id: 'goals', title: 'Your Goals' },
   { id: 'energy', title: 'Energy Style' },
+  { id: 'training-goals', title: 'Training Goals' },
   { id: 'complete', title: 'All Set!' },
 ];
 
 export default function OnboardingPersonalizationWrapper({ 
   onComplete, 
-  onSkip 
+  onSkip,
+  onBackToMain 
 }: OnboardingPersonalizationWrapperProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const { profile: userProfile } = useUserStore();
@@ -54,6 +58,9 @@ export default function OnboardingPersonalizationWrapper({
   const handleBack = () => {
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
+    } else if (onBackToMain) {
+      // If we're on the first step and have a back to main handler, use it
+      onBackToMain();
     }
   };
 
@@ -74,17 +81,31 @@ export default function OnboardingPersonalizationWrapper({
         specific_role: profile.specific_role,
         primary_goals: profile.primary_goals || [],
         preferred_style: profile.preferred_style || 'calm-peaceful',
+        weekly_session_target: profile.weekly_session_target,
+        weekly_visualization_target: profile.weekly_visualization_target,
         completed_at: new Date().toISOString(),
         is_personalization_enabled: true,
       };
       
+      console.log('🎯 Completing personalization setup with profile:', {
+        sport: completeProfile.sport_activity,
+        experience: completeProfile.experience_level,
+        goals: completeProfile.primary_goals
+      });
+      
       // Save to AsyncStorage
       await AsyncStorage.setItem('userPersonalizationProfile', JSON.stringify(completeProfile));
+      console.log('✅ Personalization profile saved to AsyncStorage');
       
-      console.log('✅ Personalization profile saved:', completeProfile);
+      // Get preloader instance
+      const preloader = PersonalizationPreloader.getInstance();
+      
+      // Force clear any existing cached content to ensure fresh start
+      console.log('🧹 Clearing any existing cached content before generating new personalized content');
+      await preloader.clearAllContent();
       
       // Start background preloading of personalized content
-      const preloader = PersonalizationPreloader.getInstance();
+      console.log(`🚀 Starting personalized content generation for sport: ${completeProfile.sport_activity}`);
       preloader.preloadAllContent(completeProfile, (progress, message) => {
         console.log(`[Preloader] ${progress}%: ${message}`);
       }).catch(error => {
@@ -124,6 +145,8 @@ export default function OnboardingPersonalizationWrapper({
       case 4:
         return <PersonalizationEnergyStyle {...props} />;
       case 5:
+        return <PersonalizationTrainingGoals {...props} />;
+      case 6:
         return <PersonalizationComplete {...props} />;
       default:
         return null;
@@ -132,6 +155,34 @@ export default function OnboardingPersonalizationWrapper({
 
   return (
     <View style={styles.container}>
+      {/* Progress Indicator with Back Button */}
+      <View style={styles.progressContainer}>
+        {/* Back Button */}
+        {(currentStep > 0 || onBackToMain) && (
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={handleBack}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <ChevronLeft size={20} color={colors.darkGray} />
+          </TouchableOpacity>
+        )}
+        
+        {/* Progress Dots */}
+        <View style={styles.dotsContainer}>
+          {personalizationSteps.map((_, index) => (
+            <View
+              key={index}
+              style={[
+                styles.progressDot,
+                index === currentStep && styles.activeDot,
+                index < currentStep && styles.completedDot,
+              ]}
+            />
+          ))}
+        </View>
+      </View>
+      
       {renderStep()}
     </View>
   );
@@ -140,5 +191,43 @@ export default function OnboardingPersonalizationWrapper({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  progressContainer: {
+    position: 'relative',
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 10,
+    zIndex: 5,
+  },
+  backButton: {
+    position: 'absolute',
+    left: 20,
+    top: 20,
+    width: 40,
+    height: 40,
+    backgroundColor: colors.lightGray,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  dotsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+  progressDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.mediumGray,
+  },
+  activeDot: {
+    backgroundColor: colors.primary,
+    width: 24,
+  },
+  completedDot: {
+    backgroundColor: colors.success,
   },
 });

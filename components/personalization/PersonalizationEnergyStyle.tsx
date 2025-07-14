@@ -75,9 +75,6 @@ export default function PersonalizationEnergyStyle({
                 ]}>
                   {option.label}
                 </Text>
-                <Text style={styles.styleDescription}>
-                  {option.description}
-                </Text>
               </View>
 
               {/* Visual indicator */}
@@ -197,12 +194,6 @@ const styles = StyleSheet.create({
   },
   styleTitleSelected: {
     color: colors.primary,
-  },
-  styleDescription: {
-    fontSize: 15,
-    color: colors.darkGray,
-    textAlign: 'center',
-    lineHeight: 20,
   },
   visualIndicator: {
     height: 8,

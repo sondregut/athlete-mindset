@@ -20,28 +20,6 @@ const experienceIcons = {
   professional: <Trophy size={32} color={colors.gold} />,
 };
 
-const experienceDescriptions = {
-  beginner: [
-    'New to the sport (less than 1 year)',
-    'Learning fundamentals',
-    'Building basic skills',
-  ],
-  intermediate: [
-    '1-3 years of experience',
-    'Comfortable with basics',
-    'Working on consistency',
-  ],
-  advanced: [
-    '3+ years of experience',
-    'Strong technical skills',
-    'Competing regularly',
-  ],
-  professional: [
-    'Elite/professional level',
-    'Coaching or competing at highest levels',
-    'Sport is primary focus',
-  ],
-};
 
 export default function PersonalizationExperience({ 
   onNext, 
@@ -105,19 +83,7 @@ export default function PersonalizationExperience({
                   ]}>
                     {option.label}
                   </Text>
-                  <Text style={styles.optionSubtitle}>
-                    {option.description}
-                  </Text>
                 </View>
-              </View>
-              
-              <View style={styles.bulletPoints}>
-                {experienceDescriptions[option.value].map((point, index) => (
-                  <View key={index} style={styles.bulletPoint}>
-                    <View style={styles.bullet} />
-                    <Text style={styles.bulletText}>{point}</Text>
-                  </View>
-                ))}
               </View>
             </TouchableOpacity>
           ))}
@@ -209,32 +175,6 @@ const styles = StyleSheet.create({
   },
   optionTitleSelected: {
     color: colors.primary,
-  },
-  optionSubtitle: {
-    fontSize: 14,
-    color: colors.darkGray,
-  },
-  bulletPoints: {
-    gap: 8,
-    paddingLeft: 8,
-  },
-  bulletPoint: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  bullet: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.mediumGray,
-    marginTop: 7,
-    marginRight: 12,
-  },
-  bulletText: {
-    fontSize: 14,
-    color: colors.darkGray,
-    flex: 1,
-    lineHeight: 20,
   },
   actions: {
     gap: 12,
