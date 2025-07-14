@@ -12,6 +12,7 @@ import * as FileSystem from 'expo-file-system';
 import { TTSFirebaseCache } from '@/services/tts-firebase-cache';
 import VisualizationSettings from '@/components/VisualizationSettings';
 import { usePersonalizedVisualization } from '@/hooks/usePersonalizedVisualization';
+import { useDebugPersonalization } from '@/hooks/useDebugPersonalization';
 
 const { height, width } = Dimensions.get('window');
 
@@ -24,6 +25,7 @@ export default function VisualizationPlayerScreen() {
     skipPreload?: string;
   }>();
   const colors = useThemeColors();
+  const { log: debugLog } = useDebugPersonalization('VisualizationPlayer');
   const { 
     currentSession, 
     isPaused,
@@ -69,6 +71,34 @@ export default function VisualizationPlayerScreen() {
   
   // 5. Prevent screen from sleeping
   useKeepAwake();
+  
+  // 5.5. Clear preloaded audio when personalized content arrives
+  useEffect(() => {
+    if (personalizedSteps && !isGeneratingPersonalization) {
+      debugLog('Personalized content ready', {
+        stepsCount: personalizedSteps.length,
+        firstStepPreview: personalizedSteps[0]?.content.substring(0, 50) + '...'
+      });
+      
+      // Clear the preloaded audio map since it contains non-personalized content
+      preloadedAudioMap.current.clear();
+      debugLog('Cleared preloaded audio map');
+      
+      // Force reload current step with personalized content
+      if (isMounted.current && currentSession && (preferences.ttsEnabled ?? true)) {
+        debugLog('Reloading current step with personalized content');
+        loadTTSAudio().then(() => {
+          debugLog('Current step reloaded successfully');
+          // Start preloading remaining steps with personalized content
+          setTimeout(() => {
+            if (isMounted.current) {
+              preloadRemainingSteps();
+            }
+          }, 1000);
+        });
+      }
+    }
+  }, [personalizedSteps, isGeneratingPersonalization, currentSession, preferences.ttsEnabled, loadTTSAudio, preloadRemainingSteps]);
   
   // 6. Safe step tracking
   const currentStep = currentSession?.currentStep ?? 0;
@@ -306,11 +336,13 @@ export default function VisualizationPlayerScreen() {
     // Use personalized steps if available, otherwise use original
     const steps = personalizedSteps || visualization.steps;
     const currentStepData = steps[currentStep];
-    console.log('Current step data:', currentStepData);
-    console.log('Current step content:', currentStepData?.content);
-    console.log('Using personalized content:', !!personalizedSteps);
-    console.log('Preloaded map size:', preloadedAudioMap.current.size);
-    console.log('Preloaded map keys:', Array.from(preloadedAudioMap.current.keys()));
+    
+    debugLog('Loading TTS audio', {
+      stepIndex: currentStep,
+      isPersonalized: !!personalizedSteps,
+      contentPreview: currentStepData?.content.substring(0, 50) + '...',
+      preloadedMapSize: preloadedAudioMap.current.size
+    });
     
     if (!isMounted.current) {
       isLoadingAudioRef.current = false;
@@ -474,6 +506,8 @@ export default function VisualizationPlayerScreen() {
     console.log('visualization exists:', !!visualization);
     console.log('preferences.ttsEnabled:', preferences.ttsEnabled);
     console.log('disableAudio:', disableAudio);
+    console.log('isGeneratingPersonalization:', isGeneratingPersonalization);
+    console.log('personalizedSteps available:', !!personalizedSteps);
     
     // Clear any pending audio load
     if (loadAudioTimeoutRef.current) {

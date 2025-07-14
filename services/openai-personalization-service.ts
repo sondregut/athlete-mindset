@@ -1,4 +1,3 @@
-import { OPENAI_API_KEY } from '@env';
 import {
   PersonalizationRequest,
   PersonalizedContent,
@@ -8,6 +7,7 @@ import {
 } from '@/types/personalization';
 import { PersonalizationCache } from './personalization-cache';
 import { PersonalizationPrompts } from './personalization-prompts';
+import { getOpenAIApiKey } from '@/config/api-config';
 
 interface OpenAIMessage {
   role: 'system' | 'user' | 'assistant';
@@ -45,7 +45,7 @@ export class OpenAIPersonalizationService {
   };
 
   private constructor() {
-    this.apiKey = OPENAI_API_KEY;
+    this.apiKey = getOpenAIApiKey();
     this.cache = new PersonalizationCache();
     
     if (!this.apiKey) {
@@ -54,7 +54,7 @@ export class OpenAIPersonalizationService {
     }
     
     console.log('[OpenAIPersonalization] Service initialized with API key:', 
-      `${this.apiKey.substring(0, 7)}...${this.apiKey.substring(this.apiKey.length - 4)}`
+      this.apiKey ? `${this.apiKey.substring(0, 7)}...${this.apiKey.substring(this.apiKey.length - 4)}` : 'missing'
     );
   }
 
