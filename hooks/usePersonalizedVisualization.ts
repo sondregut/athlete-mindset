@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { usePersonalizationStore } from '@/store/personalization-store';
 import { usePersonalizationProfile } from './usePersonalizationProfile';
 import { OpenAIPersonalizationService } from '@/services/openai-personalization-service';
+import { PersonalizationPreloader } from '@/services/personalization-preloader';
 import { Visualization, VisualizationStep } from '@/types/visualization';
 import { PersonalizationRequest, ContextualFactors } from '@/types/personalization';
 import { ExperienceLevel } from '@/types/personalization-profile';
@@ -46,6 +47,27 @@ export function usePersonalizedVisualization(
     setError(null);
 
     try {
+      // First check for preloaded content
+      const preloader = PersonalizationPreloader.getInstance();
+      const preloadedContent = await preloader.getPreloadedContent(visualization.id);
+      
+      if (preloadedContent && !options.forceRegenerate) {
+        console.log('[usePersonalizedVisualization] Using preloaded content');
+        const steps: VisualizationStep[] = preloadedContent.steps.map((step, index) => ({
+          id: index + 1,
+          content: step.content,
+          duration: step.duration,
+          audioFile: visualization.steps[index]?.audioFile,
+          audioUrl: visualization.steps[index]?.audioUrl,
+        }));
+        
+        setPersonalizedSteps(steps);
+        recordPersonalization();
+        setIsGenerating(false);
+        return;
+      }
+      
+      // If no preloaded content, generate on demand
       const service = OpenAIPersonalizationService.getInstance();
       
       // Build user context from personalization profile
@@ -74,6 +96,9 @@ export function usePersonalizedVisualization(
 
       // Generate personalized content
       const personalizedContent = await service.generatePersonalizedVisualization(request);
+      
+      // Note: We don't save to preloader here as that should be done
+      // through the dedicated preload flow
       
       // Convert to visualization steps
       const steps: VisualizationStep[] = personalizedContent.steps.map((step, index) => ({
@@ -121,15 +146,9 @@ export function usePersonalizedVisualization(
   // Generate on mount or when dependencies change
   useEffect(() => {
     if (preferences.enabled && preferences.autoPersonalize) {
-      // Use cached personalized content if available and not forcing regeneration
-      if (!options.forceRegenerate && visualization.personalizedSteps) {
-        setPersonalizedSteps(visualization.personalizedSteps);
-        return;
-      }
-      
       generatePersonalization();
     }
-  }, [generatePersonalization, options.forceRegenerate]);
+  }, [generatePersonalization]);
 
   const regenerate = useCallback(async () => {
     await generatePersonalization();

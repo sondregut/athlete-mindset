@@ -7,6 +7,7 @@ import {
 } from '@/types/personalization';
 import { PersonalizationCache } from './personalization-cache';
 import { PersonalizationPrompts } from './personalization-prompts';
+import { PersonalizationProfile } from '@/types/personalization-profile';
 import { getOpenAIApiKey } from '@/config/api-config';
 
 interface OpenAIMessage {
@@ -321,5 +322,35 @@ export class OpenAIPersonalizationService {
 
   async clearCache(): Promise<void> {
     await this.cache.clearCache();
+  }
+  
+  /**
+   * Convenience method to generate personalized visualization from a Visualization object
+   */
+  async generatePersonalizedVisualizationFromProfile(
+    visualization: { id: string; title: string; category: string; steps: Array<{ content: string }> },
+    profile: PersonalizationProfile
+  ): Promise<Array<{ title: string; content: string; duration: number }>> {
+    const request: PersonalizationRequest = {
+      userContext: {
+        sport: profile.sport_activity as any,
+        trackFieldEvent: profile.specific_role as any,
+        experienceLevel: profile.experience_level as any,
+        primaryFocus: profile.preferred_style as any,
+        goals: profile.primary_goals?.join(', '),
+      },
+      visualizationId: visualization.id,
+      visualizationTitle: visualization.title,
+      visualizationCategory: visualization.category as any,
+      baseContent: visualization.steps.map(step => step.content),
+    };
+    
+    const result = await this.generatePersonalizedVisualization(request);
+    
+    return result.steps.map((step: PersonalizedStep, index: number) => ({
+      title: `Step ${index + 1}`,
+      content: step.content,
+      duration: step.duration || 30, // Default duration if undefined
+    }));
   }
 }

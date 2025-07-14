@@ -7,6 +7,7 @@ import { colors } from '@/constants/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PersonalizationProfile } from '@/types/personalization-profile';
 import { useUserStore } from '@/store/user-store';
+import { PersonalizationPreloader } from '@/services/personalization-preloader';
 import OnboardingButton from '@/components/onboarding/OnboardingButton';
 import PersonalizationIntro from '@/components/personalization/PersonalizationIntro';
 import PersonalizationSport from '@/components/personalization/PersonalizationSport';
@@ -101,6 +102,15 @@ export default function PersonalizationSetupScreen() {
       await AsyncStorage.setItem('userPersonalizationProfile', JSON.stringify(completeProfile));
       
       console.log('✅ Personalization profile saved:', completeProfile);
+      
+      // Start background preloading of personalized content
+      const preloader = PersonalizationPreloader.getInstance();
+      preloader.preloadAllContent(completeProfile, (progress, message) => {
+        console.log(`[Preloader] ${progress}%: ${message}`);
+      }).catch(error => {
+        console.error('Background preload error:', error);
+        // Don't block navigation if preload fails
+      });
       
       // Navigate to main app
       router.replace('/(tabs)');

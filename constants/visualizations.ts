@@ -369,3 +369,7 @@ export const visualizations: Visualization[] = [
 export const getVisualizationById = (id: string): Visualization | undefined => {
   return visualizations.find(v => v.id === id);
 };
+
+export const getAllVisualizations = (): Visualization[] => {
+  return visualizations;
+};

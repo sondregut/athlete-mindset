@@ -72,34 +72,6 @@ export default function VisualizationPlayerScreen() {
   // 5. Prevent screen from sleeping
   useKeepAwake();
   
-  // 5.5. Clear preloaded audio when personalized content arrives
-  useEffect(() => {
-    if (personalizedSteps && !isGeneratingPersonalization) {
-      debugLog('Personalized content ready', {
-        stepsCount: personalizedSteps.length,
-        firstStepPreview: personalizedSteps[0]?.content.substring(0, 50) + '...'
-      });
-      
-      // Clear the preloaded audio map since it contains non-personalized content
-      preloadedAudioMap.current.clear();
-      debugLog('Cleared preloaded audio map');
-      
-      // Force reload current step with personalized content
-      if (isMounted.current && currentSession && (preferences.ttsEnabled ?? true)) {
-        debugLog('Reloading current step with personalized content');
-        loadTTSAudio().then(() => {
-          debugLog('Current step reloaded successfully');
-          // Start preloading remaining steps with personalized content
-          setTimeout(() => {
-            if (isMounted.current) {
-              preloadRemainingSteps();
-            }
-          }, 1000);
-        });
-      }
-    }
-  }, [personalizedSteps, isGeneratingPersonalization, currentSession, preferences.ttsEnabled, loadTTSAudio, preloadRemainingSteps]);
-  
   // 6. Safe step tracking
   const currentStep = currentSession?.currentStep ?? 0;
   
@@ -498,7 +470,35 @@ export default function VisualizationPlayerScreen() {
         setIsLoadingAudio(false);
       }
     }
-  }, [currentStep, visualization, currentSession, preferences, isPaused, ttsService, cleanupAudio]);
+  }, [currentStep, visualization, currentSession, preferences, isPaused, ttsService, cleanupAudio, personalizedSteps]);
+  
+  // 15.5. Clear preloaded audio when personalized content arrives
+  useEffect(() => {
+    if (personalizedSteps && !isGeneratingPersonalization) {
+      debugLog('Personalized content ready', {
+        stepsCount: personalizedSteps.length,
+        firstStepPreview: personalizedSteps[0]?.content.substring(0, 50) + '...'
+      });
+      
+      // Clear the preloaded audio map since it contains non-personalized content
+      preloadedAudioMap.current.clear();
+      debugLog('Cleared preloaded audio map');
+      
+      // Force reload current step with personalized content
+      if (isMounted.current && currentSession && (preferences.ttsEnabled ?? true)) {
+        debugLog('Reloading current step with personalized content');
+        loadTTSAudio().then(() => {
+          debugLog('Current step reloaded successfully');
+          // Start preloading remaining steps with personalized content
+          setTimeout(() => {
+            if (isMounted.current) {
+              preloadRemainingSteps();
+            }
+          }, 1000);
+        });
+      }
+    }
+  }, [personalizedSteps, isGeneratingPersonalization, currentSession, preferences.ttsEnabled, loadTTSAudio, preloadRemainingSteps]);
   
   // 16. Handle TTS audio when step changes
   useEffect(() => {

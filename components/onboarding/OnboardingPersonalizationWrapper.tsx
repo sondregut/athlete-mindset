@@ -4,6 +4,7 @@ import { ChevronLeft } from 'lucide-react-native';
 import { colors } from '@/constants/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PersonalizationProfile } from '@/types/personalization-profile';
+import { PersonalizationPreloader } from '@/services/personalization-preloader';
 import PersonalizationIntro from '@/components/personalization/PersonalizationIntro';
 import PersonalizationSport from '@/components/personalization/PersonalizationSport';
 import PersonalizationExperience from '@/components/personalization/PersonalizationExperience';
@@ -81,6 +82,15 @@ export default function OnboardingPersonalizationWrapper({
       await AsyncStorage.setItem('userPersonalizationProfile', JSON.stringify(completeProfile));
       
       console.log('✅ Personalization profile saved:', completeProfile);
+      
+      // Start background preloading of personalized content
+      const preloader = PersonalizationPreloader.getInstance();
+      preloader.preloadAllContent(completeProfile, (progress, message) => {
+        console.log(`[Preloader] ${progress}%: ${message}`);
+      }).catch(error => {
+        console.error('Background preload error:', error);
+        // Don't block onboarding if preload fails
+      });
       
       // Call parent onComplete
       onComplete();

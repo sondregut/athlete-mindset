@@ -1,18 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
-import { User, ChevronRight, Sparkles, Settings2 } from 'lucide-react-native';
+import { User, ChevronRight, Sparkles, Settings2, RefreshCw } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PersonalizationProfile } from '@/types/personalization-profile';
 import { usePersonalizationProfile } from '@/hooks/usePersonalizationProfile';
 import { usePersonalizationStore } from '@/store/personalization-store';
+import { PersonalizationPreloader } from '@/services/personalization-preloader';
 
 export default function PersonalizationSettings() {
   const colors = useThemeColors();
   const { profile, isLoading, refreshProfile } = usePersonalizationProfile();
   const { preferences, updatePreferences } = usePersonalizationStore();
   const [isClearing, setIsClearing] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [regenerationProgress, setRegenerationProgress] = useState(0);
+  const [regenerationMessage, setRegenerationMessage] = useState('');
 
   const handleSetupPersonalization = () => {
     router.push('/personalization-setup');
@@ -20,6 +24,60 @@ export default function PersonalizationSettings() {
 
   const handleTogglePersonalization = () => {
     updatePreferences({ enabled: !preferences.enabled });
+  };
+
+  const handleRegenerateAll = async () => {
+    if (!profile || !profile.is_personalization_enabled) {
+      Alert.alert('Personalization Not Enabled', 'Please enable personalization first.');
+      return;
+    }
+
+    Alert.alert(
+      'Regenerate All Visualizations?',
+      'This will regenerate all personalized content with your current preferences. This may take a few minutes.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Regenerate',
+          style: 'default',
+          onPress: async () => {
+            setIsRegenerating(true);
+            setRegenerationProgress(0);
+            setRegenerationMessage('Starting regeneration...');
+            
+            try {
+              const preloader = PersonalizationPreloader.getInstance();
+              
+              // Clear existing content first
+              await preloader.clearAllContent();
+              
+              // Start regeneration with progress callback
+              await preloader.preloadAllContent(profile, (progress, message) => {
+                setRegenerationProgress(progress);
+                setRegenerationMessage(message);
+              });
+              
+              Alert.alert(
+                'Success!', 
+                'All visualizations have been regenerated with your latest preferences.',
+                [{ text: 'OK' }]
+              );
+            } catch (error) {
+              console.error('Regeneration error:', error);
+              Alert.alert(
+                'Error', 
+                'Failed to regenerate content. Please try again later.',
+                [{ text: 'OK' }]
+              );
+            } finally {
+              setIsRegenerating(false);
+              setRegenerationProgress(0);
+              setRegenerationMessage('');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleClearCache = async () => {
@@ -190,6 +248,35 @@ export default function PersonalizationSettings() {
       padding: 20,
       alignItems: 'center',
     },
+    regenerateButton: {
+      backgroundColor: colors.primary,
+      paddingVertical: 12,
+      paddingHorizontal: 20,
+      borderRadius: 8,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      marginTop: 12,
+    },
+    regenerateButtonDisabled: {
+      opacity: 0.8,
+    },
+    regenerateButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.background,
+    },
+    regenerateProgress: {
+      flex: 1,
+      alignItems: 'center',
+    },
+    regenerateMessageText: {
+      fontSize: 12,
+      color: colors.background,
+      opacity: 0.9,
+      marginTop: 2,
+    },
   });
 
   if (isLoading) {
@@ -267,6 +354,31 @@ export default function PersonalizationSettings() {
           <TouchableOpacity style={styles.updateButton} onPress={handleSetupPersonalization}>
             <Settings2 size={16} color={colors.primary} />
             <Text style={styles.updateButtonText}>Update Profile</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.regenerateButton, isRegenerating && styles.regenerateButtonDisabled]} 
+            onPress={handleRegenerateAll}
+            disabled={isRegenerating || !preferences.enabled}
+          >
+            {isRegenerating ? (
+              <>
+                <ActivityIndicator size="small" color={colors.background} />
+                <View style={styles.regenerateProgress}>
+                  <Text style={styles.regenerateButtonText}>
+                    {regenerationProgress > 0 ? `${Math.round(regenerationProgress)}%` : 'Regenerating...'}
+                  </Text>
+                  <Text style={styles.regenerateMessageText} numberOfLines={1}>
+                    {regenerationMessage}
+                  </Text>
+                </View>
+              </>
+            ) : (
+              <>
+                <RefreshCw size={16} color={colors.background} />
+                <Text style={styles.regenerateButtonText}>Regenerate All Visualizations</Text>
+              </>
+            )}
           </TouchableOpacity>
 
           <TouchableOpacity 

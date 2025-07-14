@@ -4,6 +4,9 @@ import { Slot, router } from 'expo-router';
 import { useOnboardingStore } from '@/store/onboarding-store';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useThemeColors } from '@/hooks/useThemeColors';
+import { PersonalizationPreloader } from '@/services/personalization-preloader';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { PersonalizationProfile } from '@/types/personalization-profile';
 
 interface AppWrapperProps {
   children: React.ReactNode;
@@ -33,6 +36,40 @@ export default function AppWrapper({ children }: AppWrapperProps) {
   });
 
   // Removed auto-reset for better performance
+  
+  // Check for personalization profile and start preloading if needed
+  useEffect(() => {
+    const checkAndPreload = async () => {
+      try {
+        const profileStr = await AsyncStorage.getItem('userPersonalizationProfile');
+        if (profileStr) {
+          const profile: PersonalizationProfile = JSON.parse(profileStr);
+          if (profile.is_personalization_enabled) {
+            const preloader = PersonalizationPreloader.getInstance();
+            
+            // Check if content needs regeneration (profile changed)
+            const needsRegen = await preloader.needsRegeneration(profile);
+            if (needsRegen) {
+              console.log('📥 Starting background content preload for changed profile...');
+              preloader.preloadAllContent(profile, (progress, message) => {
+                console.log(`[Preloader] ${progress}%: ${message}`);
+              }).catch(error => {
+                console.error('Background preload error:', error);
+              });
+            } else {
+              console.log('✅ Personalized content already up to date');
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error checking personalization profile:', error);
+      }
+    };
+    
+    if (hasCompletedOnboarding && isHydrated) {
+      checkAndPreload();
+    }
+  }, [hasCompletedOnboarding, isHydrated]);
 
   useEffect(() => {
     console.log('🔄 AppWrapper useEffect triggered:', {
