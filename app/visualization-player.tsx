@@ -197,10 +197,13 @@ export default function VisualizationPlayerScreen() {
     }
   }, [currentStep, currentSession, visualization, personalizedSteps]);
   
-  // 11. Fade animation
+  // 11. Fade animation - trigger on step change OR when personalized content loads
   useEffect(() => {
     if (!isMounted.current) return;
     
+    // Trigger fade animation when:
+    // 1. Step changes (currentStep)
+    // 2. Personalized content loads (!isGeneratingPersonalization && personalizedSteps)
     if (currentSession) {
       fadeAnim.setValue(0);
       Animated.timing(fadeAnim, {
@@ -209,7 +212,7 @@ export default function VisualizationPlayerScreen() {
         useNativeDriver: true,
       }).start();
     }
-  }, [currentStep]);
+  }, [currentStep, isGeneratingPersonalization, personalizedSteps]);
   
   // 12. Create cleanup function
   const cleanupAudio = useCallback(async () => {
@@ -580,6 +583,7 @@ export default function VisualizationPlayerScreen() {
   // Use personalized steps if available, otherwise use original
   const steps = personalizedSteps || visualization.steps;
   const currentStepData = steps[currentSession.currentStep];
+  const originalStepData = visualization.steps[currentSession.currentStep];
   const isLastStep = currentSession.currentStep === steps.length - 1;
   const progress = (currentSession.currentStep + 1) / steps.length;
   
@@ -863,6 +867,15 @@ export default function VisualizationPlayerScreen() {
       padding: 8,
       alignSelf: 'center',
     },
+    loadingContainer: {
+      alignItems: 'center',
+    },
+    loadingText: {
+      fontSize: 14,
+      color: colors.primary,
+      marginTop: 8,
+      fontWeight: '500',
+    },
   });
 
   return (
@@ -915,12 +928,21 @@ export default function VisualizationPlayerScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Animated.View
-          style={{ opacity: fadeAnim }}
-          key={currentSession.currentStep}
+          style={{ opacity: isGeneratingPersonalization ? 1 : fadeAnim }}
         >
-          <Text style={styles.stepContent}>
-            {currentStepData?.content}
-          </Text>
+          {isGeneratingPersonalization && !personalizedSteps ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={styles.loadingText}>Personalizing content...</Text>
+              <Text style={[styles.stepContent, { opacity: 0.7, marginTop: 16 }]}>
+                {originalStepData?.content}
+              </Text>
+            </View>
+          ) : (
+            <Text style={styles.stepContent}>
+              {currentStepData?.content}
+            </Text>
+          )}
           
           {/* Audio Status */}
           {(preferences.ttsEnabled ?? true) && disableAudio !== 'true' && (

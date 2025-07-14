@@ -64,10 +64,10 @@ export default function PersonalizationSport({
   const isValid = sport.trim().length > 0 && (!showTrackFieldEvents || selectedTrackEvent);
   
   // Filter track events based on search
-  const filteredTrackEvents = trackFieldEventOptions.filter(event =>
+  const filteredTrackEvents = showTrackFieldEvents ? trackFieldEventOptions.filter(event =>
     event.label.toLowerCase().includes(trackEventSearch.toLowerCase()) ||
     event.category.toLowerCase().includes(trackEventSearch.toLowerCase())
-  );
+  ) : [];
   
   // Group events by category
   const eventsByCategory = filteredTrackEvents.reduce((acc, event) => {
@@ -100,7 +100,6 @@ export default function PersonalizationSport({
             placeholderTextColor={colors.mediumGray}
             value={sport}
             onChangeText={setSport}
-            autoFocus
             autoCapitalize="words"
             returnKeyType="next"
             onSubmitEditing={() => {
