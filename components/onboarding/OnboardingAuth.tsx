@@ -78,12 +78,11 @@ export default function OnboardingAuth({ step }: OnboardingAuthProps) {
       // Update profile with all collected data
       await updateProfile(profileUpdate);
       
-      // Mark onboarding as complete
-      completeOnboarding();
-      
-      // Navigate to main app
-      router.replace('/(tabs)');
-      console.log('🏠 Navigation to main app initiated with synced data');
+      // Don't complete onboarding yet - we still have personalization setup
+      // Instead, navigate to the next step in onboarding
+      const { setOnboardingStep } = useOnboardingStore.getState();
+      setOnboardingStep(8); // Navigate to personalization setup
+      console.log('📝 Navigating to personalization setup');
     } catch (error) {
       console.error('❌ Error completing onboarding:', error);
     }
