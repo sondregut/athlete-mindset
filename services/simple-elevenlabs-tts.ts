@@ -43,9 +43,8 @@ export class SimpleElevenLabsTTS {
         voiceId = VOICE_MAPPING[voice as keyof typeof VOICE_MAPPING];
       }
       
-      // Handle invalid voice IDs (OpenAI models passed as voice)
-      if (voice === 'tts-1' || voice === 'tts-1-hd') {
-        smartLogger.log('tts-fix', 'Fixing invalid voice ID: ' + voice);
+      // Ensure we have a valid ElevenLabs voice ID
+      if (!voiceId || voiceId.length < 10) {
         voiceId = '21m00Tcm4TlvDq8ikWAM'; // Default to Rachel
       }
 
@@ -61,7 +60,7 @@ export class SimpleElevenLabsTTS {
         },
         body: JSON.stringify({
           text,
-          model_id: model === 'tts-1' || model === 'tts-1-hd' ? ELEVENLABS_DEFAULT_MODEL : model,
+          model_id: model || ELEVENLABS_DEFAULT_MODEL,
           voice_settings: {
             ...DEFAULT_VOICE_SETTINGS,
             stability: speed > 1 ? 0.3 : speed < 1 ? 0.7 : 0.5,

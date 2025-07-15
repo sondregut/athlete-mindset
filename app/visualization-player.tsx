@@ -499,7 +499,7 @@ export default function VisualizationPlayerScreen() {
         setIsChangingVoice(false);
       }
     }
-  }, [audioManager, currentSession, preferences.ttsEnabled, loadTTSAudio, isChangingVoice]);
+  }, [audioManager, currentSession, preferences.ttsEnabled, isChangingVoice]);
 
   // 15. Simplified audio loading function using AudioManager
   const loadAudioForCurrentStep = useCallback(async () => {

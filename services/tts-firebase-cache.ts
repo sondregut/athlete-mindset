@@ -35,7 +35,7 @@ import { smartLogger, accessStatsManager } from '@/utils/smart-logger';
 
 // ElevenLabs voice IDs - these should match your actual ElevenLabs voice IDs
 export type TTSVoice = string; // Now using voice IDs directly
-export type TTSModel = 'eleven_multilingual_v2' | 'eleven_turbo_v2' | 'tts-1' | 'tts-1-hd'; // Include old OpenAI models for migration
+export type TTSModel = 'eleven_multilingual_v2' | 'eleven_turbo_v2';
 
 interface TTSOptions {
   voice?: TTSVoice;
@@ -221,15 +221,8 @@ export class TTSFirebaseCache {
     // Validate and fix options to prevent OpenAI model being used as voice ID
     const validatedOptions = { ...options };
     
-    // If voice is 'tts-1' or 'tts-1-hd' (OpenAI models), replace with default ElevenLabs voice
-    if (validatedOptions.voice === 'tts-1' || validatedOptions.voice === 'tts-1-hd') {
-      console.warn(`Invalid voice ID '${validatedOptions.voice}' detected (OpenAI model). Using default ElevenLabs voice.`);
-      validatedOptions.voice = '21m00Tcm4TlvDq8ikWAM'; // Rachel voice
-    }
-    
-    // Ensure model is ElevenLabs model, not OpenAI
-    if (validatedOptions.model === 'tts-1' || validatedOptions.model === 'tts-1-hd') {
-      console.warn(`Invalid model '${validatedOptions.model}' detected (OpenAI model). Using ElevenLabs model.`);
+    // Ensure model is valid ElevenLabs model
+    if (!validatedOptions.model || !['eleven_multilingual_v2', 'eleven_turbo_v2'].includes(validatedOptions.model)) {
       validatedOptions.model = 'eleven_multilingual_v2';
     }
 
