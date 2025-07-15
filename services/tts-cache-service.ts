@@ -4,9 +4,7 @@ import * as Crypto from 'expo-crypto';
 import { Audio } from 'expo-av';
 import { TTSMemoryCache } from './tts-memory-cache';
 import { TTSFirebaseCache } from './tts-firebase-cache';
-import { TTSOpenAIService, TTSVoice, TTSModel } from './tts-openai-service';
-
-export { TTSVoice, TTSModel };
+import { TTSVoice, TTSModel } from './tts-firebase-cache';
 
 interface TTSOptions {
   voice?: TTSVoice;
@@ -34,7 +32,7 @@ export class TTSCacheService {
   
   private memoryCache: TTSMemoryCache;
   private firebaseCache: TTSFirebaseCache;
-  private openaiService: TTSOpenAIService;
+  // No longer needed - TTS is handled by TTSFirebaseCache with ElevenLabs
   
   private cacheDir: string;
   private localCacheIndex: Map<string, LocalCacheEntry> = new Map();
@@ -45,8 +43,8 @@ export class TTSCacheService {
 
   private constructor() {
     this.memoryCache = new TTSMemoryCache(50); // 50MB memory cache
-    this.firebaseCache = new TTSFirebaseCache();
-    this.openaiService = new TTSOpenAIService();
+    this.firebaseCache = TTSFirebaseCache.getInstance();
+    // TTSFirebaseCache now handles ElevenLabs API calls internally
     
     this.cacheDir = `${FileSystem.documentDirectory}tts-cache/`;
     this.initializeCache();
@@ -85,8 +83,8 @@ export class TTSCacheService {
       // Clean up old entries
       await this.cleanupLocalCache();
       
-      // Preload popular content from Firebase
-      await this.firebaseCache.preloadPopular();
+      // Firebase cache is already initialized in the singleton
+      console.log('Firebase cache is ready via singleton instance');
       
       console.log('TTS cache system initialized successfully');
     } catch (error) {
@@ -95,7 +93,7 @@ export class TTSCacheService {
   }
 
   async synthesizeSpeech(text: string, options: TTSOptions = {}): Promise<string> {
-    const { voice = 'nova', model = 'tts-1', speed = 1.0 } = options;
+    const { voice = '21m00Tcm4TlvDq8ikWAM', model = 'eleven_multilingual_v2', speed = 1.0 } = options;
     
     // Generate cache key
     const cacheKey = await this.generateCacheKey(text, { voice, model, speed });
@@ -119,27 +117,16 @@ export class TTSCacheService {
       return localCached;
     }
     
-    // 3. Check Firebase cache
-    const firebaseCached = await this.firebaseCache.get(cacheKey);
-    if (firebaseCached) {
-      console.log('✅ Firebase cache hit');
-      // Download and cache locally
-      const localUri = await this.downloadAndCacheLocally(cacheKey, firebaseCached, {
-        text, voice, speed, model
-      });
-      return localUri;
+    // 3. Use Firebase cache (which handles ElevenLabs API)
+    try {
+      const firebaseCached = await this.firebaseCache.synthesizeSpeech(text, { voice, model, speed });
+      console.log('✅ Audio generated/cached via Firebase service');
+      // The Firebase cache service handles both caching and ElevenLabs API calls
+      return firebaseCached;
+    } catch (error) {
+      console.error('Firebase/ElevenLabs service failed:', error);
+      throw error; // Re-throw the error instead of falling back to non-existent OpenAI service
     }
-    
-    // 4. Generate via OpenAI API
-    console.log('❌ Cache miss - generating via OpenAI API');
-    const audioBlob = await this.openaiService.synthesizeSpeech(text, { voice, model, speed });
-    
-    // Save to all cache layers
-    const localUri = await this.saveToAllCaches(cacheKey, audioBlob, {
-      text, voice, speed, model
-    });
-    
-    return localUri;
   }
 
   private async generateCacheKey(text: string, options: TTSOptions): Promise<string> {
@@ -361,7 +348,7 @@ export class TTSCacheService {
 
   async getCacheStats() {
     const memoryStats = this.memoryCache.getStats();
-    const firebaseStats = await this.firebaseCache.getStats();
+    const firebaseStats = await this.firebaseCache.getCacheStats();
     
     return {
       memory: memoryStats,

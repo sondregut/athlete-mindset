@@ -147,13 +147,13 @@ Remember: The goal is subtle personalization, not complete rewriting. When in do
 
 EXAMPLE OF CORRECT PERSONALIZATION:
 Original: "Imagine every detail - whether it's the track, gym, field, court, or road."
-For a swimmer: "Imagine every detail - the pool."
-For a basketball player: "Imagine every detail - the court."
-For a weightlifter: "Imagine every detail - the gym."
+For a sprinter: "Imagine every detail - the track."
+For a pole vaulter: "Imagine every detail - the runway."
+For a thrower: "Imagine every detail - the throwing circle."
 
 Original: "Visualize yourself at the competition venue. See the environment clearly."
 For a track sprinter: "Visualize yourself at the track. See the environment clearly."
-For a basketball player: "Visualize yourself on the court. See the environment clearly."
+For a high jumper: "Visualize yourself at the jump area. See the environment clearly."
 
 EXAMPLE OF INCORRECT PERSONALIZATION:
 Original: "whether it's the track, gym, field, court, or road"
@@ -169,13 +169,7 @@ Remember: Replace lists of options with the SINGLE appropriate term.`;
   static formatSportName(sport: string): string {
     const sportNames: Record<string, string> = {
       'track-and-field': 'Track and Field',
-      'football-american': 'American Football',
-      'football-soccer': 'Soccer/Football',
-      'hockey-field': 'Field Hockey',
-      'hockey-ice': 'Ice Hockey',
-      'martial-arts': 'Martial Arts',
-      'table-tennis': 'Table Tennis',
-      'water-polo': 'Water Polo',
+      'other': 'Other Sport',
     };
     
     return sportNames[sport] || sport.split('-').map(word => 
@@ -187,24 +181,11 @@ Remember: Replace lists of options with the SINGLE appropriate term.`;
     const eventNames: Record<string, string> = {
       'sprints-100m': '100m Sprint',
       'sprints-200m': '200m Sprint',
-      'sprints-400m': '400m Sprint',
-      'middle-distance-800m': '800m',
-      'middle-distance-1500m': '1500m',
-      'middle-distance-mile': 'Mile',
-      'long-distance-3000m': '3000m',
-      'long-distance-5000m': '5000m',
-      'long-distance-10000m': '10000m',
-      'hurdles-100m': '100m Hurdles',
-      'hurdles-110m': '110m Hurdles',
-      'hurdles-400m': '400m Hurdles',
-      'relay-4x100m': '4x100m Relay',
-      'relay-4x400m': '4x400m Relay',
+      'running-all-distances': 'Running (All Distances)',
       'high-jump': 'High Jump',
       'pole-vault': 'Pole Vault',
-      'long-jump': 'Long Jump',
-      'triple-jump': 'Triple Jump',
-      'shot-put': 'Shot Put',
-      'race-walk': 'Race Walk',
+      'long-triple-jump': 'Long/Triple Jump',
+      'throws-all': 'All Throws',
     };
     
     return eventNames[event] || event.split('-').map(word => 

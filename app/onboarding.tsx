@@ -16,6 +16,7 @@ import OnboardingSynergy from '@/components/onboarding/OnboardingSynergy';
 import OnboardingPersonalization from '@/components/onboarding/OnboardingPersonalization';
 import OnboardingAuth from '@/components/onboarding/OnboardingAuth';
 import OnboardingPersonalizationSetup from '@/components/onboarding/OnboardingPersonalizationSetup';
+import OnboardingProfile from '@/components/onboarding/OnboardingProfile';
 
 const { width, height } = Dimensions.get('window');
 
@@ -50,10 +51,10 @@ export default function OnboardingScreen() {
     setIsTransitioning(true);
     
     setTimeout(() => {
-      // Special case: if we're on auth screen (step 7) and came from login intent
+      // Special case: if we're on auth screen (step 8) and came from login intent
       // return to welcome screen (step 0) instead of previous screen
       const { loginIntent } = useOnboardingStore.getState();
-      if (currentStep === 7 && loginIntent) {
+      if (currentStep === 8 && loginIntent) {
         setOnboardingStep(0);
         setLoginIntent(false); // Clear the login intent
       } else {
@@ -86,7 +87,7 @@ export default function OnboardingScreen() {
   const handleLogin = () => {
     // Set login intent and navigate to the authentication screen
     setLoginIntent(true);
-    setOnboardingStep(7); // Auth is step 7
+    setOnboardingStep(8); // Auth is step 8
   };
 
   // Create PanResponder for swipe gestures
@@ -147,7 +148,7 @@ export default function OnboardingScreen() {
           );
         case 1:
           return (
-            <OnboardingMentalTracking
+            <OnboardingProfile
               step={onboardingSteps[1]}
               onNext={handleNext}
               onBack={handleBack}
@@ -155,7 +156,7 @@ export default function OnboardingScreen() {
           );
         case 2:
           return (
-            <OnboardingAIVisualization
+            <OnboardingMentalTracking
               step={onboardingSteps[2]}
               onNext={handleNext}
               onBack={handleBack}
@@ -163,7 +164,7 @@ export default function OnboardingScreen() {
           );
         case 3:
           return (
-            <OnboardingVisualizationDemo
+            <OnboardingAIVisualization
               step={onboardingSteps[3]}
               onNext={handleNext}
               onBack={handleBack}
@@ -171,7 +172,7 @@ export default function OnboardingScreen() {
           );
         case 4:
           return (
-            <OnboardingSynergy
+            <OnboardingVisualizationDemo
               step={onboardingSteps[4]}
               onNext={handleNext}
               onBack={handleBack}
@@ -179,7 +180,7 @@ export default function OnboardingScreen() {
           );
         case 5:
           return (
-            <OnboardingPersonalizationSetup
+            <OnboardingSynergy
               step={onboardingSteps[5]}
               onNext={handleNext}
               onBack={handleBack}
@@ -187,7 +188,7 @@ export default function OnboardingScreen() {
           );
         case 6:
           return (
-            <OnboardingPersonalization
+            <OnboardingPersonalizationSetup
               step={onboardingSteps[6]}
               onNext={handleNext}
               onBack={handleBack}
@@ -195,8 +196,16 @@ export default function OnboardingScreen() {
           );
         case 7:
           return (
-            <OnboardingAuth 
+            <OnboardingPersonalization
               step={onboardingSteps[7]}
+              onNext={handleNext}
+              onBack={handleBack}
+            />
+          );
+        case 8:
+          return (
+            <OnboardingAuth 
+              step={onboardingSteps[8]}
             />
           );
         default:

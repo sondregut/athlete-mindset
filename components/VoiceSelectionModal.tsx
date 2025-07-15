@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView, Alert } from 'react-native';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { X, Volume2, Play, Loader2 } from 'lucide-react-native';
-import { TTSVoice } from '@/services/tts-firebase-cache';
 import { TTSFirebaseCache } from '@/services/tts-firebase-cache';
+
+export type TTSVoice = string; // Voice IDs are strings
+import { ELEVENLABS_VOICES } from '@/config/elevenlabs-config';
 
 interface VoiceSelectionModalProps {
   visible: boolean;
@@ -13,12 +15,12 @@ interface VoiceSelectionModalProps {
 }
 
 const voiceOptions: { value: TTSVoice; label: string; description: string; personality: string }[] = [
-  { value: 'nova', label: 'Nova', description: 'Friendly and conversational', personality: 'Warm, approachable' },
-  { value: 'alloy', label: 'Alloy', description: 'Neutral and balanced', personality: 'Professional, clear' },
-  { value: 'echo', label: 'Echo', description: 'Warm and engaging', personality: 'Smooth, confident' },
-  { value: 'fable', label: 'Fable', description: 'Expressive and dynamic', personality: 'Energetic, inspiring' },
-  { value: 'onyx', label: 'Onyx', description: 'Deep and authoritative', personality: 'Strong, commanding' },
-  { value: 'shimmer', label: 'Shimmer', description: 'Soft and soothing', personality: 'Gentle, calming' },
+  { value: ELEVENLABS_VOICES.rachel, label: 'Rachel', description: 'Calm and conversational', personality: 'Warm, approachable' },
+  { value: ELEVENLABS_VOICES.drew, label: 'Drew', description: 'Deep and confident', personality: 'Professional, clear' },
+  { value: ELEVENLABS_VOICES.paul, label: 'Paul', description: 'News presenter style', personality: 'Smooth, confident' },
+  { value: ELEVENLABS_VOICES.domi, label: 'Domi', description: 'Strong and confident', personality: 'Energetic, inspiring' },
+  { value: ELEVENLABS_VOICES.bella, label: 'Bella', description: 'Soft and young', personality: 'Gentle, calming' },
+  { value: ELEVENLABS_VOICES.antoni, label: 'Antoni', description: 'Well-rounded voice', personality: 'Balanced, versatile' },
 ];
 
 const sampleText = "Take a deep breath and feel your confidence growing stronger with each moment.";
@@ -52,11 +54,13 @@ export default function VoiceSelectionModal({
       // Generate and play preview
       const audioUri = await ttsService.synthesizeSpeech(sampleText, {
         voice,
-        model: 'tts-1',
+        model: 'eleven_multilingual_v2',
         speed: 1.0,
       });
       
-      await ttsService.playAudio(audioUri, { volume: 0.8 });
+      await ttsService.playAudio(audioUri, {
+        volume: 0.8,
+      });
       
       // Auto-stop preview after audio finishes
       setTimeout(() => {

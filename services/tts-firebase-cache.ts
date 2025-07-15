@@ -28,18 +28,26 @@ import * as FileSystem from 'expo-file-system';
 import * as Crypto from 'expo-crypto';
 import { Audio } from 'expo-av';
 import { firebaseTTSConfig } from '@/config/firebase-tts-config';
-import { getOpenAIApiKey, OPENAI_TTS_ENDPOINT } from '@/config/api-config';
+import { getElevenLabsApiKey, ELEVENLABS_TTS_ENDPOINT, ELEVENLABS_DEFAULT_MODEL, DEFAULT_VOICE_SETTINGS, VOICE_MAPPING } from '@/config/elevenlabs-config';
 import { environmentDetection } from './environment-detection';
 import { TTSFirebaseClient } from './tts-firebase-client';
+import { smartLogger, accessStatsManager } from '@/utils/smart-logger';
 
-export type TTSVoice = 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer';
-export type TTSModel = 'tts-1' | 'tts-1-hd';
+// ElevenLabs voice IDs - these should match your actual ElevenLabs voice IDs
+export type TTSVoice = string; // Now using voice IDs directly
+export type TTSModel = 'eleven_multilingual_v2' | 'eleven_turbo_v2' | 'tts-1' | 'tts-1-hd'; // Include old OpenAI models for migration
 
 interface TTSOptions {
   voice?: TTSVoice;
   model?: TTSModel;
   speed?: number;
   isPersonalized?: boolean;
+  sport?: string;
+  userContext?: {
+    sport?: string;
+    experienceLevel?: string;
+    primaryFocus?: string;
+  };
 }
 
 interface CacheEntry {
@@ -80,7 +88,7 @@ export class TTSFirebaseCache {
   private clientSDK: TTSFirebaseClient | null = null;
 
   private constructor() {
-    this.apiKey = getOpenAIApiKey();
+    this.apiKey = getElevenLabsApiKey();
     this.localCacheDir = `${FileSystem.documentDirectory}tts-firebase-cache/`;
     
     // Initialize Firebase
@@ -177,8 +185,27 @@ export class TTSFirebaseCache {
   }
 
   private async getCacheKey(text: string, options: TTSOptions): Promise<string> {
-    const { voice = 'nova', model = 'tts-1', speed = 1.0, isPersonalized = false } = options;
-    const keyString = `${text}-${voice}-${model}-${speed}-${isPersonalized ? 'personalized' : 'original'}`;
+    const { 
+      voice = '21m00Tcm4TlvDq8ikWAM', // Rachel voice as default
+      model = 'eleven_multilingual_v2', 
+      speed = 1.0, 
+      isPersonalized = false,
+      sport,
+      userContext
+    } = options;
+    
+    // Create a comprehensive key that includes personalization context
+    let keyString = `${text}-${voice}-${model}-${speed}`;
+    
+    if (isPersonalized) {
+      // Add personalization context to cache key for cross-user sharing
+      // Users with same sport/context can share personalized audio
+      const personalizationContext = sport || userContext?.sport || 'unknown';
+      keyString += `-personalized-${personalizationContext}`;
+    } else {
+      keyString += '-original';
+    }
+    
     const hash = await Crypto.digestStringAsync(
       Crypto.CryptoDigestAlgorithm.SHA256,
       keyString
@@ -191,12 +218,27 @@ export class TTSFirebaseCache {
       await this.initialize();
     }
 
-    const cacheKey = await this.getCacheKey(text, options);
-    console.log(`TTS request for key: ${cacheKey}`);
+    // Validate and fix options to prevent OpenAI model being used as voice ID
+    const validatedOptions = { ...options };
+    
+    // If voice is 'tts-1' or 'tts-1-hd' (OpenAI models), replace with default ElevenLabs voice
+    if (validatedOptions.voice === 'tts-1' || validatedOptions.voice === 'tts-1-hd') {
+      console.warn(`Invalid voice ID '${validatedOptions.voice}' detected (OpenAI model). Using default ElevenLabs voice.`);
+      validatedOptions.voice = '21m00Tcm4TlvDq8ikWAM'; // Rachel voice
+    }
+    
+    // Ensure model is ElevenLabs model, not OpenAI
+    if (validatedOptions.model === 'tts-1' || validatedOptions.model === 'tts-1-hd') {
+      console.warn(`Invalid model '${validatedOptions.model}' detected (OpenAI model). Using ElevenLabs model.`);
+      validatedOptions.model = 'eleven_multilingual_v2';
+    }
+
+    const cacheKey = await this.getCacheKey(text, validatedOptions);
+    smartLogger.log('tts-request', `TTS request for key: ${cacheKey}`);
 
     // 1. Check memory cache
     if (this.memoryCache.has(cacheKey)) {
-      console.log('✅ Memory cache hit');
+      smartLogger.log('tts-memory-hit', '✅ Memory cache hit');
       return this.memoryCache.get(cacheKey)!;
     }
 
@@ -205,11 +247,11 @@ export class TTSFirebaseCache {
     if (localEntry) {
       const fileInfo = await FileSystem.getInfoAsync(localEntry.uri);
       if (fileInfo.exists) {
-        console.log('✅ Local cache hit');
+        smartLogger.log('tts-local-hit', '✅ Local cache hit');
         this.addToMemoryCache(cacheKey, localEntry.uri);
         
         // Update access time in Firestore (async, don't wait)
-        this.updateFirestoreAccess(cacheKey).catch(console.error);
+        this.updateFirestoreAccess(cacheKey).catch(() => {});
         
         return localEntry.uri;
       }
@@ -219,7 +261,7 @@ export class TTSFirebaseCache {
     try {
       const firebaseUrl = await this.getFromFirebase(cacheKey);
       if (firebaseUrl) {
-        console.log('✅ Firebase cache hit');
+        smartLogger.log('tts-firebase-hit', '✅ Firebase cache hit');
         
         // Download to local cache
         const localUri = await this.downloadToLocalCache(cacheKey, firebaseUrl);
@@ -233,7 +275,8 @@ export class TTSFirebaseCache {
 
     // 4. Generate new audio
     console.log('❌ Cache miss - generating new audio');
-    const audioUri = await this.generateAndCache(text, options, cacheKey);
+    const audioUri = await this.generateAndCache(text, validatedOptions, cacheKey);
+    console.log('🎵 Generated audio URI:', audioUri);
     return audioUri;
   }
 
@@ -298,28 +341,64 @@ export class TTSFirebaseCache {
   }
 
   private async generateAndCache(text: string, options: TTSOptions, cacheKey: string): Promise<string> {
-    const { voice = 'nova', model = 'tts-1', speed = 1.0 } = options;
+    const { voice = '21m00Tcm4TlvDq8ikWAM', model = 'eleven_multilingual_v2', speed = 1.0 } = options;
     
-    // Generate audio using OpenAI
-    const audioData = await this.callOpenAITTS(text, voice, model, speed);
+    // Generate audio using ElevenLabs
+    const audioData = await this.callElevenLabsTTS(text, voice, model, speed);
     
     // Save locally first
     const localUri = `${this.localCacheDir}${cacheKey}.mp3`;
+    console.log('💾 Saving audio to local file:', localUri);
+    
     await FileSystem.writeAsStringAsync(localUri, audioData, {
       encoding: FileSystem.EncodingType.Base64,
     });
     
-    // Get file size
+    // Verify file was written
     const fileInfo = await FileSystem.getInfoAsync(localUri);
+    if (!fileInfo.exists) {
+      throw new Error(`Failed to write audio file to ${localUri}`);
+    }
+    
     const fileSize = 'size' in fileInfo ? fileInfo.size : 0;
+    console.log(`✅ Audio file saved successfully: ${fileSize} bytes`);
     
-    // Firebase Storage uploads disabled for React Native/Expo Go compatibility
-    // Skip upload entirely to prevent blob creation errors
+    // Upload to Firebase Storage using client SDK
+    let firebaseUrl: string | null = null;
+    if (this.useClientSDK && this.clientSDK) {
+      try {
+        console.log(`TTS Cache: Uploading ${cacheKey} to Firebase Storage`);
+        // Ensure audioData is passed as base64 string (it already is from callElevenLabsTTS)
+        if (typeof audioData !== 'string') {
+          console.error('TTS Cache: audioData is not a string, skipping Firebase upload');
+          firebaseUrl = null;
+        } else {
+          firebaseUrl = await this.clientSDK.uploadToFirebase(cacheKey, audioData, {
+            text,
+            voice,
+            model,
+            speed,
+            fileSize
+          });
+          // Only log success if we actually got a URL back
+          if (firebaseUrl) {
+            console.log(`✅ TTS Cache: Successfully uploaded ${cacheKey} to Firebase`);
+          } else {
+            console.log(`⚠️ TTS Cache: Upload returned no URL for ${cacheKey}`);
+          }
+        }
+      } catch (error: any) {
+        console.error(`❌ TTS Cache: Firebase upload failed for ${cacheKey}:`, error.message);
+        firebaseUrl = null;
+        // Continue without Firebase upload - local cache will work
+      }
+    }
     
-    // Update local cache
+    // Update local cache with Firebase URL if available
     this.localCacheIndex.set(cacheKey, {
       uri: localUri,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      firebaseUrl: firebaseUrl || undefined
     });
     await this.saveLocalCacheIndex();
     
@@ -329,25 +408,33 @@ export class TTSFirebaseCache {
     return localUri;
   }
 
-  private async callOpenAITTS(text: string, voice: TTSVoice, model: TTSModel, speed: number): Promise<string> {
-    const response = await fetch(OPENAI_TTS_ENDPOINT, {
+  private async callElevenLabsTTS(text: string, voice: TTSVoice, model: TTSModel, speed: number): Promise<string> {
+    // Map OpenAI voice names to ElevenLabs voice IDs if needed
+    let voiceId = voice;
+    if (voice in VOICE_MAPPING) {
+      voiceId = VOICE_MAPPING[voice as keyof typeof VOICE_MAPPING];
+    }
+    
+    const response = await fetch(`${ELEVENLABS_TTS_ENDPOINT}/${voiceId}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
+        'xi-api-key': this.apiKey,
         'Content-Type': 'application/json',
+        'Accept': 'audio/mpeg',
       },
       body: JSON.stringify({
-        model,
-        input: text,
-        voice,
-        speed,
-        response_format: 'mp3'
+        text,
+        model_id: model || ELEVENLABS_DEFAULT_MODEL,
+        voice_settings: {
+          ...DEFAULT_VOICE_SETTINGS,
+          stability: speed > 1 ? 0.3 : speed < 1 ? 0.7 : 0.5, // Adjust stability based on speed
+        }
       }),
     });
 
     if (!response.ok) {
       const error = await response.text();
-      throw new Error(`OpenAI API error: ${response.status} - ${error}`);
+      throw new Error(`ElevenLabs API error: ${response.status} - ${error}`);
     }
 
     // Get response as blob and convert to base64
@@ -448,18 +535,37 @@ export class TTSFirebaseCache {
 
   private async updateFirestoreAccess(cacheKey: string) {
     try {
-      await updateDoc(doc(this.db, 'tts-cache', cacheKey), {
-        accessCount: increment(1),
-        lastAccessed: serverTimestamp()
-      });
-    } catch (error) {
-      console.error('Failed to update access stats:', error);
+      const docRef = doc(this.db, 'tts-cache', cacheKey);
+      
+      // Check if document exists first
+      const docSnap = await getDoc(docRef);
+      
+      if (docSnap.exists()) {
+        // Document exists - safe to update
+        await updateDoc(docRef, {
+          accessCount: increment(1),
+          lastAccessed: serverTimestamp()
+        });
+        accessStatsManager.logUpdate(cacheKey);
+      } else {
+        // Document doesn't exist - skip silently (this is normal for local-only files)
+        accessStatsManager.logSkip(cacheKey);
+      }
+    } catch (error: any) {
+      // Handle any other errors gracefully
+      smartLogger.error('tts-access-stats-error', `⚠️ TTS: Access stats update failed for ${cacheKey}: ${error.message}`);
     }
   }
 
   async playAudio(uri: string, options: { volume?: number } = {}): Promise<Audio.Sound> {
     try {
-      console.log('TTSFirebaseCache.playAudio called');
+      console.log('🎵 TTSFirebaseCache.playAudio called with URI:', uri);
+      smartLogger.log('tts-play-audio', 'TTSFirebaseCache.playAudio called');
+      
+      // Validate URI
+      if (!uri || uri === 'undefined' || uri === 'null') {
+        throw new Error(`Invalid audio URI: ${uri}`);
+      }
       
       // Wait if another audio is being set up
       while (this.isPlayingAudio) {
@@ -469,11 +575,18 @@ export class TTSFirebaseCache {
       
       this.isPlayingAudio = true;
       
-      // Stop and cleanup current sound if exists
+      // Fade out and stop current sound if exists
       if (this.currentSound) {
-        console.log('Stopping existing audio...');
+        console.log('Fading out existing audio...');
         try {
           const status = await this.currentSound.getStatusAsync();
+          if (status.isLoaded && status.isPlaying) {
+            // Fade out over 200ms
+            await this.currentSound.setVolumeAsync(0.5);
+            await new Promise(resolve => setTimeout(resolve, 100));
+            await this.currentSound.setVolumeAsync(0);
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
           if (status.isLoaded) {
             await this.currentSound.stopAsync();
             await this.currentSound.unloadAsync();
@@ -484,6 +597,7 @@ export class TTSFirebaseCache {
         this.currentSound = null;
       }
 
+      console.log('🎵 Creating audio sound from URI:', uri);
       const { sound } = await Audio.Sound.createAsync(
         { uri },
         { 
@@ -495,6 +609,7 @@ export class TTSFirebaseCache {
       this.currentSound = sound;
       this.isPlayingAudio = false;
       
+      console.log('✅ Audio playback started successfully');
       return sound;
     } catch (error) {
       this.isPlayingAudio = false;
@@ -582,6 +697,87 @@ export class TTSFirebaseCache {
     return preloadedAudio;
   }
 
+  /**
+   * Preload personalized visualization with TTS caching
+   * This method generates audio for personalized content with proper cache keys
+   */
+  async preloadPersonalizedVisualization(
+    steps: Array<{ id: number; content: string }>,
+    personalizationContext: {
+      sport: string;
+      experienceLevel?: string;
+      primaryFocus?: string;
+    },
+    voices: TTSVoice[] = ['21m00Tcm4TlvDq8ikWAM'], // Default to Rachel voice, but allow multiple voices
+    options: Omit<TTSOptions, 'isPersonalized' | 'sport' | 'userContext'> = {},
+    onProgress?: (percent: number) => void
+  ): Promise<Map<string, Map<number, string>>> {
+    console.log(`[TTS Cache] Preloading personalized visualization for ${personalizationContext.sport}`);
+    console.log(`[TTS Cache] ${steps.length} steps, ${voices.length} voices`);
+    
+    const preloadedAudio = new Map<string, Map<number, string>>();
+    const totalOperations = steps.length * voices.length;
+    let completedOperations = 0;
+
+    // Initialize result maps for each voice
+    for (const voice of voices) {
+      preloadedAudio.set(voice, new Map<number, string>());
+    }
+
+    // Process in batches to avoid rate limits
+    const batchSize = 2; // Smaller batch size for personalized content
+    
+    for (let i = 0; i < steps.length; i += batchSize) {
+      const batch = steps.slice(i, i + batchSize);
+      
+      // Process each voice for this batch
+      for (const voice of voices) {
+        const voiceBatchPromises = batch.map(async (step) => {
+          try {
+            const personalizedOptions: TTSOptions = {
+              ...options,
+              voice,
+              isPersonalized: true,
+              sport: personalizationContext.sport,
+              userContext: {
+                sport: personalizationContext.sport,
+                experienceLevel: personalizationContext.experienceLevel,
+                primaryFocus: personalizationContext.primaryFocus,
+              }
+            };
+            
+            const audioUri = await this.synthesizeSpeech(step.content, personalizedOptions);
+            preloadedAudio.get(voice)?.set(step.id, audioUri);
+            completedOperations++;
+            
+            if (onProgress) {
+              onProgress(Math.round((completedOperations / totalOperations) * 100));
+            }
+            
+            return { stepId: step.id, voice, success: true };
+          } catch (error) {
+            console.error(`Failed to preload personalized step ${step.id} for voice ${voice}:`, error);
+            completedOperations++;
+            return { stepId: step.id, voice, success: false, error };
+          }
+        });
+
+        await Promise.all(voiceBatchPromises);
+        
+        // Add delay between voice batches to avoid rate limits
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      
+      // Add delay between step batches
+      if (i + batchSize < steps.length) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+
+    console.log(`[TTS Cache] Preloading complete for ${personalizationContext.sport}`);
+    return preloadedAudio;
+  }
+
   async getCacheStats() {
     await this.calculateLocalCacheSize();
     
@@ -597,7 +793,7 @@ export class TTSFirebaseCache {
    * Test helper: Clear a specific cache entry to force regeneration
    * Useful for testing upload functionality
    */
-  async clearSpecificCacheEntry(text: string, voice: TTSVoice = 'nova', model: TTSModel = 'tts-1', speed: number = 1.0): Promise<void> {
+  async clearSpecificCacheEntry(text: string, voice: TTSVoice = '21m00Tcm4TlvDq8ikWAM', model: TTSModel = 'eleven_multilingual_v2', speed: number = 1.0): Promise<void> {
     const cacheKey = await this.getCacheKey(text, { voice, model, speed });
     console.log(`🧪 Test: Clearing cache entry for key ${cacheKey}`);
     
@@ -626,22 +822,147 @@ export class TTSFirebaseCache {
   }
 
   /**
-   * Test helper: Firebase upload test disabled
-   * Firebase Storage uploads are not compatible with React Native/Expo Go
+   * Test helper: Firebase upload test
+   * Tests Firebase Storage uploads using base64 encoding
    */
   async testFirebaseUpload(): Promise<void> {
-    console.log('\n🧪 === FIREBASE UPLOAD TEST DISABLED ===');
-    console.log('Firebase Storage uploads are disabled for React Native/Expo Go compatibility.');
-    console.log('Using local caching only.\n');
+    console.log('\n🧪 === FIREBASE UPLOAD TEST ===');
+    
+    if (!this.useClientSDK || !this.clientSDK) {
+      console.log('Client SDK not available - skipping Firebase upload test');
+      return;
+    }
+    
+    try {
+      await this.clientSDK.isReady();
+      
+      const testText = 'This is a test of Firebase Storage upload functionality.';
+      const testVoice: TTSVoice = '21m00Tcm4TlvDq8ikWAM';
+      const testModel: TTSModel = 'eleven_multilingual_v2';
+      const testSpeed = 1.0;
+      
+      console.log(`Testing upload with text: "${testText}"`);
+      console.log(`Voice: ${testVoice}, Model: ${testModel}, Speed: ${testSpeed}`);
+      
+      // Clear any existing cache for this test
+      await this.clearSpecificCacheEntry(testText, testVoice, testModel, testSpeed);
+      
+      // Generate and cache (this will trigger upload)
+      const audioUri = await this.synthesizeSpeech(testText, {
+        voice: testVoice,
+        model: testModel,
+        speed: testSpeed
+      });
+      
+      console.log(`✅ Test completed successfully!`);
+      console.log(`Audio URI: ${audioUri}`);
+      
+      // Check if it was uploaded to Firebase
+      const cacheKey = await this.getCacheKey(testText, {
+        voice: testVoice,
+        model: testModel,
+        speed: testSpeed
+      });
+      
+      const localEntry = this.localCacheIndex.get(cacheKey);
+      if (localEntry?.firebaseUrl) {
+        console.log(`✅ Firebase upload confirmed: ${localEntry.firebaseUrl}`);
+      } else {
+        console.log(`⚠️ Firebase upload may have failed - check logs above`);
+      }
+      
+    } catch (error: any) {
+      console.error(`❌ Firebase upload test failed:`, error.message);
+    }
+    
+    console.log('🧪 === FIREBASE UPLOAD TEST COMPLETE ===\n');
   }
 
   /**
-   * Upload existing cache disabled
-   * Firebase Storage uploads are not compatible with React Native/Expo Go
+   * Upload existing cache to Firebase
+   * Uploads all locally cached audio files to Firebase Storage
    */
   async uploadExistingCacheToFirebase(): Promise<void> {
-    console.log('\n📤 === UPLOAD EXISTING CACHE DISABLED ===');
-    console.log('Firebase Storage uploads are disabled for React Native/Expo Go compatibility.');
-    console.log('Using local caching only.\n');
+    console.log('\n📤 === UPLOAD EXISTING CACHE TO FIREBASE ===');
+    
+    if (!this.useClientSDK || !this.clientSDK) {
+      console.log('Client SDK not available - skipping existing cache upload');
+      return;
+    }
+    
+    try {
+      await this.clientSDK.isReady();
+      
+      const entries = Array.from(this.localCacheIndex.entries());
+      console.log(`Found ${entries.length} cached files to potentially upload`);
+      
+      let uploadedCount = 0;
+      let skippedCount = 0;
+      let failedCount = 0;
+      
+      for (const [cacheKey, entry] of entries) {
+        try {
+          // Skip if already uploaded to Firebase
+          if (entry.firebaseUrl) {
+            console.log(`⏭️ Skipping ${cacheKey} - already in Firebase`);
+            skippedCount++;
+            continue;
+          }
+          
+          // Read the local file
+          const fileInfo = await FileSystem.getInfoAsync(entry.uri);
+          if (!fileInfo.exists) {
+            console.log(`⚠️ Local file missing for ${cacheKey}`);
+            failedCount++;
+            continue;
+          }
+          
+          const base64Data = await FileSystem.readAsStringAsync(entry.uri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          
+          // We need to reconstruct metadata from the cache key
+          // This is a limitation - we don't store original metadata
+          console.log(`📤 Uploading ${cacheKey}...`);
+          
+          const firebaseUrl = await this.clientSDK.uploadToFirebase(cacheKey, base64Data, {
+            text: 'Unknown - from existing cache',
+            voice: '21m00Tcm4TlvDq8ikWAM', // Default Rachel voice - we don't have this info
+            model: 'eleven_multilingual_v2', // Default - we don't have this info
+            speed: 1.0, // Default - we don't have this info
+            fileSize: 'size' in fileInfo ? fileInfo.size : 0
+          });
+          
+          // Update local cache entry with Firebase URL
+          this.localCacheIndex.set(cacheKey, {
+            ...entry,
+            firebaseUrl
+          });
+          
+          uploadedCount++;
+          console.log(`✅ Uploaded ${cacheKey}`);
+          
+          // Add delay to avoid rate limits
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+        } catch (error: any) {
+          console.error(`❌ Failed to upload ${cacheKey}:`, error.message);
+          failedCount++;
+        }
+      }
+      
+      // Save updated cache index
+      await this.saveLocalCacheIndex();
+      
+      console.log(`\n📊 Upload Summary:`);
+      console.log(`✅ Uploaded: ${uploadedCount}`);
+      console.log(`⏭️ Skipped: ${skippedCount}`);
+      console.log(`❌ Failed: ${failedCount}`);
+      
+    } catch (error: any) {
+      console.error(`❌ Upload existing cache failed:`, error.message);
+    }
+    
+    console.log('📤 === UPLOAD EXISTING CACHE COMPLETE ===\n');
   }
 }

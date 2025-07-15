@@ -159,7 +159,7 @@ export default function VisualizationCard({
             </View>
             <View style={styles.categoryTag}>
               <Text style={styles.categoryText}>
-                {categoryInfo.title.split(' ')[0]}
+                {categoryInfo.title}
               </Text>
             </View>
           </View>

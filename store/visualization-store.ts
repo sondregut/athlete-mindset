@@ -54,9 +54,9 @@ export const useVisualizationStore = create<VisualizationState>()(
         autoProgress: false,
         // TTS Settings
         ttsEnabled: true,
-        ttsVoice: 'nova',
+        ttsVoice: '21m00Tcm4TlvDq8ikWAM', // Rachel voice
         ttsSpeed: 1.0,
-        ttsModel: 'tts-1',
+        ttsModel: 'eleven_multilingual_v2',
         autoPlayTTS: true,
         preloadNext: false,
       },
@@ -109,12 +109,19 @@ export const useVisualizationStore = create<VisualizationState>()(
       nextStep: () => {
         const { currentSession } = get();
         if (currentSession) {
-          set({
-            currentSession: {
-              ...currentSession,
-              currentStep: currentSession.currentStep + 1,
-            },
-          });
+          // Get the visualization to check total steps
+          const visualization = getVisualizationById(currentSession.visualizationId);
+          const maxSteps = visualization ? visualization.steps.length : 0;
+          
+          // Only increment if not already at the last step
+          if (currentSession.currentStep < maxSteps - 1) {
+            set({
+              currentSession: {
+                ...currentSession,
+                currentStep: currentSession.currentStep + 1,
+              },
+            });
+          }
         }
       },
 
@@ -325,9 +332,9 @@ export const useVisualizationStore = create<VisualizationState>()(
             preferences: {
               ...persistedState.preferences,
               ttsEnabled: persistedState.preferences?.ttsEnabled ?? true,
-              ttsVoice: persistedState.preferences?.ttsVoice ?? 'nova',
+              ttsVoice: persistedState.preferences?.ttsVoice ?? '21m00Tcm4TlvDq8ikWAM', // Rachel voice
               ttsSpeed: persistedState.preferences?.ttsSpeed ?? 1.0,
-              ttsModel: persistedState.preferences?.ttsModel ?? 'tts-1',
+              ttsModel: persistedState.preferences?.ttsModel ?? 'eleven_multilingual_v2',
               autoPlayTTS: persistedState.preferences?.autoPlayTTS ?? true,
               preloadNext: persistedState.preferences?.preloadNext ?? false,
             },

@@ -15,6 +15,7 @@ import {
 import { getFirebaseFirestore } from '@/config/firebase';
 import { SessionLog } from '@/types/session';
 import { firebaseAuth } from './firebase-auth';
+import { smartLogger } from '@/utils/smart-logger';
 
 export interface FirebaseSessionLog extends Omit<SessionLog, 'id'> {
   id?: string;
@@ -167,7 +168,11 @@ class FirebaseSessionsService {
         callback(sessions);
       },
       (error) => {
-        console.error('Session listener error:', error);
+        if (error.code === 'permission-denied') {
+          smartLogger.warn('session-permission', '📱 Session listener: Using local data (no cloud sync)');
+        } else {
+          smartLogger.error('session-listener', '❌ Session listener error:', error);
+        }
         callback([]);
       }
     );

@@ -10,46 +10,22 @@ export interface SportItem {
   trackEventValue?: string;
 }
 
-// Popular sports that should appear first
+// Only Track & Field sports
 const popularSportsList = [
-  'Running', 'Basketball', 'Soccer', 'Tennis', 'Swimming',
-  'Weightlifting', 'CrossFit', 'Yoga', 'Golf', 'Cycling',
-  'Track & Field', 'Baseball', 'Football', 'Volleyball',
-  'Boxing', 'MMA', 'Dance', 'Gymnastics', 'Hockey', 'Skiing'
+  'Track & Field'
 ];
 
-// Additional sports not in popular list
-const additionalSports = [
-  'Marathon Running', 'Powerlifting', 'Triathlon', 
-  'Rock Climbing', 'Martial Arts', 'Pilates', 'Surfing',
-  'Skateboarding', 'Snowboarding', 'Wrestling', 'Judo',
-  'Karate', 'Taekwondo', 'Fencing', 'Archery', 'Rowing',
-  'Sailing', 'Rugby', 'Cricket', 'Badminton', 'Table Tennis',
-  'Squash', 'Handball', 'Water Polo', 'Field Hockey',
-  'Ice Hockey', 'Figure Skating', 'Speed Skating',
-  'Bobsled', 'Luge', 'Biathlon', 'Nordic Skiing',
-  'Alpine Skiing', 'Freestyle Skiing', 'Lacrosse',
-  'Ultimate Frisbee', 'Disc Golf', 'Bowling', 'Darts',
-  'Pool/Billiards', 'Chess', 'eSports', 'Parkour',
-  'Cheerleading', 'Bouldering', 'Calisthenics',
-  'Functional Fitness', 'Strongman', 'Olympic Weightlifting',
-  'Bodybuilding', 'Pole Dancing', 'Aerial Arts',
-  'Acrobatics', 'Trampolining', 'Tumbling'
-];
+// No additional sports - only Track & Field
+const additionalSports: string[] = [];
 
-// Create comprehensive sports list
+// Create comprehensive sports list - only Track & Field
 const allGeneralSports: SportItem[] = [
-  ...popularSportsList.map(sport => ({
-    id: sport.toLowerCase().replace(/\s+/g, '-'),
-    label: sport,
-    value: sport,
-    icon: sportOptions.find(s => s.label === sport)?.icon
-  })),
-  ...additionalSports.map(sport => ({
-    id: sport.toLowerCase().replace(/\s+/g, '-'),
-    label: sport,
-    value: sport
-  }))
+  {
+    id: 'track-and-field',
+    label: 'Track & Field',
+    value: 'Track & Field',
+    icon: sportOptions.find(s => s.label === 'Track & Field')?.icon || '🏃'
+  }
 ];
 
 // Create Track & Field events as individual items

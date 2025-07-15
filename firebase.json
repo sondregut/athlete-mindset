@@ -3,7 +3,8 @@
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
   },
-  "storage": {
+  "storage": [{
+    "bucket": "athlete-mindset.firebasestorage.app",
     "rules": "storage.rules"
-  }
+  }]
 }

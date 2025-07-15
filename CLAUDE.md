@@ -158,20 +158,20 @@ This is an **Athlete Mindset Tracking App** focused on mental resilience and sel
 
 ## Text-to-Speech (TTS) Integration
 
-### OpenAI TTS with Aggressive Caching
-The app uses a multi-layer caching system to reduce OpenAI TTS API costs by 90%+:
+### ElevenLabs TTS with Aggressive Caching
+The app uses ElevenLabs for high-quality text-to-speech with a multi-layer caching system:
 
 #### Cache Architecture
 1. **Memory Cache** (`tts-memory-cache.ts`) - In-app LRU cache for instant access
 2. **Local Device Cache** - FileSystem storage with 100MB limit per user
 3. **Firebase Cloud Cache** (`tts-firebase-cache.ts`) - Shared across all users
-4. **OpenAI API** (`tts-openai-service.ts`) - Only called if not cached
+4. **ElevenLabs API** - Only called if not cached
 
 #### Cache Flow
 1. Check memory cache → Return if found
 2. Check local FileSystem cache → Return if found  
 3. Check Firebase Storage → Download and cache locally if found
-4. Generate via OpenAI API → Upload to Firebase + cache locally
+4. Generate via ElevenLabs API → Upload to Firebase + cache locally
 
 #### Key Features
 - **Deterministic Cache Keys**: SHA-256 hash of text+voice+speed+model
@@ -179,10 +179,12 @@ The app uses a multi-layer caching system to reduce OpenAI TTS API costs by 90%+
 - **Cross-User Sharing**: Identical content shared via Firebase
 - **Rate Limiting**: 1-second minimum interval between API calls
 - **Analytics**: Track cache hit rates and usage patterns
-- **Voices**: Six options (nova, alloy, echo, fable, onyx, shimmer)
+- **Voices**: Multiple ElevenLabs voices (Rachel, Drew, Paul, Domi, Bella, Antoni, etc.)
 
 ### TTS Configuration
-- **Environment Variable**: `OPENAI_API_KEY` in `.env` file
+- **Environment Variables**: 
+  - `ELEVENLABS_API_KEY` in `.env` file for TTS
+  - `OPENAI_API_KEY` in `.env` file for personalization only
 - **Babel Plugin**: `react-native-dotenv` configured in `babel.config.js`
 - **App Config**: `app.config.js` loads environment variables
 

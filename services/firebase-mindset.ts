@@ -14,6 +14,7 @@ import {
 import { getFirebaseFirestore } from '@/config/firebase';
 import { MindsetCheckin } from '@/store/mindset-store';
 import { firebaseAuth } from './firebase-auth';
+import { smartLogger } from '@/utils/smart-logger';
 
 export interface FirebaseMindsetCheckin extends Omit<MindsetCheckin, 'id'> {
   id?: string;
@@ -163,7 +164,11 @@ class FirebaseMindsetService {
         callback(checkins);
       },
       (error) => {
-        console.error('Check-in listener error:', error);
+        if (error.code === 'permission-denied') {
+          smartLogger.warn('checkin-permission', '📱 Check-in listener: Using local data (no cloud sync)');
+        } else {
+          smartLogger.error('checkin-listener', '❌ Check-in listener error:', error);
+        }
         callback([]);
       }
     );

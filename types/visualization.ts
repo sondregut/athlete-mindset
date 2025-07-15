@@ -2,25 +2,25 @@ export type VisualizationCategory = 'performance-process' | 'identity-shifting' 
 
 export const CATEGORY_INFO = {
   'performance-process': {
-    title: 'Performance & Process Enhancement',
+    title: 'Performance',
     description: 'Improve execution of specific tasks, skills, or routines',
     icon: 'target',
     color: '#FF6B6B',
   },
   'identity-shifting': {
-    title: 'Internal State & Identity Shifting', 
+    title: 'Identity', 
     description: 'Build confidence, self-belief, and personal power',
     icon: 'user',
     color: '#4ECDC4',
   },
   'emotional-healing': {
-    title: 'Emotional Healing & Regulation',
+    title: 'Emotional',
     description: 'Process and manage difficult emotions or challenges',
     icon: 'heart',
     color: '#45B7D1',
   },
   'goal-achievement': {
-    title: 'Outcome & Goal Achievement',
+    title: 'Goals',
     description: 'Create clear visions of future achievements',
     icon: 'trophy',
     color: '#F7B801',
@@ -64,9 +64,9 @@ export interface VisualizationPreferences {
   autoProgress: boolean; // auto advance to next step
   // TTS Settings
   ttsEnabled: boolean;
-  ttsVoice: 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer';
+  ttsVoice: string; // ElevenLabs voice ID
   ttsSpeed: number; // 0.25 to 4.0
-  ttsModel: 'tts-1' | 'tts-1-hd';
+  ttsModel: 'eleven_multilingual_v2' | 'eleven_turbo_v2';
   autoPlayTTS: boolean;
   preloadNext: boolean; // Preload next step's audio
 }

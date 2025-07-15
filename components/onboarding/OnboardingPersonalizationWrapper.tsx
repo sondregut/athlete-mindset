@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { ChevronLeft } from 'lucide-react-native';
+import { View, StyleSheet } from 'react-native';
 import { colors } from '@/constants/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PersonalizationProfile } from '@/types/personalization-profile';
@@ -35,13 +34,26 @@ export default function OnboardingPersonalizationWrapper({
   onSkip,
   onBackToMain 
 }: OnboardingPersonalizationWrapperProps) {
-  const [currentStep, setCurrentStep] = useState(0);
+  // Calculate initial step based on what's already been collected
+  const getInitialStep = () => {
+    const userProfile = useUserStore.getState().profile;
+    
+    // If we already have sport and experience, skip those steps
+    if (userProfile.sport && userProfile.experienceLevel) {
+      return 3; // Start at goals step
+    } else if (userProfile.sport) {
+      return 2; // Start at experience step
+    }
+    return 0; // Start at intro
+  };
+  
+  const [currentStep, setCurrentStep] = useState(getInitialStep());
   const { profile: userProfile } = useUserStore();
   const [profile, setProfile] = useState<Partial<PersonalizationProfile>>({
     name: userProfile.name || '',
-    sport_activity: '',
-    experience_level: undefined,
-    specific_role: '',
+    sport_activity: userProfile.sport === 'track-and-field' ? 'Track & Field' : userProfile.sport || '',
+    experience_level: userProfile.experienceLevel || undefined,
+    specific_role: userProfile.trackFieldEvent || '',
     primary_goals: [],
     preferred_style: undefined,
     is_personalization_enabled: true,
@@ -96,6 +108,17 @@ export default function OnboardingPersonalizationWrapper({
       // Save to AsyncStorage
       await AsyncStorage.setItem('userPersonalizationProfile', JSON.stringify(completeProfile));
       console.log('✅ Personalization profile saved to AsyncStorage');
+      
+      // Also update the user store with the collected data
+      const userStore = useUserStore.getState();
+      userStore.updateProfile({
+        name: profile.name || '',
+        sport: profile.sport_activity as any,
+        experienceLevel: profile.experience_level as any,
+        weeklySessionTarget: profile.weekly_session_target,
+        primaryFocus: profile.primary_goals?.[0] as any,
+      });
+      console.log('✅ User store updated with profile data');
       
       // Get preloader instance
       const preloader = PersonalizationPreloader.getInstance();
@@ -155,34 +178,6 @@ export default function OnboardingPersonalizationWrapper({
 
   return (
     <View style={styles.container}>
-      {/* Progress Indicator with Back Button */}
-      <View style={styles.progressContainer}>
-        {/* Back Button */}
-        {(currentStep > 0 || onBackToMain) && (
-          <TouchableOpacity 
-            style={styles.backButton} 
-            onPress={handleBack}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <ChevronLeft size={20} color={colors.darkGray} />
-          </TouchableOpacity>
-        )}
-        
-        {/* Progress Dots */}
-        <View style={styles.dotsContainer}>
-          {personalizationSteps.map((_, index) => (
-            <View
-              key={index}
-              style={[
-                styles.progressDot,
-                index === currentStep && styles.activeDot,
-                index < currentStep && styles.completedDot,
-              ]}
-            />
-          ))}
-        </View>
-      </View>
-      
       {renderStep()}
     </View>
   );
@@ -191,43 +186,5 @@ export default function OnboardingPersonalizationWrapper({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  progressContainer: {
-    position: 'relative',
-    paddingTop: 20,
-    paddingHorizontal: 20,
-    paddingBottom: 10,
-    zIndex: 5,
-  },
-  backButton: {
-    position: 'absolute',
-    left: 20,
-    top: 20,
-    width: 40,
-    height: 40,
-    backgroundColor: colors.lightGray,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 10,
-  },
-  dotsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-  },
-  progressDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.mediumGray,
-  },
-  activeDot: {
-    backgroundColor: colors.primary,
-    width: 24,
-  },
-  completedDot: {
-    backgroundColor: colors.success,
   },
 });

@@ -21,6 +21,7 @@ import {
   getDownloadURL,
   FirebaseStorage 
 } from 'firebase/storage';
+import { TTSFirebaseUploadHelper } from './tts-firebase-upload-helper';
 import { FirebaseApp } from 'firebase/app';
 import * as FileSystem from 'expo-file-system';
 
@@ -63,12 +64,28 @@ export class TTSFirebaseClient {
    * Helper to convert ArrayBuffer to base64 (React Native compatible)
    */
   private arrayBufferToBase64(buffer: ArrayBuffer): string {
-    const bytes = new Uint8Array(buffer);
-    let binary = '';
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i]);
+    try {
+      const bytes = new Uint8Array(buffer);
+      let binary = '';
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      
+      // In React Native, btoa might not be available or might have issues with large strings
+      if (typeof btoa === 'function') {
+        return btoa(binary);
+      } else {
+        // Fallback: Use Buffer if available (Node.js environment)
+        if (typeof Buffer !== 'undefined') {
+          return Buffer.from(bytes).toString('base64');
+        } else {
+          throw new Error('No base64 encoding method available');
+        }
+      }
+    } catch (error: any) {
+      console.error('TTS Client: Failed to convert ArrayBuffer to base64:', error.message);
+      throw new Error(`Base64 conversion failed: ${error.message}`);
     }
-    return btoa(binary);
   }
 
   /**
@@ -189,8 +206,7 @@ export class TTSFirebaseClient {
 
   /**
    * Upload audio to Firebase Storage and save metadata
-   * DISABLED: Firebase Storage uploads are not compatible with React Native/Expo Go
-   * due to blob creation restrictions. Using local caching only.
+   * Uses base64 encoding for React Native/Expo Go compatibility
    */
   async uploadToFirebase(
     cacheKey: string,
@@ -203,9 +219,81 @@ export class TTSFirebaseClient {
       fileSize: number;
     }
   ): Promise<string> {
-    // Firebase Storage uploads disabled for React Native/Expo Go compatibility
-    // Return a dummy URL to satisfy the interface
-    return `local://tts-cache/${cacheKey}.mp3`;
+    try {
+      await this.ensureAuth();
+      
+      // Convert to base64 if needed
+      const base64Data = this.ensureBase64(audioData);
+      
+      // Upload to Firebase Storage using React Native compatible method
+      const storageRef = ref(this.storage, `tts-cache/${cacheKey}.mp3`);
+      
+      console.log(`TTS Client: Uploading ${cacheKey} to Firebase Storage (${base64Data.length} chars)`);
+      
+      // Use the new upload helper that handles all React Native compatibility issues
+      let downloadUrl: string;
+      try {
+        downloadUrl = await TTSFirebaseUploadHelper.uploadTTSAudio(
+          storageRef,
+          base64Data,
+          metadata
+        );
+        console.log(`✅ TTS Client: Successfully uploaded ${cacheKey}`);
+      } catch (uploadError: any) {
+        console.error(`TTS Client: Upload failed for ${cacheKey}:`, uploadError.message);
+        throw uploadError;
+      }
+      
+      // Save metadata to Firestore
+      await this.saveMetadataToFirestore(cacheKey, {
+        ...metadata,
+        storageUrl: downloadUrl,
+        hash: cacheKey
+      });
+      
+      console.log(`✅ TTS Client: Successfully uploaded ${cacheKey}`);
+      return downloadUrl;
+      
+    } catch (error: any) {
+      console.error(`TTS Client: Upload failed for ${cacheKey}:`, error.message);
+      
+      // Return a local URL as fallback
+      return `local://tts-cache/${cacheKey}.mp3`;
+    }
+  }
+
+  /**
+   * Save TTS metadata to Firestore
+   */
+  private async saveMetadataToFirestore(cacheKey: string, metadata: {
+    text: string;
+    voice: string;
+    model: string;
+    speed: number;
+    storageUrl: string;
+    fileSize: number;
+    hash: string;
+  }): Promise<void> {
+    try {
+      const docRef = doc(this.db, 'tts-cache', cacheKey);
+      await setDoc(docRef, {
+        text: metadata.text,
+        voice: metadata.voice,
+        model: metadata.model,
+        speed: metadata.speed,
+        storageUrl: metadata.storageUrl,
+        fileSize: metadata.fileSize,
+        hash: metadata.hash,
+        createdAt: serverTimestamp(),
+        accessCount: 0,
+        lastAccessed: serverTimestamp()
+      });
+      
+      console.log(`✅ TTS Client: Metadata saved for ${cacheKey}`);
+    } catch (error: any) {
+      console.error(`TTS Client: Failed to save metadata for ${cacheKey}:`, error.message);
+      throw error;
+    }
   }
 
   /**

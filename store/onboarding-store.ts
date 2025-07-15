@@ -103,10 +103,17 @@ export const useOnboardingStore = create<OnboardingState>()(
 export const onboardingSteps = [
   {
     id: 'welcome',
-    title: 'Welcome to Your\nMental Training App',
+    title: 'Welcome to Athlete Mindset',
     subtitle: 'Build mental excellence for peak performance',
     description: 'Track your mental game with session intentions and reflections, plus guided AI-powered visualizations. Everything you need to train your mind like a pro.',
     icon: '🧠',
+  },
+  {
+    id: 'profile',
+    title: 'Tell Us About You',
+    subtitle: 'Personalize your experience',
+    description: 'Share a bit about yourself so we can tailor your mental training journey.',
+    icon: '👤',
   },
   {
     id: 'mental-tracking',

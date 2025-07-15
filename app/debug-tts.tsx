@@ -177,8 +177,8 @@ export default function DebugTTSScreen() {
     // Test 5: Simple TTS request
     try {
       const uri = await ttsService.synthesizeSpeech('Test audio generation', {
-        voice: 'nova',
-        model: 'tts-1',
+        voice: '21m00Tcm4TlvDq8ikWAM',
+        model: 'eleven_multilingual_v2',
         speed: 1.0,
       });
       results.push({

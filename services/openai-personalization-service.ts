@@ -8,7 +8,7 @@ import {
 import { PersonalizationCache } from './personalization-cache';
 import { PersonalizationPrompts } from './personalization-prompts';
 import { PersonalizationProfile } from '@/types/personalization-profile';
-import { getOpenAIApiKey } from '@/config/api-config';
+import { getOpenAIApiKey } from '@/config/openai-config';
 
 interface OpenAIMessage {
   role: 'system' | 'user' | 'assistant';

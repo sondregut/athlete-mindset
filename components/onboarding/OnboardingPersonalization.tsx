@@ -96,7 +96,7 @@ export default function OnboardingPersonalization({ step, onNext, onBack }: Onbo
       const audioUrl = await ttsService.synthesizeSpeech(sampleText, {
         voice: voiceId as any, // Cast to satisfy type checking
         speed: 1.0,
-        model: 'tts-1'
+        model: 'eleven_multilingual_v2'
       });
       
       if (audioUrl) {

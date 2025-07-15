@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
-import { useLocalSearchParams, router, Stack } from 'expo-router';
+import { useLocalSearchParams, router, Stack, useFocusEffect } from 'expo-router';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { getVisualizationById } from '@/constants/visualizations';
 import { useVisualizationStore } from '@/store/visualization-store';
@@ -10,6 +10,7 @@ import VoiceSelectionModal from '@/components/VoiceSelectionModal';
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
 import { TTSVoice } from '@/services/tts-firebase-cache';
+import { ELEVENLABS_VOICES } from '@/config/elevenlabs-config';
 
 export default function VisualizationDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -21,6 +22,12 @@ export default function VisualizationDetailScreen() {
   const visualization = getVisualizationById(id);
   const stats = getVisualizationStats(id);
   
+  // Reset loading state when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      setIsStarting(false);
+    }, [])
+  );
 
   if (!visualization) {
     return (
@@ -60,15 +67,15 @@ export default function VisualizationDetailScreen() {
   };
 
   const getVoiceLabel = (voice: TTSVoice) => {
-    const voiceLabels = {
-      'nova': 'Nova',
-      'alloy': 'Alloy', 
-      'echo': 'Echo',
-      'fable': 'Fable',
-      'onyx': 'Onyx',
-      'shimmer': 'Shimmer'
+    const voiceLabels: Record<string, string> = {
+      [ELEVENLABS_VOICES.rachel]: 'Rachel',
+      [ELEVENLABS_VOICES.drew]: 'Drew', 
+      [ELEVENLABS_VOICES.paul]: 'Paul',
+      [ELEVENLABS_VOICES.domi]: 'Domi',
+      [ELEVENLABS_VOICES.bella]: 'Bella',
+      [ELEVENLABS_VOICES.antoni]: 'Antoni'
     };
-    return voiceLabels[voice] || 'Nova';
+    return voiceLabels[voice] || 'Rachel';
   };
 
   const getCategoryIcon = () => {
@@ -89,7 +96,7 @@ export default function VisualizationDetailScreen() {
     },
     scrollContent: {
       padding: 20,
-      paddingBottom: 100,
+      paddingBottom: 20,
     },
     header: {
       alignItems: 'center',
@@ -243,6 +250,14 @@ export default function VisualizationDetailScreen() {
       color: colors.primary,
       fontWeight: '500',
     },
+    stickyButtonContainer: {
+      backgroundColor: colors.background,
+      paddingTop: 12,
+      paddingBottom: 20,
+      paddingHorizontal: 20,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
     startButton: {
       backgroundColor: colors.primary,
       paddingVertical: 18,
@@ -250,7 +265,6 @@ export default function VisualizationDetailScreen() {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      marginTop: 12,
     },
     startButtonText: {
       fontSize: 18,
@@ -272,7 +286,7 @@ export default function VisualizationDetailScreen() {
           title: visualization?.title || 'Visualization',
           headerLeft: () => (
             <TouchableOpacity 
-              onPress={() => router.back()}
+              onPress={() => router.push('/(tabs)/mental-training')}
               style={{ padding: 8 }}
             >
               <ChevronLeft size={24} color={colors.text} />
@@ -379,7 +393,10 @@ export default function VisualizationDetailScreen() {
             </Text>
           )}
         </Card>
+      </ScrollView>
 
+      {/* Sticky Start Button */}
+      <View style={styles.stickyButtonContainer}>
         <TouchableOpacity 
           style={[styles.startButton, isStarting && { opacity: 0.7 }]}
           onPress={handleStartVisualization}
@@ -397,7 +414,7 @@ export default function VisualizationDetailScreen() {
             </>
           )}
         </TouchableOpacity>
-      </ScrollView>
+      </View>
 
       {/* Voice Selection Modal */}
       <VoiceSelectionModal

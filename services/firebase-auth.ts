@@ -138,8 +138,16 @@ class FirebaseAuthService {
           const result = await linkWithCredential(auth.currentUser, credential);
           return this.mapFirebaseUser(result.user);
         } catch (linkError: any) {
-          // If linking fails (e.g., Google account already exists), sign in normally
-          if (linkError.code === 'auth/credential-already-in-use') {
+          console.log('Google link failed:', linkError.code);
+          
+          // If linking fails due to email already in use, try direct sign in
+          if (linkError.code === 'auth/email-already-in-use' || 
+              linkError.code === 'auth/credential-already-in-use' ||
+              linkError.code === 'auth/provider-already-linked') {
+            console.log('Email already in use, signing in directly...');
+            // Sign out anonymous user first
+            await signOut(auth);
+            // Then sign in with Google credential
             const result = await signInWithCredential(auth, credential);
             return this.mapFirebaseUser(result.user);
           }
@@ -175,8 +183,25 @@ class FirebaseAuthService {
       // Check if we have an anonymous user to link
       if (auth.currentUser && auth.currentUser.isAnonymous) {
         console.log('Linking Apple account to anonymous user...');
-        const result = await linkWithCredential(auth.currentUser, credential);
-        return this.mapFirebaseUser(result.user);
+        try {
+          const result = await linkWithCredential(auth.currentUser, credential);
+          return this.mapFirebaseUser(result.user);
+        } catch (linkError: any) {
+          console.log('Link failed:', linkError.code);
+          
+          // If linking fails due to email already in use, try direct sign in
+          if (linkError.code === 'auth/email-already-in-use' || 
+              linkError.code === 'auth/credential-already-in-use' ||
+              linkError.code === 'auth/provider-already-linked') {
+            console.log('Email already in use, signing in directly...');
+            // Sign out anonymous user first
+            await signOut(auth);
+            // Then sign in with Apple credential
+            const result = await signInWithCredential(auth, credential);
+            return this.mapFirebaseUser(result.user);
+          }
+          throw linkError;
+        }
       } else {
         console.log('Signing in with Apple credential...');
         const result = await signInWithCredential(auth, credential);
@@ -190,6 +215,8 @@ class FirebaseAuthService {
         throw new Error('This Apple ID is already linked to another account.');
       } else if (error.code === 'auth/invalid-credential') {
         throw new Error('Invalid Apple credentials. Please try signing in again.');
+      } else if (error.code === 'auth/email-already-in-use') {
+        throw new Error('This email is already associated with another account. Please sign in using the original method.');
       }
       throw new Error(this.getAuthErrorMessage(error.code));
     }

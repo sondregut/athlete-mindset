@@ -27,8 +27,8 @@ export default function TestTTSScreen() {
       // Generate speech
       setStatus('Generating speech...');
       const audioUri = await ttsService.synthesizeSpeech(text, {
-        voice: 'nova',
-        model: 'tts-1',
+        voice: '21m00Tcm4TlvDq8ikWAM',
+        model: 'eleven_multilingual_v2',
         speed: 1.0
       });
 

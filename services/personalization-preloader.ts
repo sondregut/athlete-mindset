@@ -1,6 +1,6 @@
 import { getAllVisualizations } from '@/constants/visualizations';
 import { PersonalizationProfile } from '@/types/personalization-profile';
-import { OpenAIPersonalizationService } from './openai-personalization-service';
+import { ExcelPersonalizationService } from './excel-personalization-service';
 import { TTSFirebaseCache } from './tts-firebase-cache';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
@@ -29,13 +29,13 @@ interface PreloadedContent {
 export class PersonalizationPreloader {
   private static instance: PersonalizationPreloader;
   private static isPreloadingGlobally = false; // Global flag to prevent duplicate preloading
-  private personalizationService: OpenAIPersonalizationService;
+  private personalizationService: ExcelPersonalizationService;
   private ttsService: TTSFirebaseCache;
   private isPreloading = false;
   private onProgressCallback?: (progress: number, message: string) => void;
 
   private constructor() {
-    this.personalizationService = OpenAIPersonalizationService.getInstance();
+    this.personalizationService = ExcelPersonalizationService.getInstance();
     this.ttsService = TTSFirebaseCache.getInstance();
   }
 
@@ -243,8 +243,8 @@ export class PersonalizationPreloader {
             try {
               // This will cache the audio automatically
               await this.ttsService.synthesizeSpeech(step.content, {
-                voice: 'nova', // Default voice, user can change later
-                model: 'tts-1',
+                voice: '21m00Tcm4TlvDq8ikWAM', // Default Rachel voice, user can change later
+                model: 'eleven_multilingual_v2',
                 speed: 1.0,
               });
             } catch (audioError) {

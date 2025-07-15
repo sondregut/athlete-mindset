@@ -22,247 +22,29 @@ interface SportMapping {
 
 export class SportContextMapper {
   private static sportCategories: { [sport: string]: SportCategory } = {
-    // Racing sports
-    'running': 'racing',
+    // Only Track & Field sports
     'track & field': 'racing',
-    'marathon running': 'racing',
-    'cycling': 'racing',
-    'swimming': 'racing',
-    'triathlon': 'racing',
-    'rowing': 'racing',
-    'speed skating': 'racing',
-    
-    // Team field sports
-    'soccer': 'team-field',
-    'football': 'team-field',
-    'rugby': 'team-field',
-    'field hockey': 'team-field',
-    'lacrosse': 'team-field',
-    'ultimate frisbee': 'team-field',
-    'cricket': 'team-field',
-    
-    // Team court sports
-    'basketball': 'team-court',
-    'volleyball': 'team-court',
-    'handball': 'team-court',
-    
-    // Individual performance sports
-    'gymnastics': 'individual-performance',
-    'dance': 'individual-performance',
-    'figure skating': 'individual-performance',
-    'diving': 'individual-performance',
-    'cheerleading': 'individual-performance',
-    'pole dancing': 'individual-performance',
-    'aerial arts': 'individual-performance',
-    'acrobatics': 'individual-performance',
-    'trampolining': 'individual-performance',
-    
-    // Combat sports
-    'boxing': 'combat',
-    'mma': 'combat',
-    'wrestling': 'combat',
-    'judo': 'combat',
-    'karate': 'combat',
-    'taekwondo': 'combat',
-    'martial arts': 'combat',
-    'fencing': 'combat',
-    
-    // Target sports
-    'golf': 'target',
-    'archery': 'target',
-    'darts': 'target',
-    'bowling': 'target',
-    'disc golf': 'target',
-    'pool/billiards': 'target',
-    
-    // Strength sports
-    'weightlifting': 'strength',
-    'powerlifting': 'strength',
-    'crossfit': 'strength',
-    'strongman': 'strength',
-    'olympic weightlifting': 'strength',
-    'bodybuilding': 'strength',
-    'calisthenics': 'strength',
-    'functional fitness': 'strength',
-    
-    // Mindfulness sports
-    'yoga': 'mindfulness',
-    'pilates': 'mindfulness',
-    
-    // Water sports
-    'water polo': 'water',
-    'surfing': 'water',
-    'sailing': 'water',
-    
-    // Winter sports
-    'skiing': 'winter',
-    'snowboarding': 'winter',
-    'ice hockey': 'winter',
-    'bobsled': 'winter',
-    'luge': 'winter',
-    'biathlon': 'winter',
-    'nordic skiing': 'winter',
-    'alpine skiing': 'winter',
-    'freestyle skiing': 'winter',
-    
-    // Racquet sports
-    'tennis': 'racquet',
-    'badminton': 'racquet',
-    'table tennis': 'racquet',
-    'squash': 'racquet',
-    
-    // Other
-    'rock climbing': 'other',
-    'bouldering': 'other',
-    'skateboarding': 'other',
-    'parkour': 'other',
-    'chess': 'other',
-    'esports': 'other',
-    'tumbling': 'other',
+    'running': 'racing',
+    'sprinting': 'racing',
+    'pole vault': 'racing',
+    'high jump': 'racing',
+    'long jump': 'racing',
+    'triple jump': 'racing',
+    'throws': 'racing',
   };
 
   private static categoryMappings: SportMapping[] = [
     {
       category: 'racing',
-      sports: ['running', 'cycling', 'swimming'],
+      sports: ['running', 'sprinting', 'track & field', 'pole vault', 'high jump', 'long jump', 'triple jump', 'throws'],
       replacements: {
         'competition venue': 'track',
-        'your performance': 'your race',
-        'executing': 'running',
-        'crossing the finish line': 'crossing the finish line',
-        'completing your performance': 'finishing your race',
-        'the environment': 'the track',
-        'perform': 'race',
-      }
-    },
-    {
-      category: 'team-field',
-      sports: ['soccer', 'football', 'rugby'],
-      replacements: {
-        'competition venue': 'field',
-        'your performance': 'your game',
-        'executing': 'playing',
-        'crossing the finish line': 'hearing the final whistle',
-        'completing your performance': 'finishing the game',
-        'the environment': 'the field',
-        'perform': 'play',
-      }
-    },
-    {
-      category: 'team-court',
-      sports: ['basketball', 'volleyball'],
-      replacements: {
-        'competition venue': 'court',
-        'your performance': 'your game',
-        'executing': 'playing',
-        'crossing the finish line': 'hearing the final buzzer',
-        'completing your performance': 'finishing the game',
-        'the environment': 'the court',
-        'perform': 'play',
-      }
-    },
-    {
-      category: 'individual-performance',
-      sports: ['gymnastics', 'dance', 'figure skating'],
-      replacements: {
-        'competition venue': 'performance area',
-        'your performance': 'your routine',
-        'executing': 'performing',
-        'crossing the finish line': 'completing your routine',
-        'completing your performance': 'finishing your routine',
-        'the environment': 'the performance space',
-        'perform': 'execute your routine',
-      }
-    },
-    {
-      category: 'combat',
-      sports: ['boxing', 'mma', 'martial arts'],
-      replacements: {
-        'competition venue': 'ring',
-        'your performance': 'your fight',
-        'executing': 'fighting',
-        'crossing the finish line': 'hearing the final bell',
-        'completing your performance': 'finishing the match',
-        'the environment': 'the ring',
-        'perform': 'fight',
-      }
-    },
-    {
-      category: 'target',
-      sports: ['golf', 'archery'],
-      replacements: {
-        'competition venue': 'course',
-        'your performance': 'your round',
-        'executing': 'playing',
-        'crossing the finish line': 'sinking the final putt',
-        'completing your performance': 'finishing your round',
-        'the environment': 'the course',
-        'perform': 'play',
-      }
-    },
-    {
-      category: 'strength',
-      sports: ['weightlifting', 'powerlifting'],
-      replacements: {
-        'competition venue': 'gym',
-        'your performance': 'your lift',
-        'executing': 'lifting',
-        'crossing the finish line': 'completing your final rep',
-        'completing your performance': 'finishing your set',
-        'the environment': 'the gym',
-        'perform': 'lift',
-      }
-    },
-    {
-      category: 'mindfulness',
-      sports: ['yoga', 'pilates'],
-      replacements: {
-        'competition venue': 'studio',
-        'your performance': 'your practice',
-        'executing': 'practicing',
-        'crossing the finish line': 'completing your final pose',
-        'completing your performance': 'finishing your session',
-        'the environment': 'the studio',
-        'perform': 'practice',
-      }
-    },
-    {
-      category: 'water',
-      sports: ['water polo', 'surfing'],
-      replacements: {
-        'competition venue': 'pool',
-        'your performance': 'your match',
-        'executing': 'playing',
-        'crossing the finish line': 'hearing the final whistle',
-        'completing your performance': 'finishing the match',
-        'the environment': 'the pool',
-        'perform': 'play',
-      }
-    },
-    {
-      category: 'winter',
-      sports: ['skiing', 'ice hockey'],
-      replacements: {
-        'competition venue': 'slopes',
-        'your performance': 'your run',
-        'executing': 'skiing',
-        'crossing the finish line': 'crossing the finish line',
-        'completing your performance': 'completing your run',
-        'the environment': 'the mountain',
-        'perform': 'ski',
-      }
-    },
-    {
-      category: 'racquet',
-      sports: ['tennis', 'badminton'],
-      replacements: {
-        'competition venue': 'court',
-        'your performance': 'your match',
-        'executing': 'playing',
-        'crossing the finish line': 'winning match point',
-        'completing your performance': 'finishing your match',
-        'the environment': 'the court',
-        'perform': 'play',
+        'your performance': 'your event',
+        'executing': 'competing',
+        'crossing the finish line': 'completing your event',
+        'completing your performance': 'finishing your event',
+        'the environment': 'the track and field',
+        'perform': 'compete',
       }
     },
   ];
@@ -294,8 +76,8 @@ export class SportContextMapper {
       };
     }
     
-    // Distance running
-    if (eventLower.includes('distance') || eventLower.includes('800m') || eventLower.includes('1500m') || eventLower.includes('5000m')) {
+    // All distance running
+    if (eventLower.includes('running') || eventLower.includes('distance')) {
       return {
         'competition venue': 'track',
         'your performance': 'your race',
@@ -333,8 +115,8 @@ export class SportContextMapper {
       };
     }
     
-    // Throws
-    if (eventLower.includes('throw') || eventLower.includes('shot') || eventLower.includes('discus') || eventLower.includes('javelin')) {
+    // All Throws
+    if (eventLower.includes('throw') || eventLower === 'throws-all') {
       return {
         'competition venue': 'throwing area',
         'your performance': 'your throw',

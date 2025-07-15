@@ -35,6 +35,26 @@ service firebase.storage {
         request.resource.size < 50 * 1024 * 1024; // Max 50MB for exports
     }
     
+    // TTS Cache files - shared audio cache for all users
+    match /tts-cache/{cacheId} {
+      // Anyone can read cached audio files
+      allow read: if true;
+      
+      // Allow authenticated users to upload new cache files
+      // Limit file size to 10MB (TTS files should be much smaller)
+      allow create: if request.auth != null && 
+        request.resource.size < 10 * 1024 * 1024 &&
+        (request.resource.contentType.matches('audio/.*') || 
+         request.resource.contentType == 'application/octet-stream');
+      
+      // Allow updates from authenticated users (for client SDK compatibility)
+      allow update: if request.auth != null && 
+        request.resource.size < 10 * 1024 * 1024;
+      
+      // Only allow deletion by admin (for cleanup)
+      allow delete: if false;
+    }
+    
     // Deny all other access by default
     match /{allPaths=**} {
       allow read, write: if false;

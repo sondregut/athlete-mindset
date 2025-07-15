@@ -84,9 +84,9 @@ export default function OnboardingVisualizationDemo({ step, onNext, onBack }: On
       
       // Generate and play audio
       const audioUrl = await ttsService.synthesizeSpeech(demoText, {
-        voice: 'nova', // Use a pleasant default voice
+        voice: '21m00Tcm4TlvDq8ikWAM', // Rachel voice as default
         speed: 1.0,
-        model: 'tts-1'
+        model: 'eleven_multilingual_v2'
       });
       
       if (audioUrl) {

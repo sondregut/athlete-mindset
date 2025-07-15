@@ -1,8 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { usePersonalizationStore } from '@/store/personalization-store';
 import { usePersonalizationProfile } from './usePersonalizationProfile';
-import { OpenAIPersonalizationService } from '@/services/openai-personalization-service';
+import { ExcelPersonalizationService } from '@/services/excel-personalization-service';
+// Fallback to OpenAI if needed
+// import { OpenAIPersonalizationService } from '@/services/openai-personalization-service';
 import { PersonalizationPreloader } from '@/services/personalization-preloader';
+import { TTSFirebaseCache } from '@/services/tts-firebase-cache';
 import { Visualization, VisualizationStep } from '@/types/visualization';
 import { PersonalizationRequest, ContextualFactors } from '@/types/personalization';
 import { ExperienceLevel } from '@/types/personalization-profile';
@@ -18,6 +21,8 @@ interface UsePersonalizedVisualizationResult {
   error: string | null;
   regenerate: () => Promise<void>;
   stats: any;
+  preloadTTS: (voices?: string[]) => Promise<void>;
+  isPreloadingTTS: boolean;
 }
 
 export function usePersonalizedVisualization(
@@ -30,6 +35,7 @@ export function usePersonalizedVisualization(
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<any>(null);
+  const [isPreloadingTTS, setIsPreloadingTTS] = useState(false);
   
   // Add refs to prevent duplicate generations
   const isGeneratingRef = useRef(false);
@@ -118,7 +124,7 @@ export function usePersonalizedVisualization(
       
       // If no preloaded content, generate on demand
       console.log('[usePersonalizedVisualization] No preloaded content found - generating on demand for sport:', personalizationProfile.sport_activity);
-      const service = OpenAIPersonalizationService.getInstance();
+      const service = ExcelPersonalizationService.getInstance();
       
       // Build user context from personalization profile
       const userContext = {
@@ -214,11 +220,71 @@ export function usePersonalizedVisualization(
     await generatePersonalization();
   }, [generatePersonalization]);
 
+  const preloadTTS = useCallback(async (voices: string[] = ['nova']) => {
+    console.log('[usePersonalizedVisualization] preloadTTS called', {
+      hasPersonalizedSteps: !!personalizedSteps,
+      hasProfile: !!personalizationProfile,
+      voices
+    });
+    
+    if (!personalizedSteps || !personalizationProfile) {
+      console.log('[usePersonalizedVisualization] No personalized steps or profile - cannot preload TTS');
+      return;
+    }
+    
+    setIsPreloadingTTS(true);
+    
+    try {
+      const ttsCache = TTSFirebaseCache.getInstance();
+      
+      // Convert personalized steps to format expected by TTS cache
+      const stepsForTTS = personalizedSteps.map(step => ({
+        id: step.id,
+        content: step.content
+      }));
+      
+      const personalizationContext = {
+        sport: personalizationProfile.sport_activity,
+        experienceLevel: personalizationProfile.experience_level,
+        primaryFocus: personalizationProfile.primary_goals?.[0]
+      };
+      
+      console.log('[usePersonalizedVisualization] Starting TTS preload for:', personalizationContext);
+      
+      // Preload TTS for all requested voices
+      const preloadedAudio = await ttsCache.preloadPersonalizedVisualization(
+        stepsForTTS,
+        personalizationContext,
+        voices as any[], // Type assertion since we know these are valid voices
+        {
+          model: 'eleven_multilingual_v2',
+          speed: 1.0
+        },
+        (progress) => {
+          console.log(`[usePersonalizedVisualization] TTS preload progress: ${progress}%`);
+        }
+      );
+      
+      console.log('[usePersonalizedVisualization] TTS preload complete', {
+        voiceCount: preloadedAudio.size,
+        stepsPerVoice: preloadedAudio.get(voices[0])?.size || 0
+      });
+      
+    } catch (error: any) {
+      console.error('[usePersonalizedVisualization] TTS preload error:', error);
+      setError(error.message || 'Failed to preload TTS audio');
+    } finally {
+      setIsPreloadingTTS(false);
+    }
+  }, [personalizedSteps, personalizationProfile]);
+
   return {
     personalizedSteps,
     isGenerating: isGenerating || isProfileLoading, // Consider profile loading as part of generation
     error,
     regenerate,
     stats,
+    preloadTTS,
+    isPreloadingTTS,
   };
 }

@@ -6,7 +6,7 @@ try {
 
 module.exports = {
   expo: {
-    name: "Athlete Mindset Toolkit",
+    name: "Athlete Mindset",
     slug: "athlete-mindset-rork",
     version: "1.0.0",
     orientation: "portrait",
@@ -70,7 +70,8 @@ module.exports = {
       typedRoutes: true
     },
     extra: {
-      openaiApiKey: process.env.OPENAI_API_KEY || '',
+      elevenLabsApiKey: process.env.ELEVENLABS_API_KEY || '',
+      openaiApiKey: process.env.OPENAI_API_KEY || '', // For personalization only
       eas: {
         projectId: "4657ce48-4822-4f18-bf07-8ab679a24a7a"
       }
