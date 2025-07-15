@@ -31,7 +31,10 @@
     },
     "production": {
       "ios": {
-        "resourceClass": "m-medium"
+        "resourceClass": "m-medium",
+        "cache": {
+          "key": "production-ios-pods-v2"
+        }
       },
       "android": {
         "buildType": "app-bundle"
