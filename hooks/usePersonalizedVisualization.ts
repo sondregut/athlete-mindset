@@ -2,8 +2,6 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { usePersonalizationStore } from '@/store/personalization-store';
 import { usePersonalizationProfile } from './usePersonalizationProfile';
 import { ExcelPersonalizationService } from '@/services/excel-personalization-service';
-// Fallback to OpenAI if needed
-// import { OpenAIPersonalizationService } from '@/services/openai-personalization-service';
 import { PersonalizationPreloader } from '@/services/personalization-preloader';
 import { TTSFirebaseCache } from '@/services/tts-firebase-cache';
 import { Visualization, VisualizationStep } from '@/types/visualization';

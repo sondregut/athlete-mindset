@@ -168,7 +168,13 @@ export default function VisualizationPlayerScreen() {
     }
     
     // Stop audio using AudioManager
-    await audioManager.stop();
+    try {
+      await audioManager.stop();
+      smartLogger.log('audio-cleanup-success', 'Audio cleanup completed successfully');
+    } catch (error) {
+      smartLogger.log('audio-cleanup-error', `Audio cleanup failed: ${error}`);
+      throw error; // Re-throw so callers can handle it
+    }
   }, [audioManager]);
   
   // 5. Prevent screen from sleeping
@@ -181,7 +187,11 @@ export default function VisualizationPlayerScreen() {
       
       if (nextAppState === 'background' || nextAppState === 'inactive') {
         smartLogger.log('app-background', 'App went to background/inactive, stopping audio');
-        cleanupAudio();
+        cleanupAudio().catch(error => {
+          console.error('Error during app background cleanup:', error);
+          // Force stop as fallback
+          audioManager.forceStop();
+        });
       }
     };
     
@@ -190,7 +200,7 @@ export default function VisualizationPlayerScreen() {
     return () => {
       subscription.remove();
     };
-  }, [cleanupAudio]);
+  }, [cleanupAudio, audioManager]);
   
   // 5.6. Handle screen focus/blur events
   useFocusEffect(
@@ -200,7 +210,10 @@ export default function VisualizationPlayerScreen() {
       // Cleanup function runs when screen loses focus
       return () => {
         smartLogger.log('screen-blur', 'Visualization player screen lost focus, cleaning up audio');
-        cleanupAudio();
+        // Ensure audio stops immediately when leaving the screen
+        cleanupAudio().catch(error => {
+          console.error('Error during screen blur cleanup:', error);
+        });
       };
     }, [cleanupAudio])
   );
@@ -229,8 +242,10 @@ export default function VisualizationPlayerScreen() {
         loadAudioTimeoutRef.current = null;
       }
       
-      // Stop audio using AudioManager
-      audioManager.stop().catch(() => {});
+      // Immediately stop audio using AudioManager
+      audioManager.stop().catch(error => {
+        console.error('Error stopping audio during unmount:', error);
+      });
     };
   }, [audioManager]);
   
@@ -731,6 +746,17 @@ export default function VisualizationPlayerScreen() {
     };
   }, [currentStep, currentSession, visualization, preferences.ttsEnabled, disableAudio, isPreparingVisualization, isGeneratingPersonalization, userState]);
   
+  // 16.5. Stop audio when session is completed or abandoned
+  useEffect(() => {
+    // Stop audio immediately if session is no longer active
+    if (!currentSession && audioManager.isCurrentlyPlaying()) {
+      smartLogger.log('session-cleanup', 'No active session, stopping audio');
+      audioManager.stop().catch(error => {
+        console.error('Error stopping audio for inactive session:', error);
+      });
+    }
+  }, [currentSession, audioManager]);
+  
   // 17. Trigger initial preload when ready
   useEffect(() => {
     smartLogger.log('preload-trigger', '[Preload Trigger] Checking conditions:', {
@@ -848,7 +874,20 @@ export default function VisualizationPlayerScreen() {
             isNavigating.current = true;
             
             // Immediate cleanup before navigation
-            await cleanupAudio();
+            try {
+              await cleanupAudio();
+            } catch (error) {
+              console.error('Error during cleanup:', error);
+            }
+            
+            // Failsafe: Force stop audio using AudioManager directly
+            try {
+              await audioManager.stop();
+            } catch (error) {
+              console.error('Error in failsafe audio stop:', error);
+              // Emergency force stop
+              audioManager.forceStop();
+            }
             
             // Abandon session
             try {
@@ -894,7 +933,20 @@ export default function VisualizationPlayerScreen() {
     isNavigating.current = true;
     
     // Immediate cleanup before navigation
-    await cleanupAudio();
+    try {
+      await cleanupAudio();
+    } catch (error) {
+      console.error('Error during cleanup:', error);
+    }
+    
+    // Failsafe: Force stop audio using AudioManager directly
+    try {
+      await audioManager.stop();
+    } catch (error) {
+      console.error('Error in failsafe audio stop:', error);
+      // Emergency force stop
+      audioManager.forceStop();
+    }
     
     // Haptic feedback
     if (Platform.OS !== 'web') {

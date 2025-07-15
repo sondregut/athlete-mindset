@@ -163,26 +163,30 @@ export class AudioManager {
   }
 
   private async stopAndUnloadCurrentSound(): Promise<void> {
-    if (!this.currentSound) return;
+    if (!this.currentSound) {
+      smartLogger.log('audio-manager-stop', 'No current sound to stop');
+      return;
+    }
+
+    const soundToStop = this.currentSound;
+    this.currentSound = null; // Clear reference immediately to prevent race conditions
 
     try {
       smartLogger.log('audio-manager-stop', 'Stopping and unloading current sound');
       
-      const status = await this.currentSound.getStatusAsync();
+      const status = await soundToStop.getStatusAsync();
       
       if (status.isLoaded) {
         if (status.isPlaying) {
-          await this.currentSound.stopAsync();
+          await soundToStop.stopAsync();
         }
-        await this.currentSound.unloadAsync();
+        await soundToStop.unloadAsync();
       }
       
       smartLogger.log('audio-manager-stop-success', 'Current sound stopped and unloaded');
     } catch (error) {
       smartLogger.log('audio-manager-stop-error', `Error stopping current sound: ${error}`);
       // Continue anyway - don't let this block new audio
-    } finally {
-      this.currentSound = null;
     }
   }
 
@@ -228,13 +232,26 @@ export class AudioManager {
 
   public async stop(): Promise<void> {
     smartLogger.log('audio-manager-stop-public', 'Public stop method called');
-    await this.stopAndUnloadCurrentSound();
-    this.updateStatus({ 
-      isLoading: false, 
-      isPlaying: false, 
-      didJustFinish: false, 
-      error: undefined 
-    });
+    
+    try {
+      await this.stopAndUnloadCurrentSound();
+      this.updateStatus({ 
+        isLoading: false, 
+        isPlaying: false, 
+        didJustFinish: false, 
+        error: undefined 
+      });
+      smartLogger.log('audio-manager-stop-success', 'Audio successfully stopped');
+    } catch (error) {
+      smartLogger.log('audio-manager-stop-error', `Error stopping audio: ${error}`);
+      // Still update status even if stop failed
+      this.updateStatus({ 
+        isLoading: false, 
+        isPlaying: false, 
+        didJustFinish: false, 
+        error: 'Stop failed' 
+      });
+    }
   }
 
   public getCurrentStatus(): AudioStatus {
@@ -252,7 +269,35 @@ export class AudioManager {
   // Cleanup method for app shutdown
   public async cleanup(): Promise<void> {
     smartLogger.log('audio-manager-cleanup', 'Cleaning up AudioManager');
-    await this.stopAndUnloadCurrentSound();
-    this.statusCallbacks.clear();
+    
+    try {
+      await this.stopAndUnloadCurrentSound();
+      this.statusCallbacks.clear();
+      smartLogger.log('audio-manager-cleanup-success', 'AudioManager cleaned up successfully');
+    } catch (error) {
+      smartLogger.log('audio-manager-cleanup-error', `Error during cleanup: ${error}`);
+      // Force clear callbacks even if stop failed
+      this.statusCallbacks.clear();
+    }
+  }
+  
+  // Force stop method for emergency situations
+  public forceStop(): void {
+    smartLogger.log('audio-manager-force-stop', 'Force stopping audio');
+    
+    // Immediately set status to stopped
+    this.updateStatus({ 
+      isLoading: false, 
+      isPlaying: false, 
+      didJustFinish: false, 
+      error: undefined 
+    });
+    
+    // Try to stop audio without waiting
+    if (this.currentSound) {
+      this.currentSound.stopAsync().catch(() => {});
+      this.currentSound.unloadAsync().catch(() => {});
+      this.currentSound = null;
+    }
   }
 }

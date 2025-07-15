@@ -237,7 +237,7 @@ export default function VisualizationSettings({ visible, onClose, onVoiceChange 
                       onPress={() => setShowVoiceSelector(!showVoiceSelector)}
                     >
                       <Text style={styles.selectorText}>
-                        {voiceOptions.find(v => v.value === (preferences.ttsVoice ?? 'nova'))?.label}
+                        {voiceOptions.find(v => v.value === (preferences.ttsVoice ?? ELEVENLABS_VOICES.rachel))?.label}
                       </Text>
                       <ChevronDown size={16} color={colors.darkGray} />
                     </TouchableOpacity>

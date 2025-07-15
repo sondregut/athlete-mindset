@@ -92,10 +92,9 @@ export default function PersonalizationSettings() {
           onPress: async () => {
             setIsClearing(true);
             try {
-              // Clear personalization cache
-              const { OpenAIPersonalizationService } = await import('@/services/openai-personalization-service');
-              const service = OpenAIPersonalizationService.getInstance();
-              await service.clearCache();
+              // Clear Excel personalization cache
+              const preloader = PersonalizationPreloader.getInstance();
+              await preloader.clearAllContent();
               Alert.alert('Success', 'Personalization cache cleared successfully');
             } catch (error) {
               console.error('Error clearing cache:', error);
@@ -296,9 +295,9 @@ export default function PersonalizationSettings() {
           <Sparkles size={20} color={colors.primary} />
         </View>
         <View style={styles.headerText}>
-          <Text style={styles.title}>AI Personalization</Text>
+          <Text style={styles.title}>Excel Personalization</Text>
           <Text style={styles.subtitle}>
-            {profile ? 'Customize your mental training' : 'Set up personalized content'}
+            {profile ? 'Sport-specific content from Excel templates' : 'Set up personalized content'}
           </Text>
         </View>
       </View>

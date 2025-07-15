@@ -53,8 +53,8 @@ function parseCsvData(csvPath: string): VisualizationData[] {
   let currentVisualization: VisualizationData | null = null;
 
   for (const record of records) {
-    const stepId = record['Step_ID'];
-    const templateText = record['Template_Text'];
+    const stepId = (record as any)['Step_ID'];
+    const templateText = (record as any)['Template_Text'];
 
     if (!stepId || !templateText) continue;
 

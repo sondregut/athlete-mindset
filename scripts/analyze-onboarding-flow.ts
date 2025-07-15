@@ -4,7 +4,7 @@ import { onboardingSteps } from '../store/onboarding-store';
 console.log('📋 Analyzing Onboarding Flow for Duplicate Questions\n');
 
 // Define what each step collects
-const stepDataCollection = {
+const stepDataCollection: Record<number, { collects: string[]; description: string }> = {
   0: { // Welcome
     collects: ['user interest'],
     description: 'Welcome screen - no data collection'

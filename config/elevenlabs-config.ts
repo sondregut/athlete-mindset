@@ -52,7 +52,7 @@ export const ELEVENLABS_VOICES = {
   thomas: 'GBv7mTt0atIp3Br8iCZE', // Example: Thomas - calm, narrative
 };
 
-// Map old OpenAI voices to ElevenLabs voices
+// Map legacy voice names to ElevenLabs voices
 export const VOICE_MAPPING = {
   'nova': ELEVENLABS_VOICES.rachel,     // Friendly and conversational
   'alloy': ELEVENLABS_VOICES.drew,      // Neutral and balanced
@@ -60,7 +60,4 @@ export const VOICE_MAPPING = {
   'fable': ELEVENLABS_VOICES.domi,      // Expressive and dynamic
   'onyx': ELEVENLABS_VOICES.dave,       // Deep and authoritative
   'shimmer': ELEVENLABS_VOICES.bella,   // Soft and soothing
-  // Handle cases where OpenAI model names are incorrectly passed as voice
-  'tts-1': ELEVENLABS_VOICES.rachel,    // Default to Rachel voice
-  'tts-1-hd': ELEVENLABS_VOICES.rachel, // Default to Rachel voice
 };
