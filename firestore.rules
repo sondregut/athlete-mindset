@@ -47,9 +47,20 @@ service cloud.firestore {
       allow write: if isAuthenticated();
     }
     
-    // Make other collections more permissive for development
+    // Visualizations Collection - Read-only for authenticated users
+    match /visualizations/{visualizationId} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Admin only via server
+    }
+    
+    // Personalization Profiles Collection
+    match /personalization-profiles/{profileId} {
+      allow read, write: if isOwner(request.auth.uid);
+    }
+    
+    // Default deny all other collections
     match /{document=**} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if false;
     }
   }
 }

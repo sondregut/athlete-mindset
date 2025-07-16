@@ -1,0 +1,235 @@
+{
+  "timestamp": "2025-07-16T10:00:16.737Z",
+  "testResults": [
+    {
+      "sport": "Pole Vault",
+      "event": "pole_vault",
+      "steps": [
+        {
+          "stepNumber": 1,
+          "original": "Find a comfortable position and close your eyes. Take deep breaths.",
+          "personalized": "Find a comfortable position and close your eyes. Take deep breaths, feeling the pole in your hands.",
+          "isDifferent": true
+        },
+        {
+          "stepNumber": 2,
+          "original": "Visualize yourself in your performance environment. See the details.",
+          "personalized": "Visualize yourself on the runway approaching the bar. See the standards, the pit, the crowd.",
+          "isDifferent": true
+        },
+        {
+          "stepNumber": 3,
+          "original": "See yourself performing at your absolute best. Feel the confidence.",
+          "personalized": "See yourself executing the perfect vault - powerful run-up, precise plant, smooth clearance over the bar.",
+          "isDifferent": true
+        },
+        {
+          "stepNumber": 4,
+          "original": "Experience the emotion of success. Let it fill your body.",
+          "personalized": "Experience the exhilaration of clearing your target height. Feel the pride and accomplishment.",
+          "isDifferent": true
+        },
+        {
+          "stepNumber": 5,
+          "original": "Open your eyes and carry this feeling with you.",
+          "personalized": "Open your eyes and carry this vaulting confidence with you to the track.",
+          "isDifferent": true
+        }
+      ],
+      "personalizedSteps": 5
+    },
+    {
+      "sport": "Long Jump",
+      "event": "long_jump",
+      "steps": [
+        {
+          "stepNumber": 1,
+          "original": "Find a comfortable position and close your eyes. Take deep breaths.",
+          "personalized": "Find a comfortable position and close your eyes. Take deep breaths, feeling your legs ready to explode.",
+          "isDifferent": true
+        },
+        {
+          "stepNumber": 2,
+          "original": "Visualize yourself in your performance environment. See the details.",
+          "personalized": "Visualize yourself on the runway approaching the takeoff board. See the sand pit ahead.",
+          "isDifferent": true
+        },
+        {
+          "stepNumber": 3,
+          "original": "See yourself performing at your absolute best. Feel the confidence.",
+          "personalized": "See yourself executing the perfect jump - explosive takeoff, perfect flight position, strong landing.",
+          "isDifferent": true
+        },
+        {
+          "stepNumber": 4,
+          "original": "Experience the emotion of success. Let it fill your body.",
+          "personalized": "Experience the satisfaction of a personal best distance. Feel the power in your legs.",
+          "isDifferent": true
+        },
+        {
+          "stepNumber": 5,
+          "original": "Open your eyes and carry this feeling with you.",
+          "personalized": "Open your eyes and carry this jumping confidence with you to the track.",
+          "isDifferent": true
+        }
+      ],
+      "personalizedSteps": 5
+    },
+    {
+      "sport": "Basketball",
+      "event": "game",
+      "steps": [
+        {
+          "stepNumber": 1,
+          "original": "Find a comfortable position and close your eyes. Take deep breaths.",
+          "personalized": "Find a comfortable position and close your eyes. Take deep breaths.",
+          "isDifferent": false
+        },
+        {
+          "stepNumber": 2,
+          "original": "Visualize yourself in your performance environment. See the details.",
+          "personalized": "Visualize yourself in your performance environment. See the details.",
+          "isDifferent": false
+        },
+        {
+          "stepNumber": 3,
+          "original": "See yourself performing at your absolute best. Feel the confidence.",
+          "personalized": "See yourself performing at your absolute best. Feel the confidence.",
+          "isDifferent": false
+        },
+        {
+          "stepNumber": 4,
+          "original": "Experience the emotion of success. Let it fill your body.",
+          "personalized": "Experience the emotion of success. Let it fill your body.",
+          "isDifferent": false
+        },
+        {
+          "stepNumber": 5,
+          "original": "Open your eyes and carry this feeling with you.",
+          "personalized": "Open your eyes and carry this feeling with you.",
+          "isDifferent": false
+        }
+      ],
+      "personalizedSteps": 0
+    }
+  ],
+  "personalizedContent": [
+    {
+      "sport": "Pole Vault",
+      "steps": [
+        {
+          "stepNumber": 1,
+          "personalized": "Find a comfortable position and close your eyes. Take deep breaths, feeling the pole in your hands."
+        },
+        {
+          "stepNumber": 2,
+          "personalized": "Visualize yourself on the runway approaching the bar. See the standards, the pit, the crowd."
+        },
+        {
+          "stepNumber": 3,
+          "personalized": "See yourself executing the perfect vault - powerful run-up, precise plant, smooth clearance over the bar."
+        },
+        {
+          "stepNumber": 4,
+          "personalized": "Experience the exhilaration of clearing your target height. Feel the pride and accomplishment."
+        },
+        {
+          "stepNumber": 5,
+          "personalized": "Open your eyes and carry this vaulting confidence with you to the track."
+        }
+      ]
+    },
+    {
+      "sport": "Long Jump",
+      "steps": [
+        {
+          "stepNumber": 1,
+          "personalized": "Find a comfortable position and close your eyes. Take deep breaths, feeling your legs ready to explode."
+        },
+        {
+          "stepNumber": 2,
+          "personalized": "Visualize yourself on the runway approaching the takeoff board. See the sand pit ahead."
+        },
+        {
+          "stepNumber": 3,
+          "personalized": "See yourself executing the perfect jump - explosive takeoff, perfect flight position, strong landing."
+        },
+        {
+          "stepNumber": 4,
+          "personalized": "Experience the satisfaction of a personal best distance. Feel the power in your legs."
+        },
+        {
+          "stepNumber": 5,
+          "personalized": "Open your eyes and carry this jumping confidence with you to the track."
+        }
+      ]
+    },
+    {
+      "sport": "Basketball",
+      "steps": [
+        {
+          "stepNumber": 1,
+          "personalized": "Find a comfortable position and close your eyes. Take deep breaths."
+        },
+        {
+          "stepNumber": 2,
+          "personalized": "Visualize yourself in your performance environment. See the details."
+        },
+        {
+          "stepNumber": 3,
+          "personalized": "See yourself performing at your absolute best. Feel the confidence."
+        },
+        {
+          "stepNumber": 4,
+          "personalized": "Experience the emotion of success. Let it fill your body."
+        },
+        {
+          "stepNumber": 5,
+          "personalized": "Open your eyes and carry this feeling with you."
+        }
+      ]
+    }
+  ],
+  "costAnalysis": [
+    {
+      "freeType": {
+        "name": "Free Tier",
+        "minutesIncluded": 15,
+        "costPerMinute": 0,
+        "monthlyCost": 0
+      },
+      "creator": {
+        "name": "Creator/Pro Plan",
+        "minutesIncluded": 0,
+        "costPerMinute": 0.1,
+        "monthlyCost": 200
+      },
+      "business": {
+        "name": "Business Plan",
+        "minutesIncluded": 13750,
+        "costPerMinute": 0.08,
+        "monthlyCost": 0
+      }
+    },
+    {
+      "freeType": {
+        "name": "Free Tier",
+        "minutesIncluded": 15,
+        "costPerMinute": 0,
+        "monthlyCost": 0
+      },
+      "creator": {
+        "name": "Creator/Pro Plan",
+        "minutesIncluded": 0,
+        "costPerMinute": 0.1,
+        "monthlyCost": 1000
+      },
+      "business": {
+        "name": "Business Plan",
+        "minutesIncluded": 13750,
+        "costPerMinute": 0.08,
+        "monthlyCost": 0
+      }
+    }
+  ]
+}

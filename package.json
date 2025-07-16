@@ -1,8 +1,7 @@
 {
-  "name": "expo-app",
+  "name": "athlete-mindset",
   "main": "index.js",
   "version": "1.0.0",
-  "type": "commonjs",
   "scripts": {
     "dev": "expo start --clear",
     "start": "bunx rork start -p z54qzr5766157j0974fjw --tunnel",
@@ -64,6 +63,7 @@
     "react-native-svg": "15.11.2",
     "react-native-web": "^0.20.0",
     "xlsx": "^0.18.5",
+    "zod": "^4.0.5",
     "zustand": "^5.0.2"
   },
   "devDependencies": {

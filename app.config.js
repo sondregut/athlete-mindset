@@ -57,7 +57,7 @@ module.exports = {
       favicon: "./assets/favicon.png"
     },
     plugins: [
-      "expo-dev-client",
+      ...(process.env.EAS_BUILD_PROFILE !== 'production' ? ["expo-dev-client"] : []),
       [
         "expo-router",
         {

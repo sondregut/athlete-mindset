@@ -16,6 +16,7 @@ import NetworkStatusBanner from "@/components/NetworkStatusBanner";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import ThemedStatusBar from "@/components/ThemedStatusBar";
 import ThemedStack from "@/components/ThemedStack";
+import { logger } from "@/utils/logger";
 // Firebase will be initialized when first used
 
 export const unstable_settings = {
@@ -31,36 +32,36 @@ export default function RootLayout() {
   });
   const { initialize: initializeAuth } = useAuthStore();
 
-  console.log('📱 RootLayout render:', { loaded, error });
+  logger.debug('📱 RootLayout render:', { loaded, error });
 
   useEffect(() => {
     if (error) {
-      console.error('❌ Font loading error:', error);
+      logger.critical('❌ Font loading error:', error);
       throw error;
     }
   }, [error]);
 
   useEffect(() => {
     if (loaded) {
-      console.log('✅ Fonts loaded, waiting for auth initialization before hiding splash screen');
+      logger.debug('✅ Fonts loaded, waiting for auth initialization before hiding splash screen');
       // Don't hide splash screen yet - wait for auth initialization
     }
   }, [loaded]);
 
   useEffect(() => {
     // Initialize Firebase auth state listener
-    console.log('🔥 Initializing Firebase auth...');
+    logger.debug('🔥 Initializing Firebase auth...');
     const unsubscribe = initializeAuth();
     
     // Setup notification listeners
     firebaseNotifications.setupListeners(
       // Handler for notifications received while app is foregrounded
       (notification) => {
-        console.log('📬 Notification received:', notification);
+        logger.debug('📬 Notification received:', notification);
       },
       // Handler for when user interacts with a notification
       async (response) => {
-        console.log('👆 Notification tapped:', response);
+        logger.debug('👆 Notification tapped:', response);
         const data = response.notification.request.content.data;
         
         // Navigate based on notification type
@@ -90,16 +91,16 @@ export default function RootLayout() {
   }, []);
 
   if (!loaded) {
-    console.log('⏳ Fonts not loaded yet, showing null');
+    logger.debug('⏳ Fonts not loaded yet, showing null');
     return null;
   }
 
-  console.log('🚀 Fonts loaded, rendering RootLayoutNav');
+  logger.debug('🚀 Fonts loaded, rendering RootLayoutNav');
   return <RootLayoutNav />;
 }
 
 function RootLayoutNav() {
-  console.log('🎯 RootLayoutNav render');
+  logger.debug('🎯 RootLayoutNav render');
   
   return (
     <ErrorBoundary>

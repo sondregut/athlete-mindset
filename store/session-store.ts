@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SessionLog, SessionType } from '@/types/session';
+import { validateSessionLog } from '@/types/validation';
 import { StorageError, ValidationError } from '@/hooks/useErrorHandler';
 import * as Notifications from 'expo-notifications';
 import { firebaseSessions } from '@/services/firebase-sessions';
@@ -95,9 +96,16 @@ export const useSessionStore = create<SessionState>()(
       setError: (error) => set({ error }),
       clearError: () => set({ error: null }),
       
-      addLog: (log) => set((state) => ({ 
-        logs: [log, ...state.logs] 
-      })),
+      addLog: (log) => {
+        const validation = validateSessionLog(log);
+        if (!validation.success) {
+          console.error('Invalid session log:', validation.error);
+          throw new ValidationError('Invalid session data');
+        }
+        return set((state) => ({ 
+          logs: [log, ...state.logs] 
+        }));
+      },
       
       updateCurrentSession: (data) => set((state) => {
         // If there's no current session, create a new one with the provided data
@@ -133,8 +141,9 @@ export const useSessionStore = create<SessionState>()(
         
         try {
           // Validate session data
-          if (!currentSession.sessionType) {
-            throw new ValidationError('Session type is required');
+          const validation = validateSessionLog(currentSession);
+          if (!validation.success) {
+            throw new ValidationError(`Invalid session data: ${validation.error.issues[0]?.message || 'Unknown error'}`);
           }
           
           // Simulate processing time for complex completion logic

@@ -135,19 +135,19 @@ export default function DebugTTSScreen() {
     }
     setTestResults([...results]);
 
-    // Test 3: OpenAI endpoint reachability
+    // Test 3: ElevenLabs endpoint reachability
     try {
-      const response = await fetch('https://api.openai.com/v1/models', {
+      const response = await fetch('https://api.elevenlabs.io/v1/models', {
         method: 'HEAD',
       });
       results.push({
-        test: 'OpenAI Endpoint Reachability',
+        test: 'ElevenLabs Endpoint Reachability',
         status: 'success',
         message: `Endpoint reachable (${response.status})`,
       });
     } catch (error: any) {
       results.push({
-        test: 'OpenAI Endpoint Reachability',
+        test: 'ElevenLabs Endpoint Reachability',
         status: 'error',
         message: error.message,
         details: error,
@@ -201,19 +201,19 @@ export default function DebugTTSScreen() {
     try {
       await new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
-        xhr.open('GET', 'https://api.openai.com/v1/models');
-        xhr.setRequestHeader('Authorization', `Bearer ${process.env.OPENAI_API_KEY || 'test'}`);
+        xhr.open('GET', 'https://api.elevenlabs.io/v1/models');
+        xhr.setRequestHeader('xi-api-key', process.env.ELEVENLABS_API_KEY || 'test');
         xhr.onload = () => {
           if (xhr.status >= 200 && xhr.status < 300) {
             results.push({
-              test: 'XMLHttpRequest to OpenAI',
+              test: 'XMLHttpRequest to ElevenLabs',
               status: 'success',
               message: `Status: ${xhr.status}`,
             });
             resolve(xhr.response);
           } else {
             results.push({
-              test: 'XMLHttpRequest to OpenAI',
+              test: 'XMLHttpRequest to ElevenLabs',
               status: 'error',
               message: `Status: ${xhr.status}`,
             });
@@ -222,7 +222,7 @@ export default function DebugTTSScreen() {
         };
         xhr.onerror = () => {
           results.push({
-            test: 'XMLHttpRequest to OpenAI',
+            test: 'XMLHttpRequest to ElevenLabs',
             status: 'error',
             message: 'Network error',
           });
