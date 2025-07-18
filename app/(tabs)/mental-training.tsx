@@ -1,25 +1,15 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { router } from 'expo-router';
-import { Star, ArrowLeft } from 'lucide-react-native';
+import { Star } from 'lucide-react-native';
 import Card from '@/components/Card';
-import SearchBar from '@/components/SearchBar';
-import VisualizationGridCard from '@/components/VisualizationGridCard';
-import CategoryCard from '@/components/CategoryCard';
-import { useVisualizationStore } from '@/store/visualization-store';
-import { visualizations } from '@/constants/visualizations';
-import { CATEGORY_INFO, VisualizationCategory } from '@/types/visualization';
 import { useSessionStore } from '@/store/session-store';
 import SessionLogItem from '@/components/SessionLogItem';
 
 export default function MentalTrainingScreen() {
   const colors = useThemeColors();
-  const { completedSessions, getVisualizationStats, favorites } = useVisualizationStore();
   const { logs } = useSessionStore();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<VisualizationCategory | null>(null);
-  const [showAllVisualizations, setShowAllVisualizations] = useState(false);
   
   // Get recent mental training sessions
   const recentMentalTrainingSessions = logs
@@ -27,59 +17,8 @@ export default function MentalTrainingScreen() {
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 3);
 
-  // Filter visualizations based on search and category
-  const filteredVisualizations = useMemo(() => {
-    let filtered = visualizations;
-    
-    // Filter by category if selected
-    if (selectedCategory) {
-      filtered = filtered.filter(viz => viz.category === selectedCategory);
-    }
-    
-    // Filter by search query
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(viz => 
-        viz.title.toLowerCase().includes(query) ||
-        viz.description.toLowerCase().includes(query)
-      );
-    }
-    
-    return filtered;
-  }, [searchQuery, selectedCategory]);
-  
-  // Get visualization count by category
-  const getCategoryCount = (category: VisualizationCategory) => {
-    return visualizations.filter(viz => viz.category === category).length;
-  };
-
-
-  // Get favorite visualizations
-  const favoriteVisualizations = useMemo(() => {
-    return visualizations.filter(viz => favorites.includes(viz.id));
-  }, [favorites]);
-
-  const handleVisualizationPress = (visualizationId: string) => {
-    router.push({
-      pathname: '/visualization-detail',
-      params: { id: visualizationId }
-    });
-  };
-  
-  const handleCategoryPress = (category: VisualizationCategory) => {
-    setSelectedCategory(category);
-    setShowAllVisualizations(true);
-  };
-  
-  const handleBackToCategories = () => {
-    setSelectedCategory(null);
-    setShowAllVisualizations(false);
-    setSearchQuery('');
-  };
-  
-  const handleShowAllVisualizations = () => {
-    setSelectedCategory(null);
-    setShowAllVisualizations(true);
+  const handleStartVisualization = () => {
+    router.push('/visualization/detail');
   };
 
 
@@ -211,6 +150,38 @@ export default function MentalTrainingScreen() {
     recentSessionItem: {
       marginBottom: 12,
     },
+    visualizationCard: {
+      marginBottom: 20,
+    },
+    visualizationHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      marginBottom: 12,
+    },
+    visualizationTitle: {
+      fontSize: 20,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    visualizationDescription: {
+      fontSize: 16,
+      color: colors.darkGray,
+      lineHeight: 22,
+      marginBottom: 16,
+    },
+    startButton: {
+      backgroundColor: colors.primary,
+      paddingVertical: 14,
+      paddingHorizontal: 24,
+      borderRadius: 12,
+      alignItems: 'center',
+    },
+    startButtonText: {
+      fontSize: 16,
+      color: 'white',
+      fontWeight: '600',
+    },
   });
 
   return (
@@ -223,7 +194,7 @@ export default function MentalTrainingScreen() {
         <View style={styles.header}>
           <Text style={styles.title}>Mental Training</Text>
           <Text style={styles.subtitle}>
-            Strengthen your mind with guided visualizations and mental exercises
+            Strengthen your mind with personalized sports visualizations
           </Text>
         </View>
 
@@ -231,14 +202,14 @@ export default function MentalTrainingScreen() {
         <Card style={styles.statsCard}>
           <View style={styles.statsContent}>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{completedSessions.length}</Text>
+              <Text style={styles.statValue}>{recentMentalTrainingSessions.length}</Text>
               <Text style={styles.statLabel}>Completed</Text>
             </View>
             <View style={styles.statItem}>
               <Text style={styles.statValue}>
-                {completedSessions.filter(s => {
+                {recentMentalTrainingSessions.filter((s: any) => {
                   const today = new Date();
-                  const sessionDate = new Date(s.completedAt || '');
+                  const sessionDate = new Date(s.createdAt || '');
                   return sessionDate.toDateString() === today.toDateString();
                 }).length}
               </Text>
@@ -246,10 +217,10 @@ export default function MentalTrainingScreen() {
             </View>
             <View style={styles.statItem}>
               <Text style={styles.statValue}>
-                {completedSessions.filter(s => {
+                {recentMentalTrainingSessions.filter((s: any) => {
                   const weekAgo = new Date();
                   weekAgo.setDate(weekAgo.getDate() - 7);
-                  return new Date(s.completedAt || '') > weekAgo;
+                  return new Date(s.createdAt || '') > weekAgo;
                 }).length}
               </Text>
               <Text style={styles.statLabel}>This Week</Text>
@@ -257,139 +228,43 @@ export default function MentalTrainingScreen() {
           </View>
         </Card>
 
-        {/* Search Bar - Show only when viewing visualizations */}
-        {(showAllVisualizations || selectedCategory) && (
-          <>
-            <View style={styles.navigationHeader}>
-              <TouchableOpacity 
-                onPress={handleBackToCategories}
-                style={styles.backButton}
-              >
-                <ArrowLeft size={20} color={colors.primary} />
-                <Text style={styles.backText}>Back to Categories</Text>
-              </TouchableOpacity>
-              {selectedCategory && (
-                <Text style={styles.categoryTitle}>
-                  {CATEGORY_INFO[selectedCategory].title}
-                </Text>
-              )}
-            </View>
-            <SearchBar
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholder="Search visualizations..."
-            />
-          </>
-        )}
+        {/* Personalized Visualization Card */}
+        <Card style={styles.visualizationCard}>
+          <View style={styles.visualizationHeader}>
+            <Star size={24} color={colors.primary} fill={colors.primary} />
+            <Text style={styles.visualizationTitle}>Goal Visualization</Text>
+          </View>
+          <Text style={styles.visualizationDescription}>
+            Create a personalized visualization for your sport to enhance performance and mental preparation
+          </Text>
+          <TouchableOpacity 
+            onPress={handleStartVisualization}
+            style={styles.startButton}
+          >
+            <Text style={styles.startButtonText}>Start Personalized Visualization</Text>
+          </TouchableOpacity>
+        </Card>
 
-        {/* Categories View */}
-        {!showAllVisualizations && !selectedCategory && (
+        {/* Recent Sessions */}
+        {recentMentalTrainingSessions.length > 0 && (
           <>
-            {/* Favorites Section */}
-            {favoriteVisualizations.length > 0 && (
-              <View style={styles.favoritesSection}>
-                <View style={styles.favoritesHeader}>
-                  <Star size={20} color={colors.primary} fill={colors.primary} />
-                  <Text style={styles.sectionTitle}>Favorites</Text>
-                </View>
-                <View style={styles.gridContainer}>
-                  {favoriteVisualizations.slice(0, 4).map(visualization => {
-                    const stats = getVisualizationStats(visualization.id);
-                    return (
-                      <VisualizationGridCard
-                        key={visualization.id}
-                        visualization={visualization}
-                        onPress={() => handleVisualizationPress(visualization.id)}
-                        completionCount={stats.completionCount}
-                      />
-                    );
-                  })}
-                </View>
-                {favoriteVisualizations.length > 4 && (
-                  <TouchableOpacity 
-                    onPress={handleShowAllVisualizations}
-                    style={styles.showAllButton}
-                  >
-                    <Text style={styles.showAllText}>View All Favorites</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
-            
-            {/* Categories Section */}
-            <Text style={styles.sectionTitle}>Explore Categories</Text>
-            <View style={styles.categoriesContainer}>
-              {Object.entries(CATEGORY_INFO).map(([key, categoryInfo]) => (
-                <CategoryCard
-                  key={key}
-                  category={key as VisualizationCategory}
-                  onPress={() => handleCategoryPress(key as VisualizationCategory)}
-                  visualizationCount={getCategoryCount(key as VisualizationCategory)}
+            <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Recent Sessions</Text>
+            {recentMentalTrainingSessions.map((session) => (
+              <View key={session.id} style={styles.recentSessionItem}>
+                <SessionLogItem 
+                  log={session} 
+                  showEditButton={false}
                 />
-              ))}
-            </View>
-            
-            {/* Show All Button */}
-            <TouchableOpacity 
-              onPress={handleShowAllVisualizations}
-              style={styles.showAllVisualizationsButton}
-            >
-              <Text style={styles.showAllVisualizationsText}>View All Visualizations</Text>
-            </TouchableOpacity>
+              </View>
+            ))}
           </>
         )}
-
-        {/* Visualizations Grid View */}
-        {(showAllVisualizations || selectedCategory) && (
-          <>
-            {/* No results message */}
-            {searchQuery && filteredVisualizations.length === 0 && (
-              <Text style={styles.noResultsText}>
-                No visualizations found matching "{searchQuery}"
-              </Text>
-            )}
-            
-            {/* Grid of visualizations */}
-            <View style={styles.gridContainer}>
-              {filteredVisualizations.map(visualization => {
-                const stats = getVisualizationStats(visualization.id);
-                return (
-                  <VisualizationGridCard
-                    key={visualization.id}
-                    visualization={visualization}
-                    onPress={() => handleVisualizationPress(visualization.id)}
-                    completionCount={stats.completionCount}
-                  />
-                );
-              })}
-            </View>
-          </>
-        )}
-
-        {/* Recent Sessions - Show only on main category view */}
-        {!showAllVisualizations && !selectedCategory && (
-          <>
-            {recentMentalTrainingSessions.length > 0 && (
-              <>
-                <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Recent Sessions</Text>
-                {recentMentalTrainingSessions.map((session) => (
-                  <View key={session.id} style={styles.recentSessionItem}>
-                    <SessionLogItem 
-                      log={session} 
-                      showEditButton={false}
-                    />
-                  </View>
-                ))}
-              </>
-            )}
-            
-            {/* Empty state if no sessions yet */}
-            {recentMentalTrainingSessions.length === 0 && (
-              <Text style={styles.emptyStateText}>
-                Complete your first visualization to see your history here
-              </Text>
-            )}
-          </>
+        
+        {/* Empty state if no sessions yet */}
+        {recentMentalTrainingSessions.length === 0 && (
+          <Text style={styles.emptyStateText}>
+            Complete your first visualization to see your history here
+          </Text>
         )}
       </ScrollView>
     </View>

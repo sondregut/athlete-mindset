@@ -25,7 +25,7 @@ interface OnboardingAuthProps {
 
 export default function OnboardingAuth({ step }: OnboardingAuthProps) {
   const { loginIntent, setLoginIntent } = useOnboardingStore();
-  // If coming from login modal, go directly to signin mode
+  // If coming from login modal, go directly to signin mode, otherwise go to signup/choice
   const [mode, setMode] = useState<'choice' | 'signin' | 'signup'>(loginIntent ? 'signin' : 'choice');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -40,14 +40,14 @@ export default function OnboardingAuth({ step }: OnboardingAuthProps) {
   const { request, response, promptAsync } = useGoogleAuth();
   const { signInWithApple: appleSignIn, isAvailable: isAppleAvailable } = useAppleAuth();
 
-  // Clear login intent when component unmounts or mode changes
+  // Clear login intent when component unmounts or mode changes away from signin
   useEffect(() => {
     return () => {
-      if (loginIntent) {
+      if (loginIntent && mode !== 'signin') {
         setLoginIntent(false);
       }
     };
-  }, []);
+  }, [mode]);
 
   const handleComplete = async () => {
     console.log('✅ Onboarding complete, syncing data and navigating to main app...');
@@ -229,6 +229,7 @@ export default function OnboardingAuth({ step }: OnboardingAuthProps) {
     description: ''
   };
 
+
   if (mode === 'choice') {
     return (
       <View style={styles.container}>
@@ -242,6 +243,7 @@ export default function OnboardingAuth({ step }: OnboardingAuthProps) {
             {stepData.subtitle ? <Text style={styles.subtitle}>{stepData.subtitle}</Text> : null}
             {stepData.description ? <Text style={styles.description}>{stepData.description}</Text> : null}
           </View>
+
 
           <View style={styles.authButtons}>
           {Platform.OS === 'ios' && isAppleAvailable && (
@@ -326,6 +328,15 @@ export default function OnboardingAuth({ step }: OnboardingAuthProps) {
         ) : null}
 
         <View style={styles.form}>
+          {/* Back to choice button for email flows */}
+          {(mode === 'signin' || mode === 'signup') && !loginIntent && (
+            <TouchableOpacity 
+              style={styles.backToChoiceButton} 
+              onPress={() => setMode('choice')}
+            >
+              <Text style={styles.backToChoiceText}>← Back to sign up options</Text>
+            </TouchableOpacity>
+          )}
 
           <View style={styles.inputContainer}>
             <Mail size={20} color={colors.darkGray} style={styles.inputIcon} />
@@ -428,10 +439,8 @@ export default function OnboardingAuth({ step }: OnboardingAuthProps) {
               <View style={styles.signupPrompt}>
                 <Text style={styles.signupPromptText}>
                   Need an account? <Text style={styles.signupLink} onPress={() => {
-                    // Clear login intent and go back to welcome screen
+                    setMode('choice'); // Go back to choice screen instead of restarting onboarding
                     setLoginIntent(false);
-                    const { setOnboardingStep } = useOnboardingStore.getState();
-                    setOnboardingStep(0); // Go to welcome screen
                   }}>Sign up</Text>
                 </Text>
               </View>
@@ -694,5 +703,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.darkGray,
     textDecorationLine: 'underline',
+  },
+  backToChoiceButton: {
+    alignItems: 'flex-start',
+    paddingVertical: 8,
+    marginBottom: 16,
+  },
+  backToChoiceText: {
+    fontSize: 16,
+    color: colors.primary,
+    fontWeight: '600',
   },
 });

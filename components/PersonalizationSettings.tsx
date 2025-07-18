@@ -1,25 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
-import { User, ChevronRight, Sparkles, Settings2, RefreshCw } from 'lucide-react-native';
+import { User, ChevronRight, Sparkles, Settings2, RefreshCw, Edit } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PersonalizationProfile } from '@/types/personalization-profile';
 import { usePersonalizationProfile } from '@/hooks/usePersonalizationProfile';
 import { usePersonalizationStore } from '@/store/personalization-store';
-import { PersonalizationPreloader } from '@/services/personalization-preloader';
+import { useOnboardingStore } from '@/store/onboarding-store';
+import { useUserStore } from '@/store/user-store';
+// import { PersonalizationPreloader } from '@/services/personalization-preloader';
 
 export default function PersonalizationSettings() {
   const colors = useThemeColors();
   const { profile, isLoading, refreshProfile } = usePersonalizationProfile();
   const { preferences, updatePreferences } = usePersonalizationStore();
+  const { hasCompletedOnboarding, goals } = useOnboardingStore();
+  const { profile: userProfile } = useUserStore();
   const [isClearing, setIsClearing] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [regenerationProgress, setRegenerationProgress] = useState(0);
   const [regenerationMessage, setRegenerationMessage] = useState('');
 
-  const handleSetupPersonalization = () => {
-    router.push('/personalization-setup');
+  const handleEditProfile = () => {
+    // Navigate to profile to change sport and other settings
+    router.push('/(tabs)/profile');
   };
 
   const handleTogglePersonalization = () => {
@@ -46,16 +51,9 @@ export default function PersonalizationSettings() {
             setRegenerationMessage('Starting regeneration...');
             
             try {
-              const preloader = PersonalizationPreloader.getInstance();
-              
-              // Clear existing content first
-              await preloader.clearAllContent();
-              
-              // Start regeneration with progress callback
-              await preloader.preloadAllContent(profile, (progress, message) => {
-                setRegenerationProgress(progress);
-                setRegenerationMessage(message);
-              });
+              // Content is now generated on-demand using OpenAI
+              setRegenerationProgress(100);
+              setRegenerationMessage('Content will be generated on-demand using OpenAI');
               
               Alert.alert(
                 'Success!', 
@@ -92,10 +90,8 @@ export default function PersonalizationSettings() {
           onPress: async () => {
             setIsClearing(true);
             try {
-              // Clear Excel personalization cache
-              const preloader = PersonalizationPreloader.getInstance();
-              await preloader.clearAllContent();
-              Alert.alert('Success', 'Personalization cache cleared successfully');
+              // Content is now generated on-demand using OpenAI - no cache to clear
+              Alert.alert('Success', 'OpenAI-based personalization uses on-demand generation');
             } catch (error) {
               console.error('Error clearing cache:', error);
               Alert.alert('Error', 'Failed to clear cache');
@@ -276,6 +272,17 @@ export default function PersonalizationSettings() {
       opacity: 0.9,
       marginTop: 2,
     },
+    onboardingPrompt: {
+      alignItems: 'center',
+      paddingVertical: 16,
+    },
+    onboardingPromptText: {
+      fontSize: 14,
+      color: colors.darkGray,
+      textAlign: 'center',
+      marginBottom: 16,
+      lineHeight: 20,
+    },
   });
 
   if (isLoading) {
@@ -295,23 +302,30 @@ export default function PersonalizationSettings() {
           <Sparkles size={20} color={colors.primary} />
         </View>
         <View style={styles.headerText}>
-          <Text style={styles.title}>Excel Personalization</Text>
+          <Text style={styles.title}>AI Personalization</Text>
           <Text style={styles.subtitle}>
-            {profile ? 'Sport-specific content from Excel templates' : 'Set up personalized content'}
+            {hasCompletedOnboarding && (profile || userProfile?.sport) 
+              ? 'Sport-specific content tailored to your profile' 
+              : 'Complete your profile to enable personalization'}
           </Text>
         </View>
       </View>
 
-      {profile ? (
+      {hasCompletedOnboarding && (profile || userProfile?.sport) ? (
         <>
           <View style={styles.profileSection}>
             <View style={styles.profileRow}>
               <Text style={styles.profileLabel}>Sport</Text>
               <Text style={styles.profileValue}>
-                {profile.sport_activity || 'Not set'}
+                {profile?.sport_activity || 
+                 (userProfile?.sport === 'track-and-field' ? 
+                   `Track & Field${userProfile?.trackFieldEvent ? ` (${userProfile.trackFieldEvent})` : ''}` : 
+                   userProfile?.sport ? 
+                     (userProfile.sport.charAt(0).toUpperCase() + userProfile.sport.slice(1)) : 
+                     'Not set') || 'Not set'}
               </Text>
             </View>
-            {profile.specific_role && (
+            {profile?.specific_role && (
               <View style={styles.profileRow}>
                 <Text style={styles.profileLabel}>Position/Role</Text>
                 <Text style={styles.profileValue}>{profile.specific_role}</Text>
@@ -320,15 +334,28 @@ export default function PersonalizationSettings() {
             <View style={styles.profileRow}>
               <Text style={styles.profileLabel}>Experience</Text>
               <Text style={styles.profileValue}>
-                {profile.experience_level?.charAt(0).toUpperCase() + profile.experience_level?.slice(1) || 'Not set'}
+                {profile?.experience_level ? 
+                  (profile.experience_level.charAt(0).toUpperCase() + profile.experience_level.slice(1)) : 
+                  userProfile?.experienceLevel ? 
+                    (userProfile.experienceLevel.charAt(0).toUpperCase() + userProfile.experienceLevel.slice(1)) : 
+                    'Not set'}
               </Text>
             </View>
             <View style={styles.profileRow}>
               <Text style={styles.profileLabel}>Goals</Text>
               <Text style={styles.profileValue}>
-                {profile.primary_goals?.length || 0} selected
+                {profile?.primary_goals?.length || 
+                 (userProfile?.primaryFocus ? 1 : 0) + 
+                 (userProfile?.weeklySessionTarget ? 1 : 0) + 
+                 (userProfile?.streakGoal ? 1 : 0)} selected
               </Text>
             </View>
+            {userProfile?.name && (
+              <View style={styles.profileRow}>
+                <Text style={styles.profileLabel}>Name</Text>
+                <Text style={styles.profileValue}>{userProfile.name}</Text>
+              </View>
+            )}
           </View>
 
           <View style={styles.settingsRow}>
@@ -350,9 +377,9 @@ export default function PersonalizationSettings() {
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={styles.updateButton} onPress={handleSetupPersonalization}>
-            <Settings2 size={16} color={colors.primary} />
-            <Text style={styles.updateButtonText}>Update Profile</Text>
+          <TouchableOpacity style={styles.updateButton} onPress={handleEditProfile}>
+            <Edit size={16} color={colors.primary} />
+            <Text style={styles.updateButtonText}>Change Sport in Profile</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
@@ -395,10 +422,24 @@ export default function PersonalizationSettings() {
           </TouchableOpacity>
         </>
       ) : (
-        <TouchableOpacity style={styles.setupButton} onPress={handleSetupPersonalization}>
-          <Text style={styles.setupButtonText}>Set Up Personalization</Text>
-          <ChevronRight size={20} color={colors.background} />
-        </TouchableOpacity>
+        <>
+          {!hasCompletedOnboarding ? (
+            <View style={styles.onboardingPrompt}>
+              <Text style={styles.onboardingPromptText}>
+                Complete your onboarding to unlock personalized content
+              </Text>
+              <TouchableOpacity style={styles.setupButton} onPress={() => router.push('/onboarding')}>
+                <Text style={styles.setupButtonText}>Complete Onboarding</Text>
+                <ChevronRight size={20} color={colors.background} />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity style={styles.setupButton} onPress={handleEditProfile}>
+              <Text style={styles.setupButtonText}>Complete Profile</Text>
+              <ChevronRight size={20} color={colors.background} />
+            </TouchableOpacity>
+          )}
+        </>
       )}
     </View>
   );

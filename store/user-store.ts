@@ -14,7 +14,7 @@ export type TrackFieldEvent =
   | 'pole-vault'
   | 'long-triple-jump'
   | 'throws-all';
-export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced';
+export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced' | 'professional';
 
 export type AgeRange = 
   | 'under-18'

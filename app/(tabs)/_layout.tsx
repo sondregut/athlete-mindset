@@ -1,20 +1,23 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Tabs, router } from 'expo-router';
 import { Home, Clock, PlusCircle, User, Brain } from 'lucide-react-native';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import LogSessionBottomSheet from '@/components/LogSessionBottomSheet';
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  const [showLogSessionModal, setShowLogSessionModal] = useState(false);
 
   const handleLogSessionPress = (e: any) => {
     e.preventDefault();
-    router.push('/log-session-menu');
+    setShowLogSessionModal(true);
   };
 
 
   return (
+    <>
     <Tabs screenOptions={{
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.darkGray,
@@ -80,5 +83,10 @@ export default function TabLayout() {
         }}
       />
     </Tabs>
+    <LogSessionBottomSheet 
+      isVisible={showLogSessionModal}
+      onClose={() => setShowLogSessionModal(false)}
+    />
+    </>
   );
 }

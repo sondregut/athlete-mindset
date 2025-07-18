@@ -86,6 +86,13 @@ export class TTSFirebaseCache {
   private isPlayingAudio = false;
   private useClientSDK = false;
   private clientSDK: TTSFirebaseClient | null = null;
+  
+  // Request queue for ElevenLabs API rate limiting
+  private requestQueue: Array<() => Promise<void>> = [];
+  private activeRequests = 0;
+  private readonly MAX_CONCURRENT_REQUESTS = 3; // Below ElevenLabs limit of 5
+  private lastRequestTime = 0;
+  private readonly MIN_REQUEST_INTERVAL = 1000; // 1 second between requests
 
   private constructor() {
     this.apiKey = getElevenLabsApiKey();
@@ -214,7 +221,12 @@ export class TTSFirebaseCache {
   }
 
   async synthesizeSpeech(text: string, options: TTSOptions = {}): Promise<string> {
+    console.log('[TTS] synthesizeSpeech called with text:', text.substring(0, 50) + '...');
+    console.log('[TTS] Options:', options);
+    console.log('[TTS] API Key available:', !!this.apiKey);
+    
     if (!this.isInitialized) {
+      console.log('[TTS] Initializing service...');
       await this.initialize();
     }
 
@@ -227,6 +239,7 @@ export class TTSFirebaseCache {
     }
 
     const cacheKey = await this.getCacheKey(text, validatedOptions);
+    console.log('[TTS] Cache key:', cacheKey);
     smartLogger.log('tts-request', `TTS request for key: ${cacheKey}`);
 
     // 1. Check memory cache
@@ -402,37 +415,103 @@ export class TTSFirebaseCache {
   }
 
   private async callElevenLabsTTS(text: string, voice: TTSVoice, model: TTSModel, speed: number): Promise<string> {
+    return new Promise((resolve, reject) => {
+      // Add request to queue
+      this.requestQueue.push(async () => {
+        try {
+          const result = await this.executeElevenLabsRequest(text, voice, model, speed);
+          resolve(result);
+        } catch (error) {
+          reject(error);
+        }
+      });
+      
+      // Process queue
+      this.processQueue();
+    });
+  }
+
+  private async executeElevenLabsRequest(text: string, voice: TTSVoice, model: TTSModel, speed: number): Promise<string> {
     // Map OpenAI voice names to ElevenLabs voice IDs if needed
     let voiceId = voice;
     if (voice in VOICE_MAPPING) {
       voiceId = VOICE_MAPPING[voice as keyof typeof VOICE_MAPPING];
     }
     
-    const response = await fetch(`${ELEVENLABS_TTS_ENDPOINT}/${voiceId}`, {
-      method: 'POST',
-      headers: {
-        'xi-api-key': this.apiKey,
-        'Content-Type': 'application/json',
-        'Accept': 'audio/mpeg',
-      },
-      body: JSON.stringify({
-        text,
-        model_id: model || ELEVENLABS_DEFAULT_MODEL,
-        voice_settings: {
-          ...DEFAULT_VOICE_SETTINGS,
-          stability: speed > 1 ? 0.3 : speed < 1 ? 0.7 : 0.5, // Adjust stability based on speed
-        }
-      }),
-    });
+    // Enforce minimum time between requests to avoid rate limiting
+    const now = Date.now();
+    const timeSinceLastRequest = now - this.lastRequestTime;
+    if (timeSinceLastRequest < this.MIN_REQUEST_INTERVAL) {
+      const delay = this.MIN_REQUEST_INTERVAL - timeSinceLastRequest;
+      console.log(`⏱️ TTS Rate Limiting: Waiting ${delay}ms before request`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+    
+    this.lastRequestTime = Date.now();
+    
+    console.log('[TTS] Making ElevenLabs API request...');
+    console.log('[TTS] URL:', `${ELEVENLABS_TTS_ENDPOINT}/${voiceId}`);
+    console.log('[TTS] Voice ID:', voiceId);
+    console.log('[TTS] Model:', model || ELEVENLABS_DEFAULT_MODEL);
+    
+    try {
+      const response = await fetch(`${ELEVENLABS_TTS_ENDPOINT}/${voiceId}`, {
+        method: 'POST',
+        headers: {
+          'xi-api-key': this.apiKey,
+          'Content-Type': 'application/json',
+          'Accept': 'audio/mpeg',
+        },
+        body: JSON.stringify({
+          text,
+          model_id: model || ELEVENLABS_DEFAULT_MODEL,
+          voice_settings: {
+            ...DEFAULT_VOICE_SETTINGS,
+            stability: speed > 1 ? 0.3 : speed < 1 ? 0.7 : 0.5, // Adjust stability based on speed
+          }
+        }),
+      });
 
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`ElevenLabs API error: ${response.status} - ${error}`);
+      if (!response.ok) {
+        const error = await response.text();
+        console.error('[TTS] ElevenLabs API error:', response.status, error);
+        if (response.status === 429) {
+          console.error('⚠️ ElevenLabs rate limit exceeded - consider reducing concurrent requests');
+        }
+        throw new Error(`ElevenLabs API error: ${response.status} - ${error}`);
+      }
+      
+      console.log('[TTS] ElevenLabs API response OK');
+    } catch (fetchError: any) {
+      console.error('[TTS] Fetch error:', fetchError.message);
+      throw fetchError;
     }
 
     // Get response as blob and convert to base64
     const blob = await response.blob();
     return await this.blobToBase64(blob);
+  }
+
+  private async processQueue(): Promise<void> {
+    // Process requests up to the concurrent limit
+    while (this.requestQueue.length > 0 && this.activeRequests < this.MAX_CONCURRENT_REQUESTS) {
+      const request = this.requestQueue.shift();
+      if (request) {
+        this.activeRequests++;
+        console.log(`🔄 TTS Queue: Processing request (${this.activeRequests}/${this.MAX_CONCURRENT_REQUESTS} active, ${this.requestQueue.length} queued)`);
+        
+        // Execute request and handle completion
+        request().finally(() => {
+          this.activeRequests--;
+          console.log(`✅ TTS Queue: Request completed (${this.activeRequests}/${this.MAX_CONCURRENT_REQUESTS} active, ${this.requestQueue.length} queued)`);
+          
+          // Process next request if queue is not empty
+          if (this.requestQueue.length > 0) {
+            this.processQueue();
+          }
+        });
+      }
+    }
   }
 
   private async blobToBase64(blob: Blob): Promise<string> {
@@ -656,8 +735,8 @@ export class TTSFirebaseCache {
     const totalSteps = steps.length;
     let completedSteps = 0;
 
-    // Process in batches to avoid rate limits
-    const batchSize = 3;
+    // Process in batches - queue system will handle rate limiting
+    const batchSize = 2; // Smaller batches work better with queue system
     
     for (let i = 0; i < steps.length; i += batchSize) {
       const batch = steps.slice(i, i + batchSize);
@@ -681,9 +760,9 @@ export class TTSFirebaseCache {
 
       await Promise.all(batchPromises);
       
-      // Add delay between batches to avoid rate limits
+      // Smaller delay since queue system handles rate limiting
       if (i + batchSize < steps.length) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
     }
 
@@ -717,8 +796,8 @@ export class TTSFirebaseCache {
       preloadedAudio.set(voice, new Map<number, string>());
     }
 
-    // Process in batches to avoid rate limits
-    const batchSize = 2; // Smaller batch size for personalized content
+    // Process with queue system handling rate limiting
+    const batchSize = 2; // Batch size works with queue system
     
     for (let i = 0; i < steps.length; i += batchSize) {
       const batch = steps.slice(i, i + batchSize);
@@ -757,13 +836,13 @@ export class TTSFirebaseCache {
 
         await Promise.all(voiceBatchPromises);
         
-        // Add delay between voice batches to avoid rate limits
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Minimal delay - queue system handles rate limiting
+        await new Promise(resolve => setTimeout(resolve, 250));
       }
       
-      // Add delay between step batches
+      // Minimal delay between step batches
       if (i + batchSize < steps.length) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
     }
 
@@ -778,7 +857,12 @@ export class TTSFirebaseCache {
       memoryCache: this.memoryCache.size,
       localCache: this.localCacheIndex.size,
       localCacheSize: this.currentLocalCacheSize,
-      isInitialized: this.isInitialized
+      isInitialized: this.isInitialized,
+      requestQueue: {
+        queued: this.requestQueue.length,
+        active: this.activeRequests,
+        maxConcurrent: this.MAX_CONCURRENT_REQUESTS
+      }
     };
   }
 

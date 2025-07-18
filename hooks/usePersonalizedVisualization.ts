@@ -1,12 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { usePersonalizationStore } from '@/store/personalization-store';
 import { usePersonalizationProfile } from './usePersonalizationProfile';
-import { ExcelPersonalizationService } from '@/services/excel-personalization-service';
-import { PersonalizationPreloader } from '@/services/personalization-preloader';
+import { OpenAIPersonalizationService } from '@/services/openai-personalization-service';
 import { TTSFirebaseCache } from '@/services/tts-firebase-cache';
 import { Visualization, VisualizationStep } from '@/types/visualization';
 import { PersonalizationRequest, ContextualFactors } from '@/types/personalization';
-import { ExperienceLevel } from '@/types/personalization-profile';
 
 interface UsePersonalizedVisualizationOptions {
   contextualFactors?: ContextualFactors;
@@ -95,34 +93,8 @@ export function usePersonalizedVisualization(
     setError(null);
 
     try {
-      // First check for preloaded content
-      const preloader = PersonalizationPreloader.getInstance();
-      const preloadedContent = await preloader.getPreloadedContent(visualization.id);
-      
-      if (preloadedContent && !options.forceRegenerate) {
-        console.log('[usePersonalizedVisualization] Using preloaded content for sport:', personalizationProfile.sport_activity);
-        console.log('[usePersonalizedVisualization] Content generated at:', preloadedContent.generatedAt);
-        console.log('[usePersonalizedVisualization] First step preview:', preloadedContent.steps[0]?.content.substring(0, 100) + '...');
-        
-        const steps: VisualizationStep[] = preloadedContent.steps.map((step, index) => ({
-          id: index + 1,
-          content: step.content,
-          duration: step.duration,
-          audioFile: visualization.steps[index]?.audioFile,
-          audioUrl: visualization.steps[index]?.audioUrl,
-        }));
-        
-        setPersonalizedSteps(steps);
-        recordPersonalization();
-        lastGeneratedProfileRef.current = profileKey;
-        setIsGenerating(false);
-        isGeneratingRef.current = false;
-        return;
-      }
-      
-      // If no preloaded content, generate on demand
-      console.log('[usePersonalizedVisualization] No preloaded content found - generating on demand for sport:', personalizationProfile.sport_activity);
-      const service = ExcelPersonalizationService.getInstance();
+      // Generate personalized content using OpenAI
+      console.log('[usePersonalizedVisualization] Generating personalized content for sport:', personalizationProfile.sport_activity);
       
       // Build user context from personalization profile
       const userContext = {
@@ -148,12 +120,11 @@ export function usePersonalizedVisualization(
         length: preferences.contentLength,
       };
 
-      // Generate personalized content
-      const personalizedContent = await service.generatePersonalizedVisualization(request);
-      
-      // Note: We don't save to preloader here as that should be done
-      // through the dedicated preload flow
-      
+      // Use the new OpenAI Personalization Service
+      const aiService = OpenAIPersonalizationService.getInstance();
+      const personalizedContent = await aiService.generatePersonalizedVisualization(request);
+      console.log('[usePersonalizedVisualization] Generated content using OpenAI Service');
+
       // Convert to visualization steps
       const steps: VisualizationStep[] = personalizedContent.steps.map((step, index) => ({
         id: index + 1,
@@ -167,11 +138,11 @@ export function usePersonalizedVisualization(
       setPersonalizedSteps(steps);
       recordPersonalization();
       lastGeneratedProfileRef.current = profileKey;
-      
-      // Get stats
-      const serviceStats = service.getStats();
+
+      // Get stats from the AI service
+      const serviceStats = aiService.getStats();
       setStats(serviceStats);
-      
+
       console.log('[usePersonalizedVisualization] Generated personalized content:', {
         visualizationId: visualization.id,
         stepCount: steps.length,

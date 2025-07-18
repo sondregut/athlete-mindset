@@ -1,5 +1,7 @@
 try {
   require('dotenv').config();
+  console.log('[app.config.js] Environment variables loaded');
+  console.log('[app.config.js] ELEVENLABS_API_KEY:', process.env.ELEVENLABS_API_KEY ? `${process.env.ELEVENLABS_API_KEY.substring(0, 10)}...` : 'NOT SET');
 } catch (e) {
   console.log('dotenv not installed, using fallback');
 }

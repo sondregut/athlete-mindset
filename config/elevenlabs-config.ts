@@ -1,9 +1,18 @@
 import Constants from 'expo-constants';
+import { ELEVENLABS_API_KEY } from '@env';
 
 // Get ElevenLabs API key from environment or Constants
 export const getElevenLabsApiKey = (): string => {
+  console.log('[ElevenLabs Config] Starting API key search...');
+  
+  // Debug: Log what we're getting from each source
+  console.log('[ElevenLabs Config] From @env:', ELEVENLABS_API_KEY ? `${ELEVENLABS_API_KEY.substring(0, 10)}...` : 'undefined');
+  console.log('[ElevenLabs Config] From expoConfig.extra:', (Constants.expoConfig as any)?.extra?.elevenLabsApiKey ? 'present' : 'undefined');
+  
   // Try multiple sources for the API key
   const sources = [
+    // From react-native-dotenv
+    ELEVENLABS_API_KEY,
     // From expo-constants (app.config.js)
     (Constants.expoConfig as any)?.extra?.elevenLabsApiKey,
     (Constants.manifest as any)?.extra?.elevenLabsApiKey,
@@ -12,12 +21,13 @@ export const getElevenLabsApiKey = (): string => {
 
   for (const source of sources) {
     if (source && typeof source === 'string' && source.startsWith('sk_')) {
-      console.log('ElevenLabs API key loaded from environment');
+      console.log('✅ ElevenLabs API key loaded successfully');
       return source;
     }
   }
 
-  console.error('No ElevenLabs API key found!');
+  console.error('❌ No ElevenLabs API key found!');
+  console.error('Make sure ELEVENLABS_API_KEY is set in your .env file');
   return '';
 };
 
@@ -37,27 +47,49 @@ export const DEFAULT_VOICE_SETTINGS = {
   use_speaker_boost: true
 };
 
-// Common ElevenLabs voice IDs (you'll need to get actual voice IDs from your account)
+// Your custom ElevenLabs voice IDs
 export const ELEVENLABS_VOICES = {
-  // These are example IDs - replace with actual voice IDs from your ElevenLabs account
-  rachel: '21m00Tcm4TlvDq8ikWAM', // Example: Rachel - calm, conversational
-  drew: 'CYw3kZ02Hs0563khs1Fj', // Example: Drew - deep, confident
-  clyde: '2EiwWnXFnvU5JabPnv8n', // Example: Clyde - war veteran
-  paul: '5Q0t7uMcjvnagumLfvZi', // Example: Paul - news presenter
-  domi: 'AZnzlk1XvdvUeBnXmlld', // Example: Domi - strong, confident
-  dave: 'CcHKVEHiGdXiFxqxvPPp', // Example: Dave - conversational, friendly
-  fin: 'D38z5RcWu1voky8WS1ja', // Example: Fin - old American male
-  bella: 'EXAVITQu4vr4xnSDxMaL', // Example: Bella - soft, young
-  antoni: 'ErXwobaYiN019PkySvjV', // Example: Antoni - well-rounded
-  thomas: 'GBv7mTt0atIp3Br8iCZE', // Example: Thomas - calm, narrative
+  christina: '2qfp6zPuviqeCOZIE9RZ', // Christina - Calming Yoga Instructor
+  mark: '1SM7GgM6IMuvQlz2BwM3', // Mark - ConvoAI
+  benjamin: 'LruHrtVF6PSyGItzMNHS', // Benjamin - Deep, Warm, Calming
+  
+  // Legacy voices for backward compatibility
+  rachel: '21m00Tcm4TlvDq8ikWAM', // Fallback voice
+  drew: 'CYw3kZ02Hs0563khs1Fj', // Fallback voice
+  bella: 'EXAVITQu4vr4xnSDxMaL', // Fallback voice
 };
 
 // Map legacy voice names to ElevenLabs voices
 export const VOICE_MAPPING = {
-  'nova': ELEVENLABS_VOICES.rachel,     // Friendly and conversational
-  'alloy': ELEVENLABS_VOICES.drew,      // Neutral and balanced
-  'echo': ELEVENLABS_VOICES.paul,       // Warm and engaging
-  'fable': ELEVENLABS_VOICES.domi,      // Expressive and dynamic
-  'onyx': ELEVENLABS_VOICES.dave,       // Deep and authoritative
-  'shimmer': ELEVENLABS_VOICES.bella,   // Soft and soothing
+  'nova': ELEVENLABS_VOICES.christina,     // Calming and instructional
+  'alloy': ELEVENLABS_VOICES.mark,         // Conversational and balanced
+  'echo': ELEVENLABS_VOICES.benjamin,      // Deep and warm
+  'fable': ELEVENLABS_VOICES.christina,    // Expressive and calming
+  'onyx': ELEVENLABS_VOICES.benjamin,      // Deep and authoritative
+  'shimmer': ELEVENLABS_VOICES.christina,  // Soft and soothing
 };
+
+// Voice options for user selection
+export const VOICE_OPTIONS = [
+  {
+    id: 'christina',
+    name: 'Christina',
+    description: 'Calming Yoga Instructor',
+    voiceId: ELEVENLABS_VOICES.christina,
+    style: 'calm and instructional'
+  },
+  {
+    id: 'mark', 
+    name: 'Mark',
+    description: 'Conversational AI',
+    voiceId: ELEVENLABS_VOICES.mark,
+    style: 'conversational and engaging'
+  },
+  {
+    id: 'benjamin',
+    name: 'Benjamin', 
+    description: 'Deep, Warm, Calming',
+    voiceId: ELEVENLABS_VOICES.benjamin,
+    style: 'deep and warm'
+  }
+];

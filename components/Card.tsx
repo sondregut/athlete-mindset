@@ -13,13 +13,13 @@ export default function Card({ children, style }: CardProps) {
   const dynamicStyles = StyleSheet.create({
     card: {
       backgroundColor: colors.cardBackground,
-      borderRadius: 12,
-      padding: 16,
-      marginVertical: 8,
+      borderRadius: 10,
+      padding: 12,
+      marginVertical: 6,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.02,
-      shadowRadius: 4,
+      shadowRadius: 3,
       elevation: 1,
       borderWidth: 0.5,
       borderColor: colors.border,

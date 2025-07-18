@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
-import { Brain, Trophy, Target, Zap, Play, Volume2 } from 'lucide-react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Alert } from 'react-native';
 import { colors } from '@/constants/colors';
 import OnboardingButton from './OnboardingButton';
+import { Play, Pause, Trophy, Target, Zap } from 'lucide-react-native';
 import { Audio } from 'expo-av';
-import * as Haptics from 'expo-haptics';
 import { TTSFirebaseCache } from '@/services/tts-firebase-cache';
+import { ELEVENLABS_VOICES } from '@/config/elevenlabs-config';
+
+const { width, height } = Dimensions.get('window');
 
 interface OnboardingVisualizationDemoProps {
   step: {
@@ -19,186 +21,210 @@ interface OnboardingVisualizationDemoProps {
   onBack: () => void;
 }
 
-const visualizationCategories = [
-  {
-    icon: <Trophy size={20} color={colors.primary} />,
-    title: 'Pre-Competition',
-    description: 'Prepare mentally for your best performance',
-    color: colors.primary,
-  },
-  {
-    icon: <Target size={20} color={colors.secondary} />,
-    title: 'Goal Achievement',
-    description: 'Visualize success and build confidence',
-    color: colors.secondary,
-  },
-  {
-    icon: <Brain size={20} color={colors.info} />,
-    title: 'Focus Training',
-    description: 'Sharpen concentration and mental clarity',
-    color: colors.info,
-  },
-  {
-    icon: <Zap size={20} color={colors.success} />,
-    title: 'Recovery',
-    description: 'Mental restoration and stress relief',
-    color: colors.success,
-  },
-];
-
 export default function OnboardingVisualizationDemo({ step, onNext, onBack }: OnboardingVisualizationDemoProps) {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [intervalRef, setIntervalRef] = useState<ReturnType<typeof setInterval> | null>(null);
   const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
+  
+  const ttsService = useRef(TTSFirebaseCache.getInstance());
 
-  // Cleanup on unmount
+  // Cleanup audio on unmount
   useEffect(() => {
     return () => {
       if (sound) {
         sound.stopAsync();
         sound.unloadAsync();
       }
+      if (intervalRef) {
+        clearInterval(intervalRef);
+      }
     };
-  }, [sound]);
+  }, [sound, intervalRef]);
+
+  const handlePlayDemo = async () => {
+    if (isPlaying) {
+      // Stop demo
+      if (sound) {
+        await sound.stopAsync();
+      }
+      if (intervalRef) {
+        clearInterval(intervalRef);
+        setIntervalRef(null);
+      }
+      setIsPlaying(false);
+      setProgress(0);
+    } else {
+      // Start demo with real audio
+      await playDemoAudio();
+    }
+  };
 
   const playDemoAudio = async () => {
     try {
-      if (Platform.OS !== 'web') {
-        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
-      
+      setIsLoadingAudio(true);
       setIsPlaying(true);
+      setProgress(0);
       
-      // Configure audio session
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        playsInSilentModeIOS: true,
-        shouldDuckAndroid: true,
-        staysActiveInBackground: false,
-      });
+      // Demo script text
+      const demoText = "Take a deep breath and close your eyes. Visualize yourself performing at your absolute best. Feel the confidence flowing through your body as you prepare for peak performance. This is just a taste of what our AI-powered visualizations can do for you.";
       
-      // Create demo audio content
-      const demoText = "Take a deep breath and close your eyes. Feel your strength building from within. You are confident, capable, and ready for any challenge that comes your way.";
-      
-      // Use actual TTS service for demo
-      const ttsService = TTSFirebaseCache.getInstance();
-      
-      // Generate and play audio
-      const audioUrl = await ttsService.synthesizeSpeech(demoText, {
-        voice: '21m00Tcm4TlvDq8ikWAM', // Rachel voice as default
-        speed: 1.0,
-        model: 'eleven_multilingual_v2'
+      // Generate audio
+      const audioUrl = await ttsService.current.synthesizeSpeech(demoText, {
+        voice: ELEVENLABS_VOICES.christina,
+        model: 'eleven_multilingual_v2',
+        speed: 1.0
       });
       
       if (audioUrl) {
-        // Create and play the sound
+        // Configure audio session
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: true,
+          shouldDuckAndroid: true,
+          staysActiveInBackground: false,
+        });
+        
+        // Create and play audio
         const { sound: newSound } = await Audio.Sound.createAsync(
           { uri: audioUrl },
           { shouldPlay: true, volume: 1.0 }
         );
         
         setSound(newSound);
+        setIsLoadingAudio(false);
         
-        // Set up playback status update to know when it finishes
+        // Simulate progress during audio playback
+        let currentProgress = 0;
+        const interval = setInterval(() => {
+          currentProgress += 1.5;
+          setProgress(currentProgress);
+          
+          if (currentProgress >= 100) {
+            clearInterval(interval);
+            setIntervalRef(null);
+            setIsPlaying(false);
+            setTimeout(() => {
+              setProgress(0);
+              newSound.unloadAsync();
+              setSound(null);
+              Alert.alert(
+                'Demo Complete!',
+                'This is just a preview. Experience the full power of personalized visualizations in the app.',
+                [{ text: 'Got it!', style: 'default' }]
+              );
+            }, 500);
+          }
+        }, 100);
+        
+        setIntervalRef(interval);
+        
+        // Set up playback status listener
         newSound.setOnPlaybackStatusUpdate((status) => {
           if (status.isLoaded && status.didJustFinish) {
+            // Audio finished
+            if (intervalRef) {
+              clearInterval(intervalRef);
+              setIntervalRef(null);
+            }
+            setProgress(100);
             setIsPlaying(false);
-            newSound.unloadAsync();
-            setSound(null);
+            setTimeout(() => {
+              setProgress(0);
+              newSound.unloadAsync();
+              setSound(null);
+              Alert.alert(
+                'Demo Complete!',
+                'Experience the full power of personalized visualizations in the app.',
+                [{ text: 'Got it!', style: 'default' }]
+              );
+            }, 500);
           }
         });
       } else {
-        // Fallback to timer if TTS fails
-        setTimeout(() => {
-          setIsPlaying(false);
-        }, 8000); // 8 seconds for longer demo text
+        throw new Error('Failed to generate demo audio');
       }
-      
     } catch (error) {
-      console.error('Error playing demo audio:', error);
+      console.error('Demo audio error:', error);
+      setIsLoadingAudio(false);
       setIsPlaying(false);
-      // Fallback to timer
-      setTimeout(() => {
-        setIsPlaying(false);
-      }, 8000);
+      setProgress(0);
+      Alert.alert(
+        'Demo Unavailable',
+        'Audio demo is not available right now. You can still experience the full visualizations in the app!',
+        [{ text: 'OK', style: 'default' }]
+      );
     }
   };
 
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.iconContainer}>
-            <Text style={styles.icon}>{step.icon}</Text>
-          </View>
-          <Text style={styles.title}>{step.title}</Text>
-          <Text style={styles.subtitle}>{step.subtitle}</Text>
-          <Text style={styles.description}>{step.description}</Text>
+      <View style={styles.content}>
+        <View style={styles.iconContainer}>
+          <Trophy size={50} color={colors.primary} />
+          <Target size={20} color={colors.secondary} style={styles.sparkle1} />
+          <Zap size={16} color={colors.orange} style={styles.sparkle2} />
         </View>
 
-        {/* What is Visualization */}
-        <View style={styles.explanationCard}>
-          <Text style={styles.explanationTitle}>What is Visualization?</Text>
-          <Text style={styles.explanationText}>
-            Mental imagery training where you vividly imagine performing at your best. 
-            Used by Olympic athletes and professionals to:
-          </Text>
-          <View style={styles.benefitsList}>
-            <Text style={styles.benefitItem}>• Improve technique without physical practice</Text>
-            <Text style={styles.benefitItem}>• Build confidence before competitions</Text>
-            <Text style={styles.benefitItem}>• Manage pre-performance anxiety</Text>
-            <Text style={styles.benefitItem}>• Accelerate skill development</Text>
-          </View>
-        </View>
+        <Text style={styles.title}>{step.title}</Text>
+        <Text style={styles.subtitle}>{step.subtitle}</Text>
+        <Text style={styles.description}>{step.description}</Text>
 
-        {/* Categories Preview */}
-        <Text style={styles.sectionTitle}>Visualization Categories:</Text>
-        <View style={styles.categoriesContainer}>
-          {visualizationCategories.map((category, index) => (
-            <View key={index} style={styles.categoryCard}>
-              <View style={[styles.categoryIcon, { backgroundColor: `${category.color}15` }]}>
-                {category.icon}
+        <View style={styles.demoContainer}>
+          <View style={styles.demoCard}>
+            <Text style={styles.demoTitle}>Peak Performance Visualization</Text>
+            <Text style={styles.demoSubtitle}>Build confidence for your next competition</Text>
+            
+            <View style={styles.progressContainer}>
+              <View style={styles.progressBar}>
+                <View 
+                  style={[
+                    styles.progressFill, 
+                    { width: `${progress}%` }
+                  ]} 
+                />
               </View>
-              <View style={styles.categoryContent}>
-                <Text style={styles.categoryTitle}>{category.title}</Text>
-                <Text style={styles.categoryDescription}>{category.description}</Text>
-              </View>
+              <Text style={styles.progressText}>
+                {isLoadingAudio ? 'Loading audio...' : isPlaying ? `${Math.round(progress)}%` : 'Ready to play'}
+              </Text>
             </View>
-          ))}
-        </View>
 
-        {/* Audio Demo */}
-        <View style={styles.demoCard}>
-          <Text style={styles.demoTitle}>Try a Sample</Text>
-          <Text style={styles.demoDescription}>
-            Experience a real AI-guided visualization with natural voice narration
-          </Text>
-          <TouchableOpacity 
-            style={[styles.playButton, isPlaying && styles.playingButton]}
-            onPress={playDemoAudio}
-            disabled={isPlaying}
-          >
-            {isPlaying ? (
-              <>
-                <Volume2 size={20} color={colors.background} />
-                <Text style={styles.playButtonText}>Playing Demo...</Text>
-              </>
-            ) : (
-              <>
-                <Play size={20} color={colors.background} />
-                <Text style={styles.playButtonText}>Play Demo</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+            <TouchableOpacity
+              style={[styles.playButton, { 
+                backgroundColor: colors.primary,
+                opacity: isLoadingAudio ? 0.7 : 1
+              }]}
+              onPress={handlePlayDemo}
+              disabled={isLoadingAudio}
+            >
+              {isLoadingAudio ? (
+                <Text style={{ color: colors.background, fontSize: 16 }}>...</Text>
+              ) : isPlaying ? (
+                <Pause size={24} color={colors.background} />
+              ) : (
+                <Play size={24} color={colors.background} />
+              )}
+            </TouchableOpacity>
+          </View>
 
-      {/* Actions */}
-      <View style={styles.actions}>
+          <View style={styles.benefitsContainer}>
+            <Text style={styles.benefitsTitle}>What you'll experience:</Text>
+            <View style={styles.benefitsList}>
+              <Text style={styles.benefitItem}>• Sport-specific imagery and techniques</Text>
+              <Text style={styles.benefitItem}>• Professional voice narration</Text>
+              <Text style={styles.benefitItem}>• Personalized to your goals</Text>
+              <Text style={styles.benefitItem}>• Science-backed methods</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.buttonContainer}>
         <OnboardingButton
           title="Continue"
           onPress={onNext}
-          style={styles.primaryButton}
+          style={styles.nextButton}
         />
       </View>
     </View>
@@ -208,70 +234,125 @@ export default function OnboardingVisualizationDemo({ step, onNext, onBack }: On
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: colors.background,
     paddingHorizontal: 24,
   },
   content: {
     flex: 1,
-  },
-  header: {
+    justifyContent: 'flex-start',
     alignItems: 'center',
-    paddingTop: 20,
-    paddingBottom: 32,
+    paddingTop: 40,
+    paddingBottom: 100,
   },
   iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: `${colors.primary}15`,
-    justifyContent: 'center',
-    alignItems: 'center',
+    position: 'relative',
     marginBottom: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  icon: {
-    fontSize: 40,
+  sparkle1: {
+    position: 'absolute',
+    top: -5,
+    right: -15,
+  },
+  sparkle2: {
+    position: 'absolute',
+    bottom: -5,
+    left: -15,
   },
   title: {
     fontSize: 28,
-    fontWeight: '700',
+    fontWeight: 'bold',
     color: colors.text,
     textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
     lineHeight: 34,
   },
   subtitle: {
-    fontSize: 16,
-    fontWeight: '500',
+    fontSize: 18,
     color: colors.primary,
     textAlign: 'center',
     marginBottom: 16,
-    lineHeight: 22,
+    fontWeight: '600',
   },
   description: {
-    fontSize: 15,
+    fontSize: 16,
     color: colors.darkGray,
     textAlign: 'center',
-    lineHeight: 22,
-    paddingHorizontal: 8,
-  },
-  explanationCard: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: 16,
-    padding: 20,
+    lineHeight: 24,
     marginBottom: 24,
-    borderWidth: 1,
-    borderColor: colors.border,
+    paddingHorizontal: 16,
   },
-  explanationTitle: {
+  demoContainer: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  demoCard: {
+    backgroundColor: colors.lightGray,
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  demoTitle: {
     fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  demoSubtitle: {
+    fontSize: 14,
+    color: colors.darkGray,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  progressContainer: {
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  progressBar: {
+    width: '100%',
+    height: 4,
+    backgroundColor: colors.mediumGray,
+    borderRadius: 2,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: colors.primary,
+    borderRadius: 2,
+  },
+  progressText: {
+    fontSize: 12,
+    color: colors.darkGray,
+    fontWeight: '500',
+  },
+  playButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  benefitsContainer: {
+    width: '100%',
+    paddingHorizontal: 16,
+  },
+  benefitsTitle: {
+    fontSize: 16,
     fontWeight: '600',
     color: colors.text,
     marginBottom: 12,
-  },
-  explanationText: {
-    fontSize: 15,
-    color: colors.text,
-    lineHeight: 22,
-    marginBottom: 16,
+    textAlign: 'center',
   },
   benefitsList: {
     gap: 8,
@@ -281,94 +362,10 @@ const styles = StyleSheet.create({
     color: colors.darkGray,
     lineHeight: 20,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 16,
+  buttonContainer: {
+    paddingBottom: 40,
   },
-  categoriesContainer: {
-    gap: 12,
-    marginBottom: 24,
-  },
-  categoryCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.background,
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  categoryIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  categoryContent: {
-    flex: 1,
-  },
-  categoryTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 4,
-  },
-  categoryDescription: {
-    fontSize: 14,
-    color: colors.darkGray,
-    lineHeight: 18,
-  },
-  demoCard: {
-    backgroundColor: `${colors.primary}10`,
-    borderRadius: 16,
-    padding: 20,
-    alignItems: 'center',
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: `${colors.primary}20`,
-  },
-  demoTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 8,
-  },
-  demoDescription: {
-    fontSize: 14,
-    color: colors.darkGray,
-    textAlign: 'center',
-    marginBottom: 16,
-    lineHeight: 20,
-  },
-  playButton: {
-    backgroundColor: colors.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  playingButton: {
-    backgroundColor: colors.secondary,
-  },
-  playButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.background,
-  },
-  actions: {
-    gap: 12,
-    paddingVertical: 20,
-  },
-  primaryButton: {
-    marginBottom: 0,
-  },
-  secondaryButton: {
-    marginBottom: 0,
+  nextButton: {
+    marginTop: 20,
   },
 });

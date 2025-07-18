@@ -4,7 +4,7 @@ import { Slot, router } from 'expo-router';
 import { useOnboardingStore } from '@/store/onboarding-store';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useThemeColors } from '@/hooks/useThemeColors';
-import { PersonalizationPreloader } from '@/services/personalization-preloader';
+// import { PersonalizationPreloader } from '@/services/personalization-preloader';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PersonalizationProfile } from '@/types/personalization-profile';
 
@@ -45,20 +45,8 @@ export default function AppWrapper({ children }: AppWrapperProps) {
         if (profileStr) {
           const profile: PersonalizationProfile = JSON.parse(profileStr);
           if (profile.is_personalization_enabled) {
-            const preloader = PersonalizationPreloader.getInstance();
-            
-            // Check if content needs regeneration (profile changed)
-            const needsRegen = await preloader.needsRegeneration(profile);
-            if (needsRegen) {
-              console.log('📥 Starting background content preload for changed profile...');
-              preloader.preloadAllContent(profile, (progress, message) => {
-                console.log(`[Preloader] ${progress}%: ${message}`);
-              }).catch(error => {
-                console.error('Background preload error:', error);
-              });
-            } else {
-              console.log('✅ Personalized content already up to date');
-            }
+            console.log('✅ Personalization enabled for profile:', profile.sport_activity);
+            // Note: Content is now generated on-demand using OpenAI
           }
         }
       } catch (error) {

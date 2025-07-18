@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import { SchedulableTriggerInputTypes } from 'expo-notifications';
 
 export interface NotificationSettings {
   enabled: boolean;
@@ -182,7 +183,10 @@ export const useNotificationStore = create<NotificationState>()(
               body: notification.body,
               data: { type: notification.type },
             },
-            trigger: notification.scheduledTime as any,
+            trigger: { 
+              type: SchedulableTriggerInputTypes.DATE,
+              date: notification.scheduledTime 
+            },
           });
           
           const scheduledNotification: ScheduledNotification = {

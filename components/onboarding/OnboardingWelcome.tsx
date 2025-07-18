@@ -1,9 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Dimensions, Platform, Animated, TouchableOpacity, ScrollView, Image } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { colors } from '@/constants/colors';
 import OnboardingButton from './OnboardingButton';
-import LoginModal from '@/components/LoginModal';
 
 const { width, height } = Dimensions.get('window');
 
@@ -22,7 +21,6 @@ interface OnboardingWelcomeProps {
 export default function OnboardingWelcome({ step, onNext, onLogin }: OnboardingWelcomeProps) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const translateYAnim = useRef(new Animated.Value(30)).current;
-  const [showLoginModal, setShowLoginModal] = useState(false);
 
   useEffect(() => {
     // Simple fade in animation for content
@@ -53,7 +51,7 @@ export default function OnboardingWelcome({ step, onNext, onLogin }: OnboardingW
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-    setShowLoginModal(true);
+    onLogin(); // Use the provided onLogin prop instead of modal
   };
 
   const styles = StyleSheet.create({
@@ -66,7 +64,7 @@ export default function OnboardingWelcome({ step, onNext, onLogin }: OnboardingW
     scrollContent: {
       flexGrow: 1,
       paddingHorizontal: 24,
-      paddingTop: 40,
+      paddingTop: 30,
       paddingBottom: 20,
       justifyContent: 'center',
     },
@@ -74,43 +72,43 @@ export default function OnboardingWelcome({ step, onNext, onLogin }: OnboardingW
       alignItems: 'center',
     },
     iconContainer: {
-      width: 160,
-      height: 160,
+      width: 120,
+      height: 120,
       justifyContent: 'center',
       alignItems: 'center',
-      marginBottom: 32,
+      marginBottom: 24,
     },
     icon: {
-      fontSize: 120,
+      fontSize: 80,
     },
     title: {
-      fontSize: 32,
+      fontSize: 28,
       fontWeight: '700',
       color: colors.text,
       textAlign: 'center',
-      marginBottom: 16,
-      lineHeight: 38,
+      marginBottom: 12,
+      lineHeight: 34,
     },
     subtitle: {
-      fontSize: 18,
+      fontSize: 16,
       fontWeight: '500',
       color: colors.primary,
       textAlign: 'center',
-      marginBottom: 24,
-      lineHeight: 24,
+      marginBottom: 20,
+      lineHeight: 22,
     },
     description: {
-      fontSize: 16,
+      fontSize: 15,
       color: colors.darkGray,
       textAlign: 'center',
-      lineHeight: 24,
+      lineHeight: 22,
       paddingHorizontal: 8,
     },
     actions: {
       gap: 12,
       paddingHorizontal: 24,
-      paddingBottom: 40,
-      paddingTop: 20,
+      paddingBottom: 30,
+      paddingTop: 16,
     },
     primaryButton: {
       marginBottom: 0,
@@ -188,11 +186,6 @@ export default function OnboardingWelcome({ step, onNext, onLogin }: OnboardingW
         </TouchableOpacity>
       </View>
 
-      {/* Login Modal */}
-      <LoginModal 
-        visible={showLoginModal}
-        onClose={() => setShowLoginModal(false)}
-      />
     </View>
   );
 }

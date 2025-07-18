@@ -116,11 +116,11 @@ class FirebaseNotificationService {
       const [hours, minutes] = time.split(':').map(Number);
       
       // Create trigger
-      const trigger: any = {
+      const trigger = {
         type: SchedulableTriggerInputTypes.DAILY,
         hour: hours,
         minute: minutes,
-      };
+      } as const;
 
       // Schedule notification
       await Notifications.scheduleNotificationAsync({
@@ -145,12 +145,12 @@ class FirebaseNotificationService {
    */
   async scheduleWeeklyGoalReminder(): Promise<void> {
     try {
-      const trigger: any = {
+      const trigger = {
         type: SchedulableTriggerInputTypes.WEEKLY,
         weekday: 1, // Sunday
         hour: 19, // 7 PM
         minute: 0,
-      };
+      } as const;
 
       await Notifications.scheduleNotificationAsync({
         content: {
@@ -198,12 +198,12 @@ class FirebaseNotificationService {
 
       // Schedule for each selected day of the week
       for (const dayOfWeek of reminder.daysOfWeek) {
-        const trigger: any = {
+        const trigger = {
           type: SchedulableTriggerInputTypes.WEEKLY,
           weekday: dayOfWeek + 1, // expo uses 1-7 (Sunday = 1)
           hour: hours,
           minute: minutes,
-        };
+        } as const;
 
         await Notifications.scheduleNotificationAsync({
           content: {

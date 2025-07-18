@@ -132,11 +132,11 @@ export default function ProfilePreferences() {
       <View style={styles.dataManagement}>
         <TouchableOpacity 
           style={[styles.dataButton, { backgroundColor: `${colors.primary}10`, borderColor: colors.primary }]}
-          onPress={() => router.push('/personalization-setup')}
+          onPress={() => router.push('/(tabs)/profile')}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Sparkles size={20} color={colors.primary} />
-            <Text style={styles.dataButtonText}>Personalization Settings</Text>
+            <Text style={styles.dataButtonText}>Edit Sport & Profile</Text>
           </View>
         </TouchableOpacity>
         <TouchableOpacity style={styles.dataButton}>

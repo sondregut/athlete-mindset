@@ -1,0 +1,16 @@
+{
+  "templates": [
+    {
+      "id": "goal_visualisation_sport_only_07",
+      "name": "Goal Visualisation (Sport-Specific)",
+      "description": "A step-by-step guide to visualize success, personalized for your specific sport.",
+      "script": "1.\tPrepare: Find a comfortable position and close your eyes. Take five deep breaths.\n\n2.\tFocus: Bring your attention to your goal within the world of {{sport}}.\n\n3.\tVisualise the end result: See yourself successfully achieving your goal at the {{location}}. What does it look like? What colors do you see?\n\n4.\tAdd details: What can you hear? The {{sounds_of_the_sport}}. Who else is there?\n\n5.\tGo deeper: See yourself performing the {{key_action_of_the_sport}} perfectly. You are wearing your uniform and feel in complete control.\n\n6.\tConnect emotionally: Feel the pride and excitement of achieving this in {{sport}}.\n\n7.\tRehearse an action: Mentally rehearse the first physical step you'll take to train. See yourself taking that action.\n\n8.\tClose with clarity: Take five more deep breaths and gently open your eyes.",
+      "placeholders": [
+        {
+          "key": "sport",
+          "prompt": "What is your sport? (e.g., Soccer, Tennis, Swimming)"
+        }
+      ]
+    }
+  ]
+}

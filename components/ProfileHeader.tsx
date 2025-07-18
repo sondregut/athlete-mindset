@@ -8,9 +8,10 @@ import Card from './Card';
 
 interface ProfileHeaderProps {
   onEditPress: () => void;
+  onSettingsPress: () => void;
 }
 
-export default function ProfileHeader({ onEditPress }: ProfileHeaderProps) {
+export default function ProfileHeader({ onEditPress, onSettingsPress }: ProfileHeaderProps) {
   const colors = useThemeColors();
   const { profile } = useUserStore();
 
@@ -87,7 +88,7 @@ export default function ProfileHeader({ onEditPress }: ProfileHeaderProps) {
     <Card style={styles.container}>
       <TouchableOpacity 
         style={styles.settingsButton}
-        onPress={() => router.push('/settings')}
+        onPress={onSettingsPress}
         activeOpacity={0.7}
       >
         <Settings size={20} color={colors.darkGray} />

@@ -9,14 +9,13 @@ import { useUserStore } from '@/store/user-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import OnboardingButton from '@/components/onboarding/OnboardingButton';
 import OnboardingWelcome from '@/components/onboarding/OnboardingWelcome';
-import OnboardingMentalTracking from '@/components/onboarding/OnboardingMentalTracking';
+import OnboardingName from '@/components/onboarding/OnboardingName';
+import OnboardingSport from '@/components/onboarding/OnboardingSport';
+import OnboardingExperience from '@/components/onboarding/OnboardingExperience';
 import OnboardingAIVisualization from '@/components/onboarding/OnboardingAIVisualization';
 import OnboardingVisualizationDemo from '@/components/onboarding/OnboardingVisualizationDemo';
-import OnboardingSynergy from '@/components/onboarding/OnboardingSynergy';
 import OnboardingPersonalization from '@/components/onboarding/OnboardingPersonalization';
 import OnboardingAuth from '@/components/onboarding/OnboardingAuth';
-import OnboardingPersonalizationSetup from '@/components/onboarding/OnboardingPersonalizationSetup';
-import OnboardingProfile from '@/components/onboarding/OnboardingProfile';
 
 const { width, height } = Dimensions.get('window');
 
@@ -51,10 +50,10 @@ export default function OnboardingScreen() {
     setIsTransitioning(true);
     
     setTimeout(() => {
-      // Special case: if we're on auth screen (step 8) and came from login intent
+      // Special case: if we're on auth screen (step 10) and came from login intent
       // return to welcome screen (step 0) instead of previous screen
       const { loginIntent } = useOnboardingStore.getState();
-      if (currentStep === 8 && loginIntent) {
+      if (currentStep === 10 && loginIntent) {
         setOnboardingStep(0);
         setLoginIntent(false); // Clear the login intent
       } else {
@@ -87,7 +86,7 @@ export default function OnboardingScreen() {
   const handleLogin = () => {
     // Set login intent and navigate to the authentication screen
     setLoginIntent(true);
-    setOnboardingStep(8); // Auth is step 8
+    setOnboardingStep(10); // Auth is step 10
   };
 
   // Create PanResponder for swipe gestures
@@ -148,7 +147,7 @@ export default function OnboardingScreen() {
           );
         case 1:
           return (
-            <OnboardingProfile
+            <OnboardingName
               step={onboardingSteps[1]}
               onNext={handleNext}
               onBack={handleBack}
@@ -156,7 +155,7 @@ export default function OnboardingScreen() {
           );
         case 2:
           return (
-            <OnboardingMentalTracking
+            <OnboardingSport
               step={onboardingSteps[2]}
               onNext={handleNext}
               onBack={handleBack}
@@ -164,7 +163,7 @@ export default function OnboardingScreen() {
           );
         case 3:
           return (
-            <OnboardingAIVisualization
+            <OnboardingExperience
               step={onboardingSteps[3]}
               onNext={handleNext}
               onBack={handleBack}
@@ -172,7 +171,7 @@ export default function OnboardingScreen() {
           );
         case 4:
           return (
-            <OnboardingVisualizationDemo
+            <OnboardingAIVisualization
               step={onboardingSteps[4]}
               onNext={handleNext}
               onBack={handleBack}
@@ -180,7 +179,7 @@ export default function OnboardingScreen() {
           );
         case 5:
           return (
-            <OnboardingSynergy
+            <OnboardingVisualizationDemo
               step={onboardingSteps[5]}
               onNext={handleNext}
               onBack={handleBack}
@@ -188,7 +187,7 @@ export default function OnboardingScreen() {
           );
         case 6:
           return (
-            <OnboardingPersonalizationSetup
+            <OnboardingPersonalization
               step={onboardingSteps[6]}
               onNext={handleNext}
               onBack={handleBack}
@@ -196,16 +195,8 @@ export default function OnboardingScreen() {
           );
         case 7:
           return (
-            <OnboardingPersonalization
-              step={onboardingSteps[7]}
-              onNext={handleNext}
-              onBack={handleBack}
-            />
-          );
-        case 8:
-          return (
             <OnboardingAuth 
-              step={onboardingSteps[8]}
+              step={onboardingSteps[7]}
             />
           );
         default:
@@ -249,8 +240,8 @@ export default function OnboardingScreen() {
       
       {/* Progress Indicator with Back Button */}
       <View style={styles.progressContainer}>
-        {/* Back Button */}
-        {currentStep > 0 && (
+        {/* Back Button - Hide on auth screen when coming from login intent */}
+        {currentStep > 0 && !(currentStep === 10 && useOnboardingStore.getState().loginIntent) && (
           <TouchableOpacity 
             style={styles.backButton} 
             onPress={handleBack}
@@ -260,19 +251,21 @@ export default function OnboardingScreen() {
           </TouchableOpacity>
         )}
         
-        {/* Progress Dots */}
-        <View style={styles.dotsContainer}>
-          {onboardingSteps.map((_, index) => (
-            <View
-              key={index}
-              style={[
-                styles.progressDot,
-                index === currentStep && styles.activeDot,
-                index < currentStep && styles.completedDot,
-              ]}
-            />
-          ))}
-        </View>
+        {/* Progress Dots - Hide on auth screen when coming from login intent */}
+        {!(currentStep === 10 && useOnboardingStore.getState().loginIntent) && (
+          <View style={styles.dotsContainer}>
+            {onboardingSteps.map((_, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.progressDot,
+                  index === currentStep && styles.activeDot,
+                  index < currentStep && styles.completedDot,
+                ]}
+              />
+            ))}
+          </View>
+        )}
       </View>
 
       {/* Step Content */}

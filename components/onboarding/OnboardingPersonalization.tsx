@@ -7,6 +7,7 @@ import { useOnboardingStore } from '@/store/onboarding-store';
 import { Audio } from 'expo-av';
 import * as Haptics from 'expo-haptics';
 import { TTSFirebaseCache } from '@/services/tts-firebase-cache';
+import { ELEVENLABS_VOICES } from '@/config/elevenlabs-config';
 
 interface OnboardingPersonalizationProps {
   step: {
@@ -21,12 +22,9 @@ interface OnboardingPersonalizationProps {
 }
 
 const voices = [
-  { id: 'nova', name: 'Nova', description: 'Warm and friendly' },
-  { id: 'alloy', name: 'Alloy', description: 'Clear and neutral' },
-  { id: 'echo', name: 'Echo', description: 'British accent' },
-  { id: 'fable', name: 'Fable', description: 'Expressive and dynamic' },
-  { id: 'onyx', name: 'Onyx', description: 'Deep and authoritative' },
-  { id: 'shimmer', name: 'Shimmer', description: 'Soft and soothing' },
+  { id: ELEVENLABS_VOICES.christina, name: 'Christina', description: 'Calming yoga instructor' },
+  { id: ELEVENLABS_VOICES.mark, name: 'Mark', description: 'Conversational AI' },
+  { id: ELEVENLABS_VOICES.benjamin, name: 'Benjamin', description: 'Deep, warm, calming' },
 ];
 
 export default function OnboardingPersonalization({ step, onNext, onBack }: OnboardingPersonalizationProps) {
@@ -34,7 +32,7 @@ export default function OnboardingPersonalization({ step, onNext, onBack }: Onbo
   const translateYAnim = useRef(new Animated.Value(30)).current;
   const { selectedVoice, setSelectedVoice } = useOnboardingStore();
   const [playingVoice, setPlayingVoice] = useState<string | null>(null);
-  const [selectedVoiceLocal, setSelectedVoiceLocal] = useState(selectedVoice || 'nova');
+  const [selectedVoiceLocal, setSelectedVoiceLocal] = useState(selectedVoice || ELEVENLABS_VOICES.christina);
   const [sound, setSound] = useState<Audio.Sound | null>(null);
 
   useEffect(() => {

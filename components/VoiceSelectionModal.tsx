@@ -5,7 +5,7 @@ import { X, Volume2, Play, Loader2 } from 'lucide-react-native';
 import { TTSFirebaseCache } from '@/services/tts-firebase-cache';
 
 export type TTSVoice = string; // Voice IDs are strings
-import { ELEVENLABS_VOICES } from '@/config/elevenlabs-config';
+import { ELEVENLABS_VOICES, VOICE_OPTIONS } from '@/config/elevenlabs-config';
 
 interface VoiceSelectionModalProps {
   visible: boolean;
@@ -15,12 +15,9 @@ interface VoiceSelectionModalProps {
 }
 
 const voiceOptions: { value: TTSVoice; label: string; description: string; personality: string }[] = [
-  { value: ELEVENLABS_VOICES.rachel, label: 'Rachel', description: 'Calm and conversational', personality: 'Warm, approachable' },
-  { value: ELEVENLABS_VOICES.drew, label: 'Drew', description: 'Deep and confident', personality: 'Professional, clear' },
-  { value: ELEVENLABS_VOICES.paul, label: 'Paul', description: 'News presenter style', personality: 'Smooth, confident' },
-  { value: ELEVENLABS_VOICES.domi, label: 'Domi', description: 'Strong and confident', personality: 'Energetic, inspiring' },
-  { value: ELEVENLABS_VOICES.bella, label: 'Bella', description: 'Soft and young', personality: 'Gentle, calming' },
-  { value: ELEVENLABS_VOICES.antoni, label: 'Antoni', description: 'Well-rounded voice', personality: 'Balanced, versatile' },
+  { value: ELEVENLABS_VOICES.christina, label: 'Christina', description: 'Calming Yoga Instructor', personality: 'Peaceful, instructional' },
+  { value: ELEVENLABS_VOICES.mark, label: 'Mark', description: 'Conversational AI', personality: 'Engaging, conversational' },
+  { value: ELEVENLABS_VOICES.benjamin, label: 'Benjamin', description: 'Deep, Warm, Calming', personality: 'Deep, warm, soothing' },
 ];
 
 const sampleText = "Take a deep breath and feel your confidence growing stronger with each moment.";

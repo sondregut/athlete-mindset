@@ -51,6 +51,7 @@
     "firebase": "^11.9.1",
     "lucide-react-native": "^0.496.0",
     "nativewind": "^4.1.23",
+    "openai": "^5.9.2",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-native": "0.79.5",
@@ -62,6 +63,7 @@
     "react-native-screens": "~4.11.1",
     "react-native-svg": "15.11.2",
     "react-native-web": "^0.20.0",
+    "rork": "^1.0.1",
     "xlsx": "^0.18.5",
     "zod": "^4.0.5",
     "zustand": "^5.0.2"

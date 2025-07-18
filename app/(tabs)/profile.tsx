@@ -162,7 +162,10 @@ export default function ProfileScreen() {
       )}
 
       {/* Profile Header */}
-      <ProfileHeader onEditPress={() => setShowEditProfile(true)} />
+      <ProfileHeader 
+        onEditPress={() => setShowEditProfile(true)} 
+        onSettingsPress={() => setShowSettings(true)}
+      />
       
       {/* Profile Stats */}
       <ProfileStats />

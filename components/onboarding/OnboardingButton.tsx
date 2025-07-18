@@ -41,8 +41,8 @@ export default function OnboardingButton({
       borderRadius: 12,
       alignItems: 'center',
       justifyContent: 'center',
-      paddingHorizontal: size === 'small' ? 16 : size === 'large' ? 32 : 24,
-      paddingVertical: size === 'small' ? 10 : size === 'large' ? 18 : 14,
+      paddingHorizontal: size === 'small' ? 14 : size === 'large' ? 28 : 20,
+      paddingVertical: size === 'small' ? 8 : size === 'large' ? 16 : 12,
       opacity: disabled || isLoading ? 0.6 : 1,
     },
     primaryButton: {

@@ -22,21 +22,30 @@ interface SportMapping {
 
 export class SportContextMapper {
   private static sportCategories: { [sport: string]: SportCategory } = {
-    // Only Track & Field sports
+    // Track & Field sports
     'track & field': 'racing',
     'running': 'racing',
+    'distance-running': 'racing',
     'sprinting': 'racing',
     'pole vault': 'racing',
+    'pole-vault': 'racing',
     'high jump': 'racing',
     'long jump': 'racing',
     'triple jump': 'racing',
     'throws': 'racing',
+    
+    // Team sports
+    'soccer': 'team-field',
+    'football': 'team-field',
+    
+    // Generic
+    'generic': 'other',
   };
 
   private static categoryMappings: SportMapping[] = [
     {
       category: 'racing',
-      sports: ['running', 'sprinting', 'track & field', 'pole vault', 'high jump', 'long jump', 'triple jump', 'throws'],
+      sports: ['running', 'distance-running', 'sprinting', 'track & field', 'pole vault', 'high jump', 'long jump', 'triple jump', 'throws'],
       replacements: {
         'competition venue': 'track',
         'your performance': 'your event',
@@ -45,6 +54,32 @@ export class SportContextMapper {
         'completing your performance': 'finishing your event',
         'the environment': 'the track and field',
         'perform': 'compete',
+      }
+    },
+    {
+      category: 'team-field',
+      sports: ['soccer', 'football'],
+      replacements: {
+        'competition venue': 'field',
+        'your performance': 'your game',
+        'executing': 'playing',
+        'crossing the finish line': 'scoring the goal',
+        'completing your performance': 'finishing the match',
+        'the environment': 'the field',
+        'perform': 'play',
+      }
+    },
+    {
+      category: 'other',
+      sports: ['generic'],
+      replacements: {
+        'competition venue': 'performance environment',
+        'your performance': 'your performance',
+        'executing': 'performing',
+        'crossing the finish line': 'completing your performance',
+        'completing your performance': 'finishing your performance',
+        'the environment': 'the environment',
+        'perform': 'perform',
       }
     },
   ];

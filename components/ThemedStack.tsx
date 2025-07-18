@@ -71,22 +71,6 @@ export default function ThemedStack() {
           animation: "slide_from_right",
         }} 
       />
-      <Stack.Screen 
-        name="visualization-detail" 
-        options={{ 
-          title: "Visualization",
-          animation: "slide_from_right",
-        }} 
-      />
-      <Stack.Screen 
-        name="visualization-player" 
-        options={{ 
-          headerShown: false,
-          animation: "fade",
-          animationDuration: 200,
-          gestureEnabled: false,
-        }} 
-      />
     </Stack>
   );
 }
